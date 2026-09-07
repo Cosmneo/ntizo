@@ -73,13 +73,15 @@ export function Pager({
  * Only the colours move between the two states, never the size — a number
  * that grew when it became current would shift every number after it as the
  * reader paged, which is the same rule `categoryItemClass` and
- * `quickChipClass` follow.
+ * `quickChipClass` follow. The weight is the size: both states take
+ * `type-body-medium`'s 500 and neither adds a `font-*` of its own, which is
+ * what the `font-bold` on the current page was quietly breaking.
  */
 export function pagerPageClass(current: boolean): string {
   const base =
     "type-body-medium grid h-9 min-w-9 place-items-center rounded-full px-2.5 transition-colors";
   return current
-    ? `${base} bg-[var(--color-navy-surface)] font-bold text-[var(--color-navy-on)]`
+    ? `${base} bg-[var(--color-navy-surface)] text-[var(--color-navy-on)]`
     : `${base} text-[var(--color-muted-foreground)] hover:bg-[var(--color-muted)] hover:text-[var(--color-foreground)]`;
 }
 

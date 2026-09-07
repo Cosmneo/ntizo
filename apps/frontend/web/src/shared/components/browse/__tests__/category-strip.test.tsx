@@ -30,5 +30,10 @@ describe("CategoryStrip", () => {
     for (const size of ["px-", "py-", "text-[12.5px]", "gap-"]) {
       expect(off.includes(size)).toBe(on.includes(size));
     }
+    // The weight is a size: bold glyphs are wider than medium ones in every
+    // non-monospace face, so both states carry the same one.
+    expect(on).toContain("font-medium");
+    expect(off).toContain("font-medium");
+    expect(on).not.toContain("font-semibold");
   });
 });

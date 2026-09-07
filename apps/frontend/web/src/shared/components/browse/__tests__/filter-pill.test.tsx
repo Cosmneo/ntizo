@@ -47,4 +47,23 @@ describe("FilterPill", () => {
     await userEvent.keyboard("{Escape}");
     expect(details).not.toHaveAttribute("open");
   });
+
+  it("moves only the colours when a filter is applied, never the weight", () => {
+    // An applied pill that turned semibold grew, and the pill after it moved.
+    const { container: off } = render(
+      <FilterPill label="Price">
+        <a href="#">x</a>
+      </FilterPill>,
+    );
+    const { container: on } = render(
+      <FilterPill label="Price" active="Fixed price">
+        <a href="#">x</a>
+      </FilterPill>,
+    );
+    const resting = off.querySelector("summary")!.className;
+    const applied = on.querySelector("summary")!.className;
+    expect(resting).toContain("font-medium");
+    expect(applied).toContain("font-medium");
+    expect(applied).not.toContain("font-semibold");
+  });
 });

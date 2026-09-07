@@ -54,10 +54,14 @@ export function FilterPill({
       <details ref={ref}>
         <summary
           className={[
-            "flex h-[38px] cursor-pointer list-none items-center gap-[7px] rounded-full border px-3.5 text-[13.5px] transition-colors [&::-webkit-details-marker]:hidden",
+            // `font-medium` is in the base, not in the branches: an applied
+            // pill that turned semibold grew, and the pill after it moved.
+            // Only the colours say which one is on — the same rule
+            // `categoryItemClass`, `quickChipClass` and `pagerPageClass` keep.
+            "flex h-[38px] cursor-pointer list-none items-center gap-[7px] rounded-full border px-3.5 text-[13.5px] font-medium transition-colors [&::-webkit-details-marker]:hidden",
             on
-              ? "border-[var(--color-navy-surface)] bg-[var(--color-navy-surface)] font-semibold text-[var(--color-navy-on)]"
-              : "border-[var(--color-border-strong)] bg-[var(--color-background)] font-medium text-[var(--color-foreground)] hover:border-[var(--color-headline)]",
+              ? "border-[var(--color-navy-surface)] bg-[var(--color-navy-surface)] text-[var(--color-navy-on)]"
+              : "border-[var(--color-border-strong)] bg-[var(--color-background)] text-[var(--color-foreground)] hover:border-[var(--color-headline)]",
             clear ? "pr-9" : "",
           ].join(" ")}
         >

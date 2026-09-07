@@ -145,13 +145,15 @@ function StripArrow({ side, onClick }: { side: "left" | "right"; onClick: () => 
  * one.
  *
  * The chosen state changes colour and the underline only — never the border
- * width, the padding, or the gap. An item that grows shifts every item after
- * it, and the whole row jumps sideways as the selection moves.
+ * width, the padding, the gap or the weight. An item that grows shifts every
+ * item after it, and the whole row jumps sideways as the selection moves;
+ * bold glyphs are wider than medium ones in every non-monospace face, so
+ * `font-semibold` on the chosen item was that same jump by another route.
  */
 export function categoryItemClass(active: boolean): string {
   const base =
     "flex shrink-0 flex-col items-center gap-[7px] whitespace-nowrap border-b-2 pb-3 text-[12.5px] font-medium transition-colors";
   return active
-    ? `${base} border-[var(--color-headline)] font-semibold text-[var(--color-headline)]`
+    ? `${base} border-[var(--color-headline)] text-[var(--color-headline)]`
     : `${base} border-transparent text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]`;
 }
