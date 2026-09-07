@@ -59,7 +59,12 @@ export function DashboardPage() {
       )}
 
       {needs.items.length > 0 && (
-        <div className="grid gap-4 md:grid-cols-3">
+        // As many columns as there are cards, from `md` up: the row holds
+        // one to three, and a fixed three-column grid left a lone card in
+        // the first third with two empty thirds beside it — one thing owed
+        // reading as two-thirds of nothing. `grid-flow-col` with `auto-cols-fr`
+        // gives one card the row, two cards half each, three a third each.
+        <div className="grid gap-4 md:grid-flow-col md:auto-cols-fr">
           {needs.items.map((item) => (
             <StatCard
               key={item.key}
