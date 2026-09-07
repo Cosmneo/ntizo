@@ -56,5 +56,5 @@ test("/admin admits an admin", async ({ page }) => {
 
   await page.goto("/admin");
   await page.waitForURL(/\/admin\/dashboard/);
-  await expect(page.getByRole("heading", { name: "Ntizo Admin Dashboard" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /^(Good morning|Good afternoon|Good evening), / })).toBeVisible();
 });
