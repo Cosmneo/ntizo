@@ -59,6 +59,7 @@ import { Route as CustomerBookingsIndexRouteImport } from './routes/_customer/bo
 import { Route as CustomerBookingsBookingIdRouteImport } from './routes/_customer/bookings.$bookingId'
 import { Route as CustomerQuoteServiceIdRouteImport } from './routes/_customer/quote.$serviceId'
 import { Route as CustomerQuotesIndexRouteImport } from './routes/_customer/quotes.index'
+import { Route as CustomerQuotesQuoteIdRouteImport } from './routes/_customer/quotes.$quoteId'
 import { Route as PublicAcceptInviteTokenRouteImport } from './routes/_public/accept-invite.$token'
 import { Route as AdminProvidersIndexRouteImport } from './routes/admin/providers.index'
 import { Route as AdminProvidersProviderIdRouteImport } from './routes/admin/providers.$providerId'
@@ -332,6 +333,11 @@ const CustomerQuotesIndexRoute = CustomerQuotesIndexRouteImport.update({
   path: '/quotes/',
   getParentRoute: () => CustomerRouteRoute,
 } as any)
+const CustomerQuotesQuoteIdRoute = CustomerQuotesQuoteIdRouteImport.update({
+  id: '/quotes/$quoteId',
+  path: '/quotes/$quoteId',
+  getParentRoute: () => CustomerRouteRoute,
+} as any)
 const PublicAcceptInviteTokenRoute = PublicAcceptInviteTokenRouteImport.update({
   id: '/accept-invite/$token',
   path: '/accept-invite/$token',
@@ -481,6 +487,7 @@ export interface FileRoutesByFullPath {
   '/account/security': typeof CustomerAccountSecurityRoute
   '/bookings/$bookingId': typeof CustomerBookingsBookingIdRoute
   '/quote/$serviceId': typeof CustomerQuoteServiceIdRoute
+  '/quotes/$quoteId': typeof CustomerQuotesQuoteIdRoute
   '/accept-invite/$token': typeof PublicAcceptInviteTokenRoute
   '/admin/providers/$providerId': typeof AdminProvidersProviderIdRoute
   '/admin/support/$threadId': typeof AdminSupportThreadIdRoute
@@ -547,6 +554,7 @@ export interface FileRoutesByTo {
   '/account/security': typeof CustomerAccountSecurityRoute
   '/bookings/$bookingId': typeof CustomerBookingsBookingIdRoute
   '/quote/$serviceId': typeof CustomerQuoteServiceIdRoute
+  '/quotes/$quoteId': typeof CustomerQuotesQuoteIdRoute
   '/accept-invite/$token': typeof PublicAcceptInviteTokenRoute
   '/admin/providers/$providerId': typeof AdminProvidersProviderIdRoute
   '/admin/support/$threadId': typeof AdminSupportThreadIdRoute
@@ -619,6 +627,7 @@ export interface FileRoutesById {
   '/_customer/account/security': typeof CustomerAccountSecurityRoute
   '/_customer/bookings/$bookingId': typeof CustomerBookingsBookingIdRoute
   '/_customer/quote/$serviceId': typeof CustomerQuoteServiceIdRoute
+  '/_customer/quotes/$quoteId': typeof CustomerQuotesQuoteIdRoute
   '/_public/accept-invite/$token': typeof PublicAcceptInviteTokenRoute
   '/admin/providers/$providerId': typeof AdminProvidersProviderIdRoute
   '/admin/support/$threadId': typeof AdminSupportThreadIdRoute
@@ -690,6 +699,7 @@ export interface FileRouteTypes {
     | '/account/security'
     | '/bookings/$bookingId'
     | '/quote/$serviceId'
+    | '/quotes/$quoteId'
     | '/accept-invite/$token'
     | '/admin/providers/$providerId'
     | '/admin/support/$threadId'
@@ -756,6 +766,7 @@ export interface FileRouteTypes {
     | '/account/security'
     | '/bookings/$bookingId'
     | '/quote/$serviceId'
+    | '/quotes/$quoteId'
     | '/accept-invite/$token'
     | '/admin/providers/$providerId'
     | '/admin/support/$threadId'
@@ -827,6 +838,7 @@ export interface FileRouteTypes {
     | '/_customer/account/security'
     | '/_customer/bookings/$bookingId'
     | '/_customer/quote/$serviceId'
+    | '/_customer/quotes/$quoteId'
     | '/_public/accept-invite/$token'
     | '/admin/providers/$providerId'
     | '/admin/support/$threadId'
@@ -1228,6 +1240,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CustomerQuotesIndexRouteImport
       parentRoute: typeof CustomerRouteRoute
     }
+    '/_customer/quotes/$quoteId': {
+      id: '/_customer/quotes/$quoteId'
+      path: '/quotes/$quoteId'
+      fullPath: '/quotes/$quoteId'
+      preLoaderRoute: typeof CustomerQuotesQuoteIdRouteImport
+      parentRoute: typeof CustomerRouteRoute
+    }
     '/_public/accept-invite/$token': {
       id: '/_public/accept-invite/$token'
       path: '/accept-invite/$token'
@@ -1394,6 +1413,7 @@ interface CustomerRouteRouteChildren {
   CustomerMessagesRoute: typeof CustomerMessagesRoute
   CustomerBookingsBookingIdRoute: typeof CustomerBookingsBookingIdRoute
   CustomerQuoteServiceIdRoute: typeof CustomerQuoteServiceIdRoute
+  CustomerQuotesQuoteIdRoute: typeof CustomerQuotesQuoteIdRoute
   CustomerBookingsIndexRoute: typeof CustomerBookingsIndexRoute
   CustomerQuotesIndexRoute: typeof CustomerQuotesIndexRoute
 }
@@ -1405,6 +1425,7 @@ const CustomerRouteRouteChildren: CustomerRouteRouteChildren = {
   CustomerMessagesRoute: CustomerMessagesRoute,
   CustomerBookingsBookingIdRoute: CustomerBookingsBookingIdRoute,
   CustomerQuoteServiceIdRoute: CustomerQuoteServiceIdRoute,
+  CustomerQuotesQuoteIdRoute: CustomerQuotesQuoteIdRoute,
   CustomerBookingsIndexRoute: CustomerBookingsIndexRoute,
   CustomerQuotesIndexRoute: CustomerQuotesIndexRoute,
 }
