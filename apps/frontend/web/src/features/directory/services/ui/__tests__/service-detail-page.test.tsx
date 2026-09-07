@@ -112,6 +112,7 @@ function detailProvider(over: Partial<ProviderPublicDetailDTO> = {}): ProviderPu
     serviceCount: 1,
     fromAmountMinor: 50000,
     fromCurrency: "MZN",
+    services: [],
     memberSince: "2025-03",
     serviceLocationTypes: ["at_provider"],
     weeklyHours: [

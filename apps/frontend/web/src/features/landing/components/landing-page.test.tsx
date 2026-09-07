@@ -41,6 +41,7 @@ function provider(over: Partial<ProviderPublicDTO> = {}): ProviderPublicDTO {
     serviceCount: 3,
     fromAmountMinor: 45000,
     fromCurrency: "MZN",
+    services: [],
     ...over,
   };
 }

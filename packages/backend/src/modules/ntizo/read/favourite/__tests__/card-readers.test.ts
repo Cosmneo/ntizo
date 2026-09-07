@@ -54,6 +54,10 @@ function providerCard(id: string): ProviderPublicDTO {
     ratingAverage: null,
     reviewCount: 0,
     categories: [],
+    // Empty because these readers never look at it: a cover mosaic needs a
+    // picture, and the entries page renders whatever the directory hands it.
+    // The field is required on the model, so it has to be stated.
+    services: [],
     serviceCount: 0,
     fromAmountMinor: null,
     fromCurrency: null,

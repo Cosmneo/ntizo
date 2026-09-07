@@ -103,6 +103,9 @@
       "upcoming": "Bevorstehend",
       "history": "Verlauf"
     },
+    "filterTitle": "Buchungen filtern",
+    "showLabel": "Anzeigen",
+    "memberLabel": "Fachkraft",
     "searchPlaceholder": "Kunde oder Leistung suchen",
     "memberFilterAll": "Alle Fachkräfte",
     "memberAnyone": "Beliebig",
@@ -113,7 +116,6 @@
       "price": "Preis",
       "status": "Status"
     },
-    "shownOf": "{{shown}} von {{total}} angezeigt",
     "loadMore": "Mehr",
     "respondIn": "Antworten in {{time}}",
     "respondBy": "Antworten bis {{time}}",

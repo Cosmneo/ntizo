@@ -55,38 +55,3 @@ export function browseSearch(current: BrowseSearch, change: BrowseSearch): Brows
     ...(offset ? { offset } : {}),
   };
 }
-
-/**
- * How many narrowings are on, for the badge on the phone's filter button.
- *
- * The category is excluded: on a phone the rail is still on screen above the
- * results, so counting it would show a number for something the reader can
- * already see and clear without opening anything. A price range counts once
- * however many of its two boxes are filled — counting the bounds separately
- * shows "2" for a single range. The same rules `activeDirectoryFilterCount`
- * follows on the directory.
- *
- * Every *facet* counted here is reachable inside the sheet the badge opens.
- * `q` is the one deliberate exception: it is the hero's search term, the sheet
- * has no box for it, and what takes it off is its own chip above the results
- * or "Clear all" beside them. It is counted anyway, because it narrows harder
- * than any facet does and a badge that ignored it would read 0 over a page
- * showing three results out of two hundred.
- *
- * The facet half of that rule is why this lives here rather than in the
- * deleted `browse-filters.tsx`: the count once grew a `city` the sheet had no
- * group for, and a badge reading 2 over a sheet offering one control the
- * reader can act on lies about what is on. `activeDirectoryFilterCount` says
- * the same.
- */
-export function activeFilterCount(current: BrowseSearch): number {
-  return [
-    current.locationType,
-    current.paymentMode,
-    current.providerType,
-    current.language,
-    current.city,
-    current.q,
-    current.minPrice != null || current.maxPrice != null ? "price" : undefined,
-  ].filter((v) => v != null).length;
-}

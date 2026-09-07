@@ -5,6 +5,7 @@ import { ListAdminBookingsProjection } from "../app/use-cases/list-admin-booking
 import { ListProviderBookingsProjection } from "../app/use-cases/list-provider-bookings.projection";
 import { GetProviderBookingProjection } from "../app/use-cases/get-provider-booking.projection";
 import { GetProviderStatsProjection } from "../app/use-cases/get-provider-stats.projection";
+import { GetAdminStatsProjection } from "../app/use-cases/get-admin-stats.projection";
 import { DrizzleProviderReadRepository } from "../../provider/infra/repositories/drizzle/provider-read.repository";
 
 /**
@@ -51,6 +52,7 @@ export function bootstrapBookingRead() {
        * edge, not here: see `BookingReadRepositoryPort.listForAdmin`.
        */
       listForAdmin: new ListAdminBookingsProjection(repo),
+      statsForAdmin: new GetAdminStatsProjection(repo),
       /** Only `isMember` is used, and only to answer "may this person look" — the wallet's arrangement. */
       providerRead: new DrizzleProviderReadRepository(),
     },

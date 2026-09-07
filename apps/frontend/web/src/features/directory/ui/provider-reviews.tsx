@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Star } from "lucide-react";
 import { Button, cn } from "@ntizo/frontend-ui";
+import { formatRating } from "@/shared/domain/rating";
 import { useProviderReviews } from "@/features/directory/viewmodel/use-directory";
 import { RatingStars } from "@/features/directory/ui/rating-stars";
 
@@ -76,10 +77,7 @@ export function ProviderReviews({ providerId }: { providerId: string }) {
   if (!data || data.summary.count === 0) return null;
 
   const { summary, reviews } = data;
-  const score = new Intl.NumberFormat(locale, {
-    minimumFractionDigits: 1,
-    maximumFractionDigits: 1,
-  }).format(summary.average ?? 0);
+  const score = formatRating(summary.average ?? 0, locale);
 
   return (
     <section className="mt-12">

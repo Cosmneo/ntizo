@@ -12,9 +12,9 @@ import type { ServiceDTO } from "../../domain/types";
 
 /**
  * The row rendered inside a router stub, the same harness
- * `service-listing-card.test.tsx` and `provider-hero.test.tsx` build: every
- * claim this row makes about its own `<Link to="/services/$id">` throws
- * outside a router, and there is nothing else this component needs from one
+ * `provider-hero.test.tsx` builds: every claim this row makes about its own
+ * `<Link to="/services/$id">` throws outside a router, and there is nothing
+ * else this component needs from one
  * (no `QueryClient`, no viewmodel mock — `ServiceRow` is handed a `ServiceDTO`
  * and asks nothing of anybody).
  */
@@ -145,11 +145,11 @@ describe("ServiceRow", () => {
   });
 
   it("falls back to the provider's photo when the service has none", async () => {
-    // The thumbnail is decorative (`alt=""` —
-    // the service's name is already adjacent link text), so it carries no
-    // accessible role to query by. The DOM is read directly instead, the
-    // same trade-off `service-listing-card.test.tsx` makes for its own
-    // decorative thumbnail.
+    // The thumbnail is decorative (`alt=""` — the service's name is already
+    // adjacent link text), so it carries no accessible role to query by. The
+    // DOM is read directly instead: querying by role is the rule, and a
+    // picture that correctly announces as nothing is the exception it does
+    // not cover.
     const { container } = renderRow(base, "https://cdn.test/logo.jpg");
     await screen.findByText("Avaria eléctrica urgente");
     expect(container.querySelector("img")).toHaveAttribute("src", "https://cdn.test/logo.jpg");

@@ -62,19 +62,29 @@ export function Pager({
 }
 
 /**
- * One page number.
+ * One page number, as a round.
  *
- * The current page is filled, matching the sort segments rather than the CTA:
- * both are "which of these is on", and neither is an action.
+ * The current page is filled headline navy — the same fill an applied filter
+ * pill and the phone's floating control wear, because all three say "this one
+ * is on" rather than "press me". The rest carry no border at all: a row of
+ * outlined boxes reads as eight buttons competing with the results above
+ * them, where the numbers are only a place in a list.
+ *
+ * Only the colours move between the two states, never the size — a number
+ * that grew when it became current would shift every number after it as the
+ * reader paged, which is the same rule `categoryItemClass` and
+ * `quickChipClass` follow. The weight is the size: both states take
+ * `type-body-medium`'s 500 and neither adds a `font-*` of its own, which is
+ * what the `font-bold` on the current page was quietly breaking.
  */
 export function pagerPageClass(current: boolean): string {
   const base =
-    "type-body-medium grid h-9 min-w-9 place-items-center rounded-[10px] border px-2.5 transition-colors";
+    "type-body-medium grid h-9 min-w-9 place-items-center rounded-full px-2.5 transition-colors";
   return current
-    ? `${base} border-[var(--color-foreground)] bg-[var(--color-foreground)] font-semibold text-[var(--color-background)]`
-    : `${base} border-transparent text-[var(--color-muted-foreground)] hover:border-[var(--color-border)] hover:bg-[var(--color-background)] hover:text-[var(--color-foreground)]`;
+    ? `${base} bg-[var(--color-navy-surface)] text-[var(--color-navy-on)]`
+    : `${base} text-[var(--color-muted-foreground)] hover:bg-[var(--color-muted)] hover:text-[var(--color-foreground)]`;
 }
 
 /** "Previous" / "Next", which are wider than a number and read as words. */
 export const PAGER_EDGE_CLASS =
-  "type-body-medium grid h-9 place-items-center rounded-[10px] border border-[var(--color-border)] bg-[var(--color-background)] px-4 transition-colors hover:border-[var(--color-muted-foreground)]";
+  "type-body-medium grid h-9 place-items-center rounded-full border border-[var(--color-border-strong)] px-4 transition-colors hover:border-[var(--color-headline)]";

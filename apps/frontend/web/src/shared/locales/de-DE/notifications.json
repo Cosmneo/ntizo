@@ -12,6 +12,12 @@
   "loadError": "Ihre Benachrichtigungen konnten nicht geladen werden.",
   "showingCount": "{{shown}} von {{total}} angezeigt.",
   "loadMore": "Mehr laden",
+  "markRead": "Als gelesen markieren",
+  "openConversation": "Unterhaltung öffnen",
+  "unreadOfTotal": "{{count}} ungelesen von {{total}}",
+  "unreadOfTotal_other": "{{count}} ungelesen von {{total}}",
+  "loading": "Benachrichtigungen werden geladen",
+  "markError": "Konnte nicht als gelesen markiert werden. Bitte erneut versuchen.",
   "type": {
     "welcome": "Willkommen bei Ntizo",
     "providerWorkspaceWelcome": "Ihr Arbeitsbereich ist eingerichtet",

@@ -1,4 +1,5 @@
 import { queryOptions } from "@tanstack/react-query";
+import type { ProviderStatusCountsDTO } from "@ntizo/shared/read-models";
 import { sessionGraphql } from "@/shared/lib/graphql/session-graphql";
 import type { AdminProvider, AdminProviderDetail } from "../domain/types";
 
@@ -26,6 +27,11 @@ const DETAIL = `
         rejectionReason supersedesId
       }
     }
+  }`;
+
+const COUNTS = `
+  query ProviderCountByStatusForAdmin {
+    providerCountByStatusForAdmin(input: {}) { pending active rejected suspended archived }
   }`;
 
 const DECIDE = `
@@ -62,6 +68,21 @@ export const adminProviderQueries = {
         });
         return d.providerAllForAdmin;
       },
+    }),
+
+  /**
+   * One count per status — the sidebar's badge and the dashboard read
+   * `pending` from here, instead of measuring a page of twenty-five. Under
+   * the list's prefix, so a decision on a provider refreshes both.
+   */
+  counts: () =>
+    queryOptions({
+      queryKey: ["admin", "providers", "counts"] as const,
+      queryFn: async (): Promise<ProviderStatusCountsDTO> => {
+        const d = await sessionGraphql<{ providerCountByStatusForAdmin: ProviderStatusCountsDTO }>(COUNTS, {});
+        return d.providerCountByStatusForAdmin;
+      },
+      staleTime: 30_000,
     }),
 };
 

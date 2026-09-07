@@ -1,5 +1,9 @@
 import { useInfiniteQuery } from "@tanstack/react-query";
-import { activityQueries } from "@/features/activity/data/activity.repository";
+import type { PlatformActivityEntryDTO } from "@ntizo/shared/read-models";
+import {
+  activityQueries,
+  type PlatformActivitySearch,
+} from "@/features/activity/data/activity.repository";
 import type { ActivityEntry } from "@/features/activity/domain/types";
 
 /**
@@ -24,6 +28,26 @@ export function useMyActivity() {
   return {
     entries,
     loading: query.isPending,
+    hasMore: query.hasNextPage,
+    loadMore: () => void query.fetchNextPage(),
+  };
+}
+
+/**
+ * Everybody's history, for the admin's list — the same flattening as
+ * `useMyActivity`, plus `failed`, because a list that spans the platform and
+ * failed to load must not look like a platform on which nothing happened.
+ */
+export function usePlatformActivity(search: PlatformActivitySearch) {
+  const query = useInfiniteQuery(activityQueries.all(search));
+
+  const entries: PlatformActivityEntryDTO[] =
+    query.data?.pages.flatMap((page) => page.items) ?? [];
+
+  return {
+    entries,
+    loading: query.isPending,
+    failed: query.isError,
     hasMore: query.hasNextPage,
     loadMore: () => void query.fetchNextPage(),
   };

@@ -81,12 +81,13 @@ export function formatAmount(
  * Any amount in minor units, as a headline price rather than a total.
  *
  * Whole units only, `useGrouping: "always"`: a rail's headline and a service
- * row's price cell are the same kind of number the browse cards already
- * print — `ProviderListingCard` and `ServiceListingCard` each carry their own
- * private `formatPrice` twin of this, with the same shape, for the same
- * reason recorded on both: two cards in the same product disagreeing about
- * whether this platform writes "800 MZN" or "800,00 MZN" is worse than either
- * choice, and the approved mockup writes whole units. `useGrouping: "always"`
+ * row's price cell are the same kind of number every result on the browse
+ * pages prints. The two listing cards this replaced each carried their own
+ * private `formatPrice` twin of this, with the same shape, for the reason
+ * recorded on both: two surfaces in the same product disagreeing about whether
+ * this platform writes "800 MZN" or "800,00 MZN" is worse than either choice,
+ * and the approved mockup writes whole units. One function now, which is what
+ * made deleting those two safe. `useGrouping: "always"`
  * exists because `pt-MZ` and `pt-PT` set `minimumGroupingDigits: 2`, which
  * would otherwise leave a four-digit price ungrouped — "1200 MZN" against the
  * mockup's "1 200 MZN".
@@ -177,24 +178,64 @@ export function serviceCardImage(
 }
 
 /**
- * A review score to one decimal, in the reader's own numerals and separator —
- * "4,8" in `pt-MZ`, "4.8" in `en-US`.
+ * What a tile prints where the price goes.
  *
- * Pinned to exactly one decimal rather than left to `Intl`'s default, so a
- * business on a round 5 reads "5,0" beside one on "4,8" instead of a bare "5"
- * that looks like a different kind of number. The value is already rounded to
- * one decimal server-side — see `coerceReviewAggregate` — so this is
- * presentation only and cannot disagree with the provider's own page.
+ * The successor to `serviceStubParts`, which shaped the same four branches for
+ * a control the tile does not have: `PriceStub` needed an eyebrow above the
+ * amount and a CTA variant beneath it, and a tile has neither. Keyed off
+ * `servicePriceCell` so the branch order — `quote` before `defaultOption` is
+ * even inspected — is decided in exactly one place.
  *
- * Lives beside `formatHeadlinePrice` rather than with either caller: checkout's
- * rail and the customer's booking detail page both print the same "4,8 ★"
- * fragment in their own trust line, and each kept a private, identical copy
- * before this — the usual failure mode for a formatter with two call sites
- * and no shared home.
+ * Returns keys and minor units rather than strings: the amount is formatted in
+ * the reader's locale by the component, and a domain function that interpolated
+ * an English "min" would put it in front of every locale that calls this.
  */
-export function formatRating(rating: number, locale: string): string {
-  return new Intl.NumberFormat(locale, {
-    minimumFractionDigits: 1,
-    maximumFractionDigits: 1,
-  }).format(rating);
+export interface ServicePriceLine {
+  amount:
+    | { kind: "money"; amountMinor: number; currency: string; from: boolean; perHour: boolean }
+    | { kind: "words"; key: string };
+  /** The one phrase beside the amount, or nothing when the data has none. */
+  meta: { key: string; values?: Record<string, number> } | null;
+}
+
+export function servicePriceLine(service: ServiceDTO): ServicePriceLine {
+  const cell = servicePriceCell(service);
+
+  if (cell.kind === "quote") {
+    return { amount: { kind: "words", key: "priceToAgree" }, meta: { key: "priceQuoteHint" } };
+  }
+  if (cell.kind === "unavailable") {
+    return { amount: { kind: "words", key: "priceUnavailable" }, meta: null };
+  }
+  if (cell.kind === "from") {
+    return {
+      amount: {
+        kind: "money",
+        amountMinor: cell.amountMinor,
+        currency: cell.currency,
+        from: true,
+        perHour: false,
+      },
+      meta: { key: "priceOptionCount", values: { count: service.optionCount } },
+    };
+  }
+
+  const hourly = cell.option.pricingMode === "hourly";
+  const minutes = optionDurationMinutes(cell.option);
+  return {
+    amount: {
+      kind: "money",
+      amountMinor: cell.option.amountMinor,
+      currency: cell.option.currency,
+      from: false,
+      perHour: hourly,
+    },
+    meta:
+      minutes == null
+        ? null
+        : {
+            key: hourly ? "serviceMinimumMinutes" : "serviceDurationMinutes",
+            values: { count: minutes },
+          },
+  };
 }

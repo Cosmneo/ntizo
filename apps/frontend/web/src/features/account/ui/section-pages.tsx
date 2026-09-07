@@ -1,36 +1,30 @@
+import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
-import { BadgeCheck, CreditCard, KeyRound, ShieldAlert } from "lucide-react";
-import { Badge, Button } from "@ntizo/frontend-ui";
-import {
-  NotificationBucket,
-  NotificationChannel,
-  OPTIONAL_NOTIFICATION_CHANNELS,
-  isMeteredChannel,
-} from "@ntizo/shared";
+import { BadgeCheck, CreditCard } from "lucide-react";
+import { Badge } from "@ntizo/frontend-ui";
+import { useSession } from "@ntizo/auth-client";
 import { useCurrentUser } from "@/features/user/viewmodel/use-current-user";
 import { EmptyCard } from "@/shared/components/empty-card";
+import { textAction } from "@/shared/ui/text-action";
 import {
   AppearancePreference,
   LanguagePreference,
 } from "@/features/account/ui/language-preference";
-import { Setting } from "@/features/account/ui/setting";
 
+/**
+ * The heading every settings page opens with: the section's name in the
+ * headline colour and one line on what the page is for.
+ *
+ * Deliberately not exported: `company-page.tsx` exports a different
+ * component under this same name, and two importable `SectionHeading`s with
+ * different signatures is a trap for whoever autocompletes the wrong one.
+ */
 function SectionHeading({ title, blurb }: { title: string; blurb: string }) {
   return (
-    <div className="mb-5">
-      <h1 className="type-h1">{title}</h1>
-      <p className="type-body mt-1 text-[var(--color-muted-foreground)]">
-        {blurb}
-      </p>
-    </div>
-  );
-}
-
-function Panel({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-background)] p-6">
-      {children}
+    <div className="mb-6">
+      <h1 className="type-h1 text-[var(--color-headline)]">{title}</h1>
+      <p className="type-body mt-1 text-[var(--color-muted-foreground)]">{blurb}</p>
     </div>
   );
 }
@@ -39,35 +33,31 @@ export function PaymentMethodsPage() {
   const { t } = useTranslation("account");
   return (
     <>
-      <SectionHeading
-        title={t("navPaymentMethods")}
-        blurb={t("paymentsBlurb")}
-      />
-      <EmptyCard
-        framed
-        badge={CreditCard}
-        title={t("paymentsEmptyTitle")}
-        body={t("paymentsEmptyBody")}
-      />
+      <SectionHeading title={t("navPaymentMethods")} blurb={t("paymentsBlurb")} />
+      <EmptyCard badge={CreditCard} title={t("paymentsEmptyTitle")} body={t("paymentsEmptyBody")} />
     </>
   );
 }
 
-/** One confirmed-or-not row, for email and phone. */
-function VerificationRow({
+/**
+ * One fact about the account, on a hairline: what it is, what it says, and
+ * beside it the badge or the action that goes with it.
+ *
+ * The rows used to sit in a bordered card, and the password in a second one
+ * with a tinted key icon. Three facts do not need two boxes; they need three
+ * lines that read the same way.
+ */
+function FactRow({
   label,
   value,
-  verified,
-  action,
+  aside,
 }: {
   label: string;
-  value: string | null;
-  verified: boolean;
-  action?: React.ReactNode;
+  value: ReactNode;
+  aside?: ReactNode;
 }) {
-  const { t } = useTranslation("account");
   return (
-    <div className="flex flex-wrap items-center gap-3 border-b border-[var(--color-border)] py-4 last:border-0">
+    <div className="flex flex-wrap items-center gap-x-6 gap-y-2 border-t border-[var(--color-border)] py-4 first:border-t-0 first:pt-0">
       {/* `basis-full sm:basis-0` so the badge drops to its own line on a
           phone rather than crushing an e-mail address into two characters
           per line. flex-1 alone would let it shrink without ever wrapping. */}
@@ -75,214 +65,121 @@ function VerificationRow({
         <div className="type-body-medium font-semibold">{label}</div>
         {/* An address and a phone number are single words with nowhere to
             break, so they set the row's minimum width and push the page into
-            a sideways scroll. `anywhere` lets them wrap mid-token — ugly for
-            two characters, and the alternative is a horizontal scrollbar on
-            every page. Measured: a 29-character address wanted 181px in an
-            82px column. */}
+            a sideways scroll. `anywhere` lets them wrap mid-token. */}
         <div className="type-body [overflow-wrap:anywhere] text-[var(--color-muted-foreground)]">
-          {value || t("notSet")}
+          {value}
         </div>
       </div>
-      {verified ? (
-        <Badge tone="success" className="gap-1">
-          <BadgeCheck className="h-3.5 w-3.5" />
-          {t("confirmed")}
-        </Badge>
-      ) : (
-        <Badge tone="warning">{t("unconfirmed")}</Badge>
-      )}
-      {action}
+      {aside && <div className="flex items-center gap-3">{aside}</div>}
     </div>
+  );
+}
+
+function Confirmed({ verified }: { verified: boolean }) {
+  const { t } = useTranslation("account");
+  return verified ? (
+    <Badge tone="success" className="gap-1">
+      <BadgeCheck className="h-3.5 w-3.5" />
+      {t("confirmed")}
+    </Badge>
+  ) : (
+    <Badge tone="warning">{t("unconfirmed")}</Badge>
   );
 }
 
 export function SecurityPage() {
   const { t } = useTranslation("account");
   const { data: user } = useCurrentUser();
+  // Read from the session, not the read model, the same way the profile
+  // reads it: whether a number is verified is an auth fact. This page used
+  // to call any number "confirmed" merely for existing, and so contradicted
+  // the profile beside it about the same digits.
+  //
+  // `isPending` matters as much as the value. The session starts as
+  // `{ data: null, isPending: true }` and is fetched only after mount, so a
+  // page that reads the value alone renders "not confirmed" through the
+  // server render and the first client paint, then flips — telling a
+  // verified reader they have something to do, briefly, on every visit.
+  const { data: session, isPending: sessionPending } = useSession();
+  const phoneVerified = Boolean(session?.user?.phoneNumberVerified);
+
+  // Empty string, not just null: the read model types this nullable, and a
+  // blank line beside a "verify" action would be a row about nothing.
+  const phone = user?.phoneNumber || null;
 
   return (
     <>
       <SectionHeading title={t("navSecurity")} blurb={t("securityBlurb")} />
-      <Panel>
+      <div>
         {/* Email is confirmed by definition: sign-in requires it. Showing the
             row anyway is what makes the phone row below it read as an
             outstanding task rather than an oddity. */}
-        <VerificationRow
-          label={t("fieldEmail")}
-          value={user?.email ?? null}
-          verified
-        />
-        <VerificationRow
+        <FactRow label={t("fieldEmail")} value={user?.email || t("notSet")} aside={<Confirmed verified />} />
+        <FactRow
           label={t("fieldPhone")}
-          value={user?.phoneNumber ?? null}
-          verified={Boolean(user?.phoneNumber)}
-          action={
-            !user?.phoneNumber ? (
-              <Link to="/verify-phone">
-                <Button variant="secondary" size="sm">
-                  {t("verifyPhone")}
-                </Button>
+          value={phone ?? t("notSet")}
+          aside={
+            !phone ? (
+              // Not `/verify-phone`: that screen short-circuits to a dead end
+              // ("no phone on this account", and a link home) when the session
+              // carries no number. The place to add one is the profile form.
+              <Link to="/account" className={textAction()}>
+                {t("addPhone")}
               </Link>
-            ) : undefined
+            ) : sessionPending ? null : (
+              <>
+                <Confirmed verified={phoneVerified} />
+                {/* The badge says there is something to do, so the row has to
+                    carry the doing of it. Without this link the account area
+                    had no route to the OTP screen at all. */}
+                {!phoneVerified && (
+                  <Link to="/verify-phone" className={textAction()}>
+                    {t("verifyPhone")}
+                  </Link>
+                )}
+              </>
+            )
           }
         />
-      </Panel>
-
-      <div className="mt-4">
-        <Panel>
-          {/* Stacked below `sm`, a row above it. `flex-wrap` alone did not
-              wrap: `flex-1` on the text lets it shrink to a sliver rather
-              than pushing the button onto its own line, so on a phone the
-              sentence came out five words tall beside a button. */}
-          <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center">
-            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-[var(--radius-card-sm)] bg-[var(--color-muted)]">
-              <KeyRound className="h-5 w-5 text-[var(--color-primary)]" />
-            </span>
-            <div className="min-w-0 flex-1">
-              <div className="type-body-medium font-semibold">
-                {t("passwordTitle")}
-              </div>
-              <div className="type-body text-[var(--color-muted-foreground)]">
-                {t("passwordBlurb")}
-              </div>
-            </div>
-            {/* Goes through the same emailed link as a forgotten password
-                rather than an in-page form. Changing a password from an
-                already-open session proves nothing about who is at the
-                keyboard; the email does. */}
-            <Link to="/forgot-password" className="w-full sm:w-auto">
-              {/* whitespace-normal: the button's own class is nowrap, which
-                  is right for a short label and wrong for a two-word one on a
-                  narrow phone, where it overflowed its own box. */}
-              <Button
-                variant="outline"
-                className="h-auto w-full whitespace-normal py-2 sm:w-auto"
-              >
-                {t("changePassword")}
-              </Button>
+        {/* Goes through the same emailed link as a forgotten password rather
+            than an in-page form. Changing a password from an already-open
+            session proves nothing about who is at the keyboard; the email
+            does. */}
+        <FactRow
+          label={t("passwordTitle")}
+          value={t("passwordBlurb")}
+          aside={
+            <Link to="/forgot-password" className={textAction()}>
+              {t("changePassword")}
             </Link>
-          </div>
-        </Panel>
+          }
+        />
       </div>
     </>
   );
 }
 
 /**
- * Preferences: language, appearance and notifications, one under the other.
+ * Preferences: the language and the appearance, one under the other.
  *
- * They were three places — two sidebar entries and a submenu in the account
- * dropdown. All three answer the same question, how the app should behave for
- * this person, and splitting that across a sidebar turns navigation into a
- * table of contents.
+ * There is no notification section. Every notification is sent by email and
+ * nothing is switchable, so four rows of disabled checkboxes with a note
+ * saying they were not saved — which is what stood here until 2026-09-07 —
+ * offered a choice that did not exist. A settings page that is mostly inert
+ * controls reads as broken; when there is something to choose, the section
+ * comes back with controls that work.
  */
 export function PreferencesPage() {
   const { t } = useTranslation("account");
 
   return (
     <>
-      <SectionHeading
-        title={t("navPreferences")}
-        blurb={t("preferencesBlurb")}
-      />
-      <Panel>
+      <SectionHeading title={t("navPreferences")} blurb={t("preferencesBlurb")} />
+      <div>
         <LanguagePreference />
         <AppearancePreference />
-        <NotificationSettings />
-      </Panel>
+      </div>
     </>
-  );
-}
-
-function NotificationSettings() {
-  const { t } = useTranslation("account");
-  const buckets = Object.values(NotificationBucket);
-
-  return (
-    <Setting title={t("navNotifications")} blurb={t("notificationsBlurb")}>
-      <>
-        {/* Only the switchable buckets appear. Confirmations, refunds and
-            sign-in alerts are transactional — they are sent regardless, and
-            offering a switch that does nothing would be a lie. The list comes
-            from the enum, so a notification type added later shows up here
-            once someone assigns it a bucket. */}
-        {/* No min-width. It was 420px inside a scroller, which on a phone
-            meant the second channel column sat off-screen with nothing
-            saying so — a preference you cannot see is one you cannot set.
-            The label column wraps instead and both channels fit. The
-            scroller stays as a backstop for a third channel later. */}
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse">
-            <thead>
-              <tr>
-                <th className="type-caption pb-3 text-left font-medium text-[var(--color-muted-foreground)]">
-                  {t("notifyWhat")}
-                </th>
-                {OPTIONAL_NOTIFICATION_CHANNELS.map((channel) => (
-                  <th
-                    key={channel}
-                    className="type-caption w-16 pb-3 text-center font-medium text-[var(--color-muted-foreground)] sm:w-24"
-                  >
-                    {t(`channel.${channel}`)}
-                    {isMeteredChannel(channel) ? (
-                      <span className="block text-[10px] opacity-70">
-                        {t("channelCosts")}
-                      </span>
-                    ) : null}
-                    {/* Push has no adapter in this repository either — the SMS
-                        column was removed rather than left silent about the
-                        same problem, so Push cannot go unlabelled: a column
-                        with no note next to a metered one reads as a channel
-                        that works. */}
-                    {channel === NotificationChannel.Push ? (
-                      <span className="block text-[10px] opacity-70">
-                        {t("channelUnavailable")}
-                      </span>
-                    ) : null}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {buckets.map((bucket) => (
-                <tr
-                  key={bucket}
-                  className="border-t border-[var(--color-border)]"
-                >
-                  <td className="type-body-medium py-3.5 pr-3">
-                    {t(`bucket.${bucket}`)}
-                  </td>
-                  {OPTIONAL_NOTIFICATION_CHANNELS.map((channel) => (
-                    <td key={channel} className="py-3.5 text-center">
-                      <input
-                        type="checkbox"
-                        defaultChecked
-                        disabled
-                        aria-label={`${t(`bucket.${bucket}`)} — ${t(`channel.${channel}`)}`}
-                        className="h-4 w-4 accent-[var(--color-primary)]"
-                      />
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Disabled, and said out loud. There is nowhere to store a
-            preference yet — and even once there is, no switch on this page
-            would govern anything this slice raises: every notification type
-            with a live producer (Welcome, ProviderWorkspaceWelcome,
-            ProviderVerified, ProviderDocumentsRequired, TeamInvitation) is
-            transactional by `bucketForNotificationType`, sent regardless of
-            what any bucket switch says. A switch that appeared to work would
-            be the worst of the three states. */}
-        <p className="type-caption mt-4 flex items-start gap-2 rounded-[var(--radius-field)] bg-[var(--color-muted)] p-3 text-[var(--color-muted-foreground)]">
-          <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" />
-          {t("notificationsPending")}
-        </p>
-      </>
-    </Setting>
   );
 }
 
@@ -291,18 +188,19 @@ export function LegalPage() {
   return (
     <>
       <SectionHeading title={t("navLegal")} blurb={t("legalBlurb")} />
-      <Panel>
-        <ul className="grid list-none gap-3 p-0">
-          {["terms", "privacy", "cookies"].map((key) => (
-            <li key={key} className="type-body-medium">
-              {t(`legal.${key}`)}
-              <span className="type-caption ml-2 text-[var(--color-muted-foreground)]">
-                {t("legalPending")}
-              </span>
-            </li>
-          ))}
-        </ul>
-      </Panel>
+      <ul className="grid list-none p-0">
+        {["terms", "privacy", "cookies"].map((key) => (
+          <li
+            key={key}
+            className="type-body-medium border-t border-[var(--color-border)] py-4 first:border-t-0 first:pt-0"
+          >
+            {t(`legal.${key}`)}
+            <span className="type-caption ml-2 text-[var(--color-muted-foreground)]">
+              {t("legalPending")}
+            </span>
+          </li>
+        ))}
+      </ul>
     </>
   );
 }

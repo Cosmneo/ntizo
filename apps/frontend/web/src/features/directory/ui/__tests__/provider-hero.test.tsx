@@ -40,6 +40,7 @@ function provider(over: Partial<ProviderPublicDTO> = {}): ProviderPublicDTO {
     serviceCount: 1,
     fromAmountMinor: null,
     fromCurrency: null,
+    services: [],
     ...over,
   };
 }

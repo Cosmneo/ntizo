@@ -6,7 +6,7 @@ import {
 import { currentUserReadModel } from "../system/user";
 import { availabilityConfigReadModel } from "../system/availability";
 import { inboxPageReadModel, notificationReadModel } from "../system/notification";
-import { activityEntryReadModel, activityPageReadModel } from "../system/activity";
+import { activityEntryReadModel, activityPageReadModel, platformActivityEntryReadModel } from "../system/activity";
 import {
   threadSummaryReadModel,
   threadPageReadModel,
@@ -23,6 +23,8 @@ import {
   customerBookingDetailReadModel,
   customerBookingPageReadModel,
 } from "../system";
+import { adminBookingStatsReadModel } from "../system/booking";
+import { providerStatusCountsReadModel } from "../system/provider";
 
 describe("providerListItemReadModel", () => {
   it("accepts a well-formed list item", () => {
@@ -720,6 +722,7 @@ describe("providerPublicDetailReadModel", () => {
     logoUrl: null, photoUrls: [], verified: false,
     ratingAverage: null, reviewCount: 0, categories: [],
     serviceCount: 0, fromAmountMinor: null, fromCurrency: null,
+    services: [],
   };
 
   /**
@@ -802,5 +805,76 @@ describe("providerPublicDetailReadModel", () => {
 
   it("still parses as the list model, so the directory is unaffected", () => {
     expect(() => providerPublicReadModel.parse(base)).not.toThrow();
+  });
+});
+
+describe("providerPublicReadModel.services", () => {
+  const base = {
+    id: "p1", name: "Estúdio", slug: "estudio", type: "organization" as const,
+    description: null, city: "Maputo", district: null, country: "MZ",
+    logoUrl: null, photoUrls: [], verified: true, ratingAverage: 4.7,
+    reviewCount: 6, categories: [], serviceCount: 6,
+    fromAmountMinor: 35_000, fromCurrency: "MZN",
+  };
+
+  it("accepts up to three priced services", () => {
+    const parsed = providerPublicReadModel.parse({
+      ...base,
+      services: [
+        { name: "Corte com barba", amountMinor: 80_000, currency: "MZN", pricingMode: "fixed" },
+        { name: "Barba", amountMinor: 45_000, currency: "MZN", pricingMode: "fixed" },
+        { name: "Corte infantil", amountMinor: 35_000, currency: "MZN", pricingMode: "fixed" },
+      ],
+    });
+    expect(parsed.services).toHaveLength(3);
+  });
+
+  it("refuses a fourth, because a row cannot show it", () => {
+    const four = Array.from({ length: 4 }, (_, i) => ({
+      name: `S${String(i)}`, amountMinor: 1000, currency: "MZN", pricingMode: "fixed",
+    }));
+    expect(() => providerPublicReadModel.parse({ ...base, services: four })).toThrow();
+  });
+});
+
+describe("adminBookingStatsReadModel", () => {
+  const day = (i: number) => ({ date: `2026-08-${String(i + 1).padStart(2, "0")}`, requests: 0, confirmed: 0 });
+  const valid = {
+    disputed: 1, confirmedLast30: 12, completedLast30: 9,
+    grossLast30Minor: 1_240_000, commissionLast30Minor: 124_000, newProvidersLast30: 3,
+    currency: "MZN", perDay: Array.from({ length: 30 }, (_, i) => day(i)),
+  };
+  it("accepts the platform's numbers with exactly thirty days", () => {
+    expect(adminBookingStatsReadModel.parse(valid).perDay).toHaveLength(30);
+  });
+  it("refuses a chart that is not thirty days long", () => {
+    expect(() => adminBookingStatsReadModel.parse({ ...valid, perDay: valid.perDay.slice(1) })).toThrow();
+  });
+  it("refuses negative money", () => {
+    expect(() => adminBookingStatsReadModel.parse({ ...valid, commissionLast30Minor: -1 })).toThrow();
+  });
+});
+
+describe("providerStatusCountsReadModel", () => {
+  it("carries one count per status, all five, none negative", () => {
+    const parsed = providerStatusCountsReadModel.parse({ pending: 2, active: 40, rejected: 1, suspended: 0, archived: 3 });
+    expect(parsed.pending).toBe(2);
+    expect(() => providerStatusCountsReadModel.parse({ pending: 2, active: 40, rejected: 1, suspended: 0 })).toThrow();
+    expect(() => providerStatusCountsReadModel.parse({ pending: -1, active: 0, rejected: 0, suspended: 0, archived: 0 })).toThrow();
+  });
+});
+
+describe("platformActivityEntryReadModel", () => {
+  const entry = {
+    id: "a1", type: "provider.status.decided", payload: { providerName: "Salão X", to: "active" },
+    occurredAt: "2026-09-01T10:00:00.000Z", actorUserId: "u-admin", actorName: "Ana", actorEmail: "ana@ntizo.co.mz",
+  };
+  it("carries who did it, and lets a departed actor degrade to an empty name and no email", () => {
+    expect(platformActivityEntryReadModel.parse(entry).actorName).toBe("Ana");
+    expect(platformActivityEntryReadModel.parse({ ...entry, actorName: "", actorEmail: null }).actorEmail).toBeNull();
+  });
+  it("refuses an entry with no actor at all", () => {
+    const { actorUserId: _dropped, ...noActor } = entry;
+    expect(() => platformActivityEntryReadModel.parse(noActor)).toThrow();
   });
 });

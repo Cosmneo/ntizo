@@ -17,6 +17,7 @@ import {
 } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { STATS_WINDOW_DAYS } from "@ntizo/shared/read-models";
+import { containsFolded, unaccented } from "../../../../../shared/infrastructure/database/search-fold";
 import { getDb } from "../../../../../../better-auth/infrastructure/client/drizzle";
 import {
   booking,
@@ -41,6 +42,8 @@ import {
   ADMIN_TAB_STATUS,
   type AdminBookingFilter,
   type AdminBookingRow,
+  type AdminStats,
+  type AdminStatsRow,
   type BookingListRow,
   type BookingReadRepositoryPort,
   CUSTOMER_TAB_STATUSES,
@@ -352,15 +355,7 @@ export class DrizzleBookingReadRepository implements BookingReadRepositoryPort {
     ]);
 
     const totals = totalsRows[0];
-    const byDate = new Map<string, ProviderStatsDayRow>();
-    for (const r of requestRows) {
-      byDate.set(r.date, { date: r.date, requests: Number(r.n), confirmed: 0 });
-    }
-    for (const r of confirmedRows) {
-      const hit = byDate.get(r.date);
-      if (hit) hit.confirmed = Number(r.n);
-      else byDate.set(r.date, { date: r.date, requests: 0, confirmed: Number(r.n) });
-    }
+    const perDay = mergeDayRows(requestRows, confirmedRows);
 
     return {
       totals: {
@@ -378,8 +373,84 @@ export class DrizzleBookingReadRepository implements BookingReadRepositoryPort {
         // It is here so the type is honest, not because it is a second answer.
         today: todayRows[0]?.today ?? new Date(now).toISOString().slice(0, 10),
       },
-      perDay: [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date)),
+      perDay,
     };
+  }
+
+  /**
+   * `statsForProvider` without the workspace: no `provider.timezone` read
+   * (the platform has one zone), no `providerId` in any WHERE, and the money
+   * is the gross and the platform's cut rather than the provider's share.
+   * The window arithmetic is repeated rather than factored out of the method
+   * above — six lines, and the two methods must be free to drift apart.
+   */
+  async statsForAdmin(now: Date): Promise<AdminStats> {
+    const db = getDb();
+    const timezone = PLATFORM_TIMEZONE;
+
+    // ISO text cast by Postgres, never the `Date` — see `statsForProvider`.
+    const at = sql`${now.toISOString()}::timestamptz`;
+    const localMidnight = sql`date_trunc('day', ${at} at time zone ${timezone})`;
+    const windowStart = sql`(${localMidnight} - interval '${sql.raw(String(STATS_WINDOW_DAYS - 1))} days') at time zone ${timezone}`;
+    const localDate = (column: SQL<unknown> | AnyColumn) =>
+      sql<string>`to_char((${column} at time zone ${timezone})::date, 'YYYY-MM-DD')`;
+
+    const totalsQuery = db
+      .select({
+        disputed: sql<number>`count(*) filter (where ${booking.status} = 'DISPUTED')::int`,
+        // Paid inside the window, whatever the row's status is now — the same
+        // column and window the per-day `confirmed` series is bucketed on, so
+        // the tile and the chart's total are one number.
+        confirmedLast30: sql<number>`count(*) filter (where ${booking.paidAt} is not null and ${booking.paidAt} >= ${windowStart})::int`,
+        completedLast30: sql<number>`count(*) filter (where ${booking.status} = 'COMPLETED' and ${booking.completedAt} >= ${windowStart})::int`,
+        // No `::int` on the sums — `statsForProvider` says why.
+        grossLast30Minor: sql<string | number>`coalesce(sum(${booking.priceMinor}) filter (where ${booking.status} = 'COMPLETED' and ${booking.completedAt} >= ${windowStart}), 0)`,
+        commissionLast30Minor: sql<string | number>`coalesce(sum(${booking.commissionMinor}) filter (where ${booking.status} = 'COMPLETED' and ${booking.completedAt} >= ${windowStart}), 0)`,
+        currency: sql<string | null>`max(${booking.currency})`,
+      })
+      .from(booking);
+
+    const providersQuery = db
+      .select({ n: sql<number>`count(*)::int` })
+      .from(provider)
+      .where(gte(provider.createdAt, windowStart));
+
+    const requestsQuery = db
+      .select({ date: localDate(bookingChange.changedAt), n: sql<number>`count(*)::int` })
+      .from(bookingChange)
+      .where(and(eq(bookingChange.reason, SUBMITTED_BY_CUSTOMER), gte(bookingChange.changedAt, windowStart)))
+      .groupBy(sql`1`);
+
+    const confirmedQuery = db
+      .select({ date: localDate(booking.paidAt), n: sql<number>`count(*)::int` })
+      .from(booking)
+      .where(and(isNotNull(booking.paidAt), gte(booking.paidAt, windowStart)))
+      .groupBy(sql`1`);
+
+    const todayQuery = db.select({ today: localDate(at) }).from(sql`(select 1) as one`);
+
+    const [totalsRows, providerRows, requestRows, confirmedRows, todayRows] = await Promise.all([
+      totalsQuery,
+      providersQuery,
+      requestsQuery,
+      confirmedQuery,
+      todayQuery,
+    ]);
+
+    const totals = totalsRows[0];
+    const perDay = mergeDayRows(requestRows, confirmedRows);
+
+    const row: AdminStatsRow = {
+      disputed: Number(totals?.disputed ?? 0),
+      confirmedLast30: Number(totals?.confirmedLast30 ?? 0),
+      completedLast30: Number(totals?.completedLast30 ?? 0),
+      grossLast30Minor: Number(totals?.grossLast30Minor ?? 0),
+      commissionLast30Minor: Number(totals?.commissionLast30Minor ?? 0),
+      newProvidersLast30: Number(providerRows[0]?.n ?? 0),
+      currency: totals?.currency ?? null,
+      today: todayRows[0]?.today ?? new Date(now).toISOString().slice(0, 10),
+    };
+    return { totals: row, perDay };
   }
 
   async listForAdmin(
@@ -397,13 +468,18 @@ export class DrizzleBookingReadRepository implements BookingReadRepositoryPort {
   }
 
   async countForAdmin(filter: AdminBookingFilter): Promise<number> {
-    // No joins at all, unlike `countForProvider`: `adminWhere` reads two
-    // columns of `booking` and nothing else, so a count has nothing to join
-    // to. Every join the list adds is at most one row per booking — the six
-    // are one-to-one on a key and the seventh is deduplicated before it is
-    // joined — so neither query can see a row the other cannot, which is what
+    // One join, unlike `countForProvider`'s several: `adminWhere` reads the
+    // booking's own columns and, when there is a search, the customer's first
+    // name off `profile` — which is one row per booking on a key. Every join
+    // the list adds is likewise at most one row per booking (the six are
+    // one-to-one on a key and the seventh is deduplicated before it is
+    // joined), so neither query can see a row the other cannot, which is what
     // makes this total the list's own total.
-    const [row] = await getDb().select({ n: count() }).from(booking).where(adminWhere(filter));
+    const [row] = await getDb()
+      .select({ n: count() })
+      .from(booking)
+      .leftJoin(profile, eq(profile.userId, booking.customerId))
+      .where(adminWhere(filter));
 
     return Number(row?.n ?? 0);
   }
@@ -419,6 +495,36 @@ export class DrizzleBookingReadRepository implements BookingReadRepositoryPort {
  * to be able to say what today is.
  */
 const DEFAULT_TIMEZONE = "Africa/Maputo";
+
+/**
+ * The zone the platform's own days are counted in. The home market's, and
+ * the same string `provider.timezone` defaults to — but a constant of its
+ * own, because the two answer different questions: a workspace's dashboard
+ * is cut at that workspace's midnight, the platform's at the platform's.
+ */
+const PLATFORM_TIMEZONE = "Africa/Maputo";
+
+/**
+ * The two per-day series, folded into one row per local day and sorted
+ * oldest first. Days with nothing in either are absent — the projection's
+ * `fillDays` draws those. Shared by the workspace's and the platform's
+ * stats, which cut different windows but merge the same two shapes.
+ */
+function mergeDayRows(
+  requestRows: readonly { date: string; n: number }[],
+  confirmedRows: readonly { date: string; n: number }[],
+): ProviderStatsDayRow[] {
+  const byDate = new Map<string, ProviderStatsDayRow>();
+  for (const r of requestRows) {
+    byDate.set(r.date, { date: r.date, requests: Number(r.n), confirmed: 0 });
+  }
+  for (const r of confirmedRows) {
+    const hit = byDate.get(r.date);
+    if (hit) hit.confirmed = Number(r.n);
+    else byDate.set(r.date, { date: r.date, requests: 0, confirmed: Number(r.n) });
+  }
+  return [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
+}
 
 /**
  * The `booking_change.reason` a submitted booking carries, and the token the
@@ -758,8 +864,8 @@ function providerWhere(providerId: string, filter: ProviderListFilter) {
     needle === undefined || needle === ""
       ? undefined
       : or(
-          ilike(unaccented(profile.firstName), `%${unaccentedJs(needle)}%`),
-          ilike(unaccented(booking.serviceName), `%${unaccentedJs(needle)}%`),
+          ilike(unaccented(profile.firstName), containsFolded(needle)),
+          ilike(unaccented(booking.serviceName), containsFolded(needle)),
         );
   return and(
     eq(booking.providerId, providerId),
@@ -811,56 +917,6 @@ function submittedByCustomer() {
         ),
       ),
   );
-}
-
-/**
- * The accents names in the launch markets carry — Portuguese, Spanish and
- * French — and what each one folds to. **Both folds below read this one pair**,
- * character for character, so a needle and a column can never be folded
- * differently.
- *
- * That is the whole point of the pair being declared once, and it is not
- * theoretical. These two folds were written independently at first: the SQL
- * side listed 23 characters and the JS side stripped every Unicode combining
- * mark via `normalize("NFD")`. `ñ` is a combining mark in NFD and was *not* in
- * the 23, so the JS side over-stripped: a provider searching a customer named
- * "Nuño" folded the needle to "nuno" while the column stayed "nuño", and the
- * search missed the row — whether they typed the name exactly as it is spelled
- * or without the tilde. "Peña" and "Muñoz" the same. Two alphabets that are
- * *nearly* the same produce silent false negatives on precisely the names
- * whose spelling made somebody reach for the search box.
- *
- * A character outside this pair is left alone by both sides, which is a miss
- * the two agree on rather than a disagreement: an exactly-typed name still
- * finds its own row. Widening the alphabet is a matter of adding to both
- * strings together, and they must stay the same length.
- */
-const ACCENTED = "áàâãäéèêëíìîïóòôõöúùûüçñýÿ";
-const PLAIN = "aaaaaeeeeiiiiooooouuuucnyy";
-
-/** `ACCENTED` → `PLAIN`, one character to one, for the JS side of the fold. */
-const FOLD: ReadonlyMap<string, string> = new Map(
-  [...ACCENTED].map((accented, i) => [accented, PLAIN[i]!] as const),
-);
-
-/**
- * The column, lowercased and folded through `ACCENTED`/`PLAIN` by Postgres
- * itself. `unaccent` is a contrib extension this database does not have;
- * `translate` needs none, and takes the same alphabet the needle is folded
- * with as two ordinary bind parameters.
- */
-function unaccented(column: AnyColumn) {
-  return sql<string>`translate(lower(${column}), ${ACCENTED}, ${PLAIN})`;
-}
-
-/**
- * The needle, folded through the same pair — never `normalize("NFD")`, which
- * would strip marks `translate` keeps and put the two sides back into
- * different alphabets. See `ACCENTED` for the search that went missing when
- * they were.
- */
-function unaccentedJs(value: string): string {
-  return [...value.toLowerCase()].map((character) => FOLD.get(character) ?? character).join("");
 }
 
 /** Requests newest first; upcoming soonest first; history most recent first. Ties broken by id, as `listForCustomer` does. */
@@ -970,13 +1026,27 @@ function toProviderRow(
  * this query has no owner, and where its authorisation lives instead.
  */
 function adminWhere(filter: AdminBookingFilter) {
-  if (filter.tab === "unclosed") {
-    return and(eq(booking.status, ADMIN_TAB_STATUS.unclosed), lt(booking.endsAt, filter.now));
-  }
-  if (filter.tab === "in_window") {
-    return eq(booking.status, ADMIN_TAB_STATUS.in_window);
-  }
-  return eq(booking.status, ADMIN_TAB_STATUS.disputed);
+  const byTab =
+    filter.tab === "unclosed"
+      ? and(eq(booking.status, ADMIN_TAB_STATUS.unclosed), lt(booking.endsAt, filter.now))
+      : filter.tab === "in_window"
+        ? eq(booking.status, ADMIN_TAB_STATUS.in_window)
+        : eq(booking.status, ADMIN_TAB_STATUS.disputed);
+  // The three names the row shows, folded the way `providerWhere` folds its
+  // own: the workspace as it was sold under, the customer, and the service.
+  // `booking.providerName` rather than `provider.name`, because that snapshot
+  // is what the queue prints — a search that matched the workspace's current
+  // name would find rows whose text says something else.
+  const needle = filter.search?.trim();
+  const bySearch =
+    needle === undefined || needle === ""
+      ? undefined
+      : or(
+          ilike(unaccented(booking.providerName), containsFolded(needle)),
+          ilike(unaccented(profile.firstName), containsFolded(needle)),
+          ilike(unaccented(booking.serviceName), containsFolded(needle)),
+        );
+  return and(byTab, bySearch);
 }
 
 /**

@@ -1,5 +1,6 @@
-import { and, count, desc, eq, inArray, isNull, lt, or, type SQL } from "drizzle-orm";
+import { and, count, desc, eq, ilike, inArray, isNull, lt, or, type SQL } from "drizzle-orm";
 import { getDb } from "../../../../../../better-auth/infrastructure/client/drizzle";
+import { containsFolded, unaccented } from "../../../../../shared/infrastructure/database/search-fold";
 import { supportRequest, thread } from "../../../../../shared/infrastructure/database/communication/schemas";
 import { SupportRequest } from "../../../domain/aggregates/support-request.aggregate";
 import { CursorInvalidError } from "../../../domain/exceptions";
@@ -143,9 +144,14 @@ export class DrizzleSupportRequestRepository implements SupportRequestRepository
       if (!after) throw new CursorInvalidError(cursor);
     }
 
+    const needle = filter.search?.trim();
     const conditions: (SQL | undefined)[] = [
       filter.status ? eq(supportRequest.status, filter.status) : undefined,
       filter.audience ? eq(supportRequest.audience, filter.audience) : undefined,
+      // The subject only: it is what the queue row leads with, and what an
+      // administrator remembers a request by. Folded as the booking lists
+      // fold their names, so "Reembolso" finds "reembolso" and "Não recebi".
+      needle ? ilike(unaccented(supportRequest.subject), containsFolded(needle)) : undefined,
       after
         ? or(
             lt(thread.lastMessageAt, after.lastMessageAt),

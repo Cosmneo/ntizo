@@ -1,50 +1,130 @@
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Activity } from "lucide-react";
+import type { ActivityType } from "@ntizo/shared";
+import type { PlatformActivityEntryDTO } from "@ntizo/shared/read-models";
+import { Badge, Button } from "@ntizo/frontend-ui";
+import { CollectionCard } from "@/shared/components/collection-card";
 import { usePageHeader } from "@/shared/lib/page-header";
-import { ActivityList } from "./activity-list";
+import { activityTypeKey } from "../domain/types";
+import { describeActivity } from "../viewmodel/describe-activity";
+import { usePlatformActivity } from "../viewmodel/use-activity";
+import { AdminActivityFilterSheet } from "./admin-activity-filters";
+import { ActivityKindIcon } from "./activity-icon";
 
 /**
- * What has happened on the platform: the audit trail — not wired to real
- * data yet.
+ * What has happened on the platform: everybody's activity, newest first,
+ * with who did each thing.
  *
- * Approvals, suspensions, catalogue edits — the record of what administrators
- * did, which is the one activity feed whose absence is a compliance problem
- * rather than a missing convenience. Still handed an empty array:
- * `useMyActivity()` (Task 8) is the caller's own history, not the platform's
- * audit trail — a different slice of the same table, not this task's to
- * wire (follow-up #55: an admin-scoped read — unfiltered by actor, behind an
- * elevated read — did not exist before this task).
- *
- * `renderDescription` below is a **stub**, not a real renderer — see
- * `provider-activity-page.tsx`'s docblock for the same reasoning: the
- * `admin` i18next namespace has no `activityType.*` keys, so the call this
- * used to make would have rendered the literal `activityType.*` key for
- * every row the moment this page got real data, rather than the sentence it
- * looked like it would. Before wiring this for real: add the admin-scoped
- * activity query, add `activityType.*` keys to `admin.json` in all eight
- * locales, and render through `describeActivity`
- * (`viewmodel/describe-activity.ts`) rather than a second copy of its
- * null-name fallback.
+ * The same card, search box and filter panel as every other admin list —
+ * not the `ActivityList` the customer's and the workspace's feeds draw,
+ * because those are one person's or one workspace's own history and this is
+ * an audit trail across accounts, which is a table that names who did each
+ * thing rather than a feed. Read through `activityAll`, the admin-only field
+ * this page used to be waiting on (follow-up #55); the sentence for each row
+ * comes from `describeActivity` against this namespace's own
+ * `activityType.*` keys, the same renderer the customer's feed uses. Each
+ * row leads with the kind's glyph in the box the category list draws its
+ * image in, the way the old feed led with one, rather than with the actor's
+ * monogram: an event is not a person, and the person is named in words under
+ * the sentence.
  */
 export function AdminActivityPage() {
   const { t, i18n } = useTranslation("admin");
+  const locale = i18n.resolvedLanguage ?? i18n.language;
 
-  usePageHeader(t("nav.activity"), t("activityHint"));
+  const [type, setType] = useState<ActivityType | undefined>(undefined);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [search, setSearch] = useState("");
 
-  // Never called while `entries` is `[]` — exists only so `ActivityList`'s
-  // required `renderDescription` prop has something to satisfy it.
-  const renderDescription = (): string => "";
+  const { entries, loading, failed, hasMore, loadMore } = usePlatformActivity({
+    ...(type ? { type } : {}),
+    ...(search.trim() ? { search: search.trim() } : {}),
+  });
+
+  usePageHeader(t("activityTitle"), t("activityHint"));
+
+  const when = new Intl.DateTimeFormat(locale, {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 
   return (
-    <div className="max-w-4xl">
-      <ActivityList
-        entries={[]}
-        loading={false}
-        locale={i18n.resolvedLanguage ?? i18n.language}
+    <div className="mx-auto flex max-w-6xl flex-col gap-4">
+      {failed && (
+        <p role="alert" className="type-body text-[var(--color-destructive)]">
+          {t("activityError")}
+        </p>
+      )}
+
+      <CollectionCard
         title={t("activityTitle")}
+        shown={entries.length}
+        total={entries.length}
+        // `activityAll` is cursor-paged and never returns a count: once
+        // another page exists, `entries.length` is only how many are loaded
+        // so far, and the card says "N shown" rather than claim a whole.
+        totalUnknown={hasMore}
+        loading={loading}
+        search={search}
+        onSearchChange={setSearch}
+        searchPlaceholder={t("activitySearchPlaceholder")}
+        onOpenFilters={() => setFiltersOpen(true)}
+        activeFilterCount={type ? 1 : 0}
+        columns={[
+          { key: "what", label: t("activityWhat"), className: "pl-5" },
+          { key: "kind", label: t("activityTypeLabel"), skeletonWidth: "w-28", skeletonShape: "badge" },
+          { key: "when", label: t("activityWhen"), align: "right", className: "pr-5", skeletonWidth: "w-32" },
+        ]}
+        emptyText={t("activityEmpty")}
         emptyTitle={t("activityEmptyTitle")}
-        emptyBody={t("activityEmpty")}
-        renderDescription={renderDescription}
+        emptyBadge={Activity}
+        noMatchesText={t("activityNoMatches")}
+        noMatchesTitle={t("activityNoMatchesTitle")}
+        filtered={type !== undefined || search.trim() !== ""}
+        rows={entries.map((entry) => ({
+          key: entry.id,
+          primary: <Event entry={entry} sentence={describeActivity(t, entry)} />,
+          cells: {
+            kind: <Badge tone="info">{t(`activityKind.${activityTypeKey(entry.type)}`)}</Badge>,
+            when: (
+              <span className="tabular-nums text-[var(--color-muted-foreground)]">
+                {when.format(new Date(entry.occurredAt))}
+              </span>
+            ),
+          },
+        }))}
       />
+
+      <AdminActivityFilterSheet open={filtersOpen} onOpenChange={setFiltersOpen} type={type} onTypeChange={setType} />
+
+      {hasMore && (
+        <Button variant="outline" size="sm" className="justify-self-center" onClick={loadMore}>
+          {t("activityLoadMore")}
+        </Button>
+      )}
+    </div>
+  );
+}
+
+/**
+ * What happened, and who did it under it — the email beside the name,
+ * because an audit trail names people by something that does not change
+ * when they edit their profile. An account that is gone has neither, and
+ * says so with a dash rather than an empty line.
+ */
+function Event({ entry, sentence }: { entry: PlatformActivityEntryDTO; sentence: string }) {
+  const who = [entry.actorName, entry.actorEmail].filter(Boolean).join(" · ") || "—";
+  return (
+    <div className="flex items-center gap-3">
+      <ActivityKindIcon type={entry.type} />
+      <div className="min-w-0">
+        <p className="type-body-medium truncate font-semibold">{sentence}</p>
+        <p className="type-caption truncate text-[var(--color-muted-foreground)]">{who}</p>
+      </div>
     </div>
   );
 }

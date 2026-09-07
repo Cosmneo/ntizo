@@ -320,7 +320,11 @@ export function CollectionCard({
           )}
           {action}
           {onOpenFilters && (
-            <Button type="button" variant="outline" onClick={onOpenFilters}>
+            // Named explicitly: the visible label is `display: none` below
+            // `sm`, and a display-hidden span contributes nothing to the
+            // accessible name — so on a phone this was an unlabelled button
+            // to a screen reader, and unfindable by name to a test.
+            <Button type="button" variant="outline" onClick={onOpenFilters} aria-label={t("peopleFilter")}>
               <SlidersHorizontal className="h-4 w-4" />
               <span className="hidden sm:inline">{t("peopleFilter")}</span>
               {activeFilterCount > 0 && (
@@ -445,9 +449,16 @@ export function CollectionCard({
         ) : (
           <ul className="grid list-none gap-3 p-4">
             {rows.map((row) => (
+              // `min-w-0` on the grid item, and it is load-bearing: a grid
+              // item's automatic minimum is its min-content width, and a
+              // `truncate` line inside contributes its whole untruncated text
+              // to that — so a card whose primary block holds a long email
+              // was wider than the phone, and the list scrolled sideways.
+              // With the minimum released, the track sizes the card and the
+              // `min-w-0` flex chain inside it truncates as it was written to.
               <li
                 key={row.key}
-                className="rounded-[var(--radius-card-sm)] border border-[var(--color-border)] p-4"
+                className="min-w-0 rounded-[var(--radius-card-sm)] border border-[var(--color-border)] p-4"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">{row.primary}</div>

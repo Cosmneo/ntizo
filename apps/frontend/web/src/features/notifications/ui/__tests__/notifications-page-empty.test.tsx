@@ -15,20 +15,23 @@ vi.mock("@/features/notifications/viewmodel/use-inbox", () => ({
     loadMore: vi.fn(),
   }),
 }));
+vi.mock("@/features/notifications/viewmodel/use-unread-count", () => ({
+  useUnreadCount: () => 0,
+}));
 vi.mock("@/features/notifications/viewmodel/use-mark-read", () => ({
   useMarkRead: () => ({ markOne: vi.fn(), markAll: vi.fn(), isMarkingAll: false }),
 }));
 
 describe("NotificationsPage (empty inbox)", () => {
   it("renders the empty state", () => {
-    render(<NotificationsPage scope={{ kind: "mine" }} />);
+    render(<NotificationsPage scope={{ kind: "mine" }} zone={{ kind: "customer" }} />);
     expect(screen.getByText(/nothing yet/i)).toBeInTheDocument();
   });
 
   it("renders no mark-all-as-read button", () => {
     // An action over a list it cannot change is a button that lies: there is
     // nothing unread in an empty inbox, so the control must not appear.
-    render(<NotificationsPage scope={{ kind: "mine" }} />);
+    render(<NotificationsPage scope={{ kind: "mine" }} zone={{ kind: "customer" }} />);
     expect(screen.queryByRole("button", { name: /mark all/i })).not.toBeInTheDocument();
   });
 });

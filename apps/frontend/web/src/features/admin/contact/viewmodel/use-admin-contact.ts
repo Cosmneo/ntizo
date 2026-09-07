@@ -6,6 +6,10 @@ export function useAdminContact(search: AdminContactSearch) {
   return useQuery(adminContactQueries.all(search));
 }
 
+export function useContactOpenCount() {
+  return useQuery(adminContactQueries.openCount());
+}
+
 /** Not optimistic: `openCount` rides on the same payload and would have to be kept in step by hand. */
 export function useSetContactRequestStatus() {
   const qc = useQueryClient();

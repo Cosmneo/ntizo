@@ -67,6 +67,10 @@ function providerCard(id: string, logoUrl: string | null = null, photoUrls: stri
     ratingAverage: null,
     reviewCount: 0,
     categories: [],
+    // Empty on purpose: no assertion in this file reads it. The directory
+    // fills it for its own row, and a favourite entry passes through whatever
+    // the projection returned.
+    services: [],
     serviceCount: 2,
     fromAmountMinor: null,
     fromCurrency: null,

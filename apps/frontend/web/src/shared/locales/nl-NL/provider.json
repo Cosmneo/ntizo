@@ -103,6 +103,9 @@
       "upcoming": "Aankomend",
       "history": "Geschiedenis"
     },
+    "filterTitle": "Boekingen filteren",
+    "showLabel": "Toon",
+    "memberLabel": "Professional",
     "searchPlaceholder": "Zoek klant of dienst",
     "memberFilterAll": "Alle professionals",
     "memberAnyone": "Iedereen",
@@ -113,7 +116,6 @@
       "price": "Prijs",
       "status": "Status"
     },
-    "shownOf": "{{shown}} van {{total}} getoond",
     "loadMore": "Meer",
     "respondIn": "Reageren binnen {{time}}",
     "respondBy": "Reageren voor {{time}}",

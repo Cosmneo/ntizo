@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { Star } from "lucide-react";
 import { cn } from "@ntizo/frontend-ui";
+import { formatRating } from "@/shared/domain/rating";
 
 /**
  * A score, its five stars and how many people gave it.
@@ -39,11 +40,9 @@ export function RatingStars({
   }
 
   // Always one decimal, in the reader's own separator: "5" beside "4,9" reads
-  // as a number of something else, not as the best score in the list.
-  const score = new Intl.NumberFormat(locale, {
-    minimumFractionDigits: 1,
-    maximumFractionDigits: 1,
-  }).format(average);
+  // as a number of something else, not as the best score in the list. One
+  // formatter for the whole app — see `shared/domain/rating`.
+  const score = formatRating(average, locale);
 
   return (
     <span

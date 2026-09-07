@@ -10,6 +10,7 @@ import {
   categoryTranslation,
   service,
   serviceOption,
+  serviceTranslation,
 } from "../../../../../shared/infrastructure/database/catalog/schemas";
 import { review } from "../../../../../shared/infrastructure/database/review/schemas";
 import { memberAvailability } from "../../../../../shared/infrastructure/database/scheduling/schemas/member-availability.schema";
@@ -230,6 +231,7 @@ export class DrizzleProviderPublicRepository implements ProviderPublicRepository
     },
     categories: { code: string; name: string }[],
     weeklyHours: WeeklyHoursDTO[],
+    services: ProviderPublicDTO["services"],
   ): ProviderPublicDetailDTO {
     return {
       id: row.id,
@@ -265,6 +267,7 @@ export class DrizzleProviderPublicRepository implements ProviderPublicRepository
       // and an empty list is the honest reading of that.
       serviceLocationTypes: row.locationTypes ?? [],
       weeklyHours,
+      services,
     };
   }
 
@@ -310,6 +313,146 @@ export class DrizzleProviderPublicRepository implements ProviderPublicRepository
     // Alphabetical inside a card, so two cards showing the same two trades show
     // them in the same order.
     for (const list of byProvider.values()) list.sort((a, b) => a.name.localeCompare(b.name));
+    return byProvider;
+  }
+
+  /**
+   * The cheapest three things each of these businesses sells, named in the
+   * reader's language.
+   *
+   * A second query keyed on the page's provider ids, exactly as
+   * `categoriesFor` above and for the same reason: this is a per-provider
+   * *list*, and a fourth pre-aggregated CTE would have to return an array,
+   * which puts a `json_agg` over a window into the page query for no gain.
+   * One extra round trip for the whole page.
+   *
+   * A service has no `name` column of its own — like a category, it is
+   * written in `service_translation`, one row per language — so this joins a
+   * subquery that resolves one name per service with the same fallback
+   * `categoriesFor` uses, minus its last rung: the reader's language, then
+   * any language. (No bare code to fall back to the way a category has — a
+   * service's id is not something a chip can print.)
+   *
+   * That subquery is narrowed to the page's own services **before** it
+   * groups, with `where(inArray(serviceTranslation.serviceId, <the page's
+   * service ids>))` — a builder subquery, the same idiom `wheres()`'s
+   * `categoryCode` filter already uses, not a raw `sql` predicate. This is
+   * not optional: Postgres cannot push the outer join's provider filter into
+   * an already-grouped subquery, so an unfiltered `GROUP BY service_id` here
+   * would aggregate every translation for every service ever listed on the
+   * platform, on every single page load, before the join ever narrows
+   * anything down. Narrowing first is what makes "exactly as `categoriesFor`
+   * above" true of the *plan*, not just of the fallback chain —
+   * `categoriesFor`'s own coalesce lives inside a query already restricted
+   * by `inArray(service.providerId, providerIds)`, so nothing unfiltered is
+   * ever aggregated there either.
+   *
+   * The `sql` this needs is confined to that grouped subquery, over
+   * `service_translation` alone, for the same reason `aggregates()` above
+   * allows it there: a single-table grouped subquery has nothing for a bare
+   * column reference to be ambiguous with. The join to it is inner, not
+   * left: a service with no translation in any language at all is a data
+   * anomaly a chip cannot be built from, so it is left out rather than
+   * chipped with a null name.
+   *
+   * Cheapest first, so the chips agree with the `desde` price printed beside
+   * them — a row whose first chip cost more than its own "from" price reads as
+   * a bug. Ties break on name so the order is stable between renders.
+   *
+   * Only `priced` services with an active option: a quote has no amount, and
+   * sending it as zero is how a client comes to print "0 MZN".
+   */
+  private async servicesFor(
+    providerIds: string[],
+    locale: string,
+  ): Promise<Map<string, ProviderPublicDTO["services"]>> {
+    const byProvider = new Map<string, ProviderPublicDTO["services"]>();
+    if (providerIds.length === 0) return byProvider;
+
+    const db = getDb();
+
+    // Every service belonging to the page's providers — drafts and
+    // quote-only ones included, because this is not the set that becomes
+    // chips, it is only the set the name aggregate below is allowed to look
+    // at. Narrowing it further here would cost a second pass over the same
+    // rows for nothing: the price join downstream drops everything that is
+    // not published, priced and actively optioned anyway.
+    //
+    // See the doc comment above for why the narrowing has to happen *before*
+    // the `GROUP BY`, not as a join condition on the grouped result.
+    const pageServiceIds = db
+      .select({ id: service.id })
+      .from(service)
+      .where(inArray(service.providerId, providerIds));
+
+    // One resolved name per service — the reader's language if it has one,
+    // any language otherwise — grouped over `service_translation` narrowed
+    // to `pageServiceIds` above, so this join can never multiply the price
+    // rows below and never aggregates a single translation this page has no
+    // use for.
+    const names = db
+      .select({
+        serviceId: serviceTranslation.serviceId,
+        name: sql<string>`coalesce(
+          max(${serviceTranslation.name}) filter (where ${serviceTranslation.locale} = ${locale}),
+          max(${serviceTranslation.name}))`.as("name"),
+      })
+      .from(serviceTranslation)
+      .where(inArray(serviceTranslation.serviceId, pageServiceIds))
+      .groupBy(serviceTranslation.serviceId)
+      .as("service_name_agg");
+
+    const rows = await db
+      .select({
+        providerId: service.providerId,
+        serviceId: service.id,
+        name: names.name,
+        amountMinor: serviceOption.amountMinor,
+        currency: serviceOption.currency,
+        pricingMode: serviceOption.pricingMode,
+      })
+      .from(service)
+      .innerJoin(serviceOption, eq(serviceOption.serviceId, service.id))
+      .innerJoin(names, eq(names.serviceId, service.id))
+      .where(
+        and(
+          inArray(service.providerId, providerIds),
+          eq(service.status, "published"),
+          eq(service.bookingMode, "priced"),
+          eq(serviceOption.isActive, true),
+        ),
+      )
+      .orderBy(asc(serviceOption.amountMinor), asc(names.name));
+
+    // Which service ids have already produced a chip for a given provider —
+    // kept apart from the DTO list itself, which has nowhere to carry a
+    // service id (the public shape is name/amount/currency/pricingMode only).
+    const seenServiceIds = new Map<string, Set<string>>();
+
+    for (const row of rows) {
+      const list = byProvider.get(row.providerId) ?? [];
+      // The cap is applied here rather than in SQL: a per-provider LIMIT needs
+      // a lateral join or a window, and the page is at most 50 providers with
+      // a handful of options each. Ordered above, so the first three are the
+      // cheapest three.
+      if (list.length >= 3) continue;
+      // One chip per *service*, keyed on its id — not on the translated name
+      // a row happens to carry, which two distinct services can share. A
+      // service with three active options arrives three times here; its
+      // cheapest row (ordered above) is the one already recorded, and the
+      // other two are skipped by id.
+      const seen = seenServiceIds.get(row.providerId) ?? new Set<string>();
+      if (seen.has(row.serviceId)) continue;
+      seen.add(row.serviceId);
+      seenServiceIds.set(row.providerId, seen);
+      list.push({
+        name: row.name,
+        amountMinor: Number(row.amountMinor),
+        currency: row.currency,
+        pricingMode: row.pricingMode,
+      });
+      byProvider.set(row.providerId, list);
+    }
     return byProvider;
   }
 
@@ -440,10 +583,11 @@ export class DrizzleProviderPublicRepository implements ProviderPublicRepository
       .leftJoin(agg.verified, eq(agg.verified.providerId, provider.id))
       .where(and(...wheres));
 
-    const categories = await this.categoriesFor(
-      rows.map((r) => r.id),
-      filters.locale,
-    );
+    const ids = rows.map((r) => r.id);
+    const [categories, services] = await Promise.all([
+      this.categoriesFor(ids, filters.locale),
+      this.servicesFor(ids, filters.locale),
+    ]);
 
     return {
       // `[]` for weekly hours: the directory renders 24 cards a page and must
@@ -453,7 +597,9 @@ export class DrizzleProviderPublicRepository implements ProviderPublicRepository
       // because `createdAt` is in `COLUMNS` for `findActiveBySlug`'s benefit —
       // but are dropped at the GraphQL edge, which still answers `provider.list`
       // with `ProviderPublicDTO` alone.
-      items: rows.map((r) => DrizzleProviderPublicRepository.toDTO(r, categories.get(r.id) ?? [], [])),
+      items: rows.map((r) =>
+        DrizzleProviderPublicRepository.toDTO(r, categories.get(r.id) ?? [], [], services.get(r.id) ?? []),
+      ),
       total: Number(counted?.total ?? 0),
     };
   }
@@ -498,6 +644,9 @@ export class DrizzleProviderPublicRepository implements ProviderPublicRepository
       row,
       categories.get(row.id) ?? [],
       weeklyHoursFromRows(rules),
+      // A business's own page lists every service it sells, so three of them
+      // in the header would be a worse version of the list below it.
+      [],
     );
   }
 

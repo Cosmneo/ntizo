@@ -1,6 +1,5 @@
 import { createContext, useContext, useMemo, type ReactNode } from "react";
-import { ProviderStatus } from "@ntizo/shared";
-import { useAdminProviders } from "@/features/admin/providers/viewmodel/use-admin-providers";
+import { useProviderStatusCounts } from "@/features/admin/providers/viewmodel/use-admin-providers";
 import { useProviderThreads } from "@/features/messaging/viewmodel/use-provider-threads";
 import { useAwaitingCount } from "@/features/provider/bookings/viewmodel/use-provider-bookings";
 import type { ConsoleCountSource, ConsoleZone } from "@/shared/lib/console-nav";
@@ -63,8 +62,9 @@ function WorkspaceCounts({ providerId, children }: { providerId: string; childre
 }
 
 function PlatformCounts({ children }: { children: ReactNode }) {
-  const pending = useAdminProviders({ status: ProviderStatus.Pending });
-  const pendingProviders = pending.data?.length;
+  // The count, not the length of a page: the list read caps at fifty rows.
+  const counts = useProviderStatusCounts();
+  const pendingProviders = counts.data?.pending;
   const value = useMemo<ConsoleCounts>(
     () => (pendingProviders === undefined ? EMPTY : { pendingProviders }),
     [pendingProviders],

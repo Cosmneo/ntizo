@@ -59,12 +59,7 @@ export function LanguagePreference() {
   }
 
   return (
-    <Setting
-      title={t("fieldLanguages")}
-      blurb={t("languageBlurb")}
-      value={NAMES[current] ?? current}
-      label={t("navLanguage")}
-    >
+    <Setting title={t("fieldLanguages")} blurb={t("languageBlurb")}>
       <Select
         id="language"
         value={current}
@@ -105,12 +100,7 @@ function AppearancePreference() {
   useEffect(() => setTheme(readThemePreference()), []);
 
   return (
-    <Setting
-      title={t("appearance")}
-      blurb={t("appearanceBlurb")}
-      value={t(`theme.${theme}`)}
-      label={t("appearanceLabel")}
-    >
+    <Setting title={t("appearance")} blurb={t("appearanceBlurb")}>
       <Select
         id="theme"
         value={theme}

@@ -18,3 +18,4 @@ export {
 } from "./provider-detail.schema";
 export * from "./provider-admin.schema";
 export * from "./provider-admin-detail.schema";
+export * from "./provider-status-counts.schema";

@@ -21,14 +21,47 @@ describe("SortDropdown", () => {
     // the whole point — the old test asserted text under a name of "Sort" and
     // so passed precisely because the name was wrong.
     render(
-      <SortDropdown active="newest" options={OPTIONS} sortLabel="Sort" onChoose={() => undefined} />,
+      <SortDropdown active="newest" options={OPTIONS} sortLabel="Sort:" onChoose={() => undefined} />,
     );
     expect(screen.getByRole("button", { name: "Sort: Newest" })).toBeInTheDocument();
   });
 
+  it("draws the word it is named by, rather than hiding it behind an icon", () => {
+    // The trigger is plain text on the heading's right now — "Sort: Newest ⌄"
+    // — so the prefix that used to be `sr-only` is on screen. A hidden copy
+    // beside a visible one would announce the word twice.
+    render(
+      <SortDropdown active="newest" options={OPTIONS} sortLabel="Sort:" onChoose={() => undefined} />,
+    );
+    const prefix = screen.getByText("Sort:");
+    expect(prefix.className).not.toContain("sr-only");
+    expect(screen.getByRole("button", { name: "Sort: Newest" })).toContainElement(prefix);
+  });
+
+  it("paints no ink of its own, so the phone's navy capsule can lend it some", () => {
+    // The same button is drawn on the white heading row and inside the navy
+    // floating control. A colour token here would be navy on navy in the
+    // second — and `ghost`'s own default is the brand blue, which belongs to
+    // the header and the search bar's button, never to the results.
+    render(
+      <SortDropdown
+        active="newest"
+        options={OPTIONS}
+        sortLabel="Sort:"
+        triggerClassName="lent-class"
+        onChoose={() => undefined}
+      />,
+    );
+    const trigger = screen.getByRole("button", { name: "Sort: Newest" });
+    expect(trigger.className).toContain("text-inherit");
+    expect(trigger.className).not.toContain("--color-primary");
+    // And what the page lends it actually lands on the button.
+    expect(trigger.className).toContain("lent-class");
+  });
+
   it("reads the default order's own label when the URL says nothing", () => {
     render(
-      <SortDropdown active={undefined} options={OPTIONS} sortLabel="Sort" onChoose={() => undefined} />,
+      <SortDropdown active={undefined} options={OPTIONS} sortLabel="Sort:" onChoose={() => undefined} />,
     );
     expect(screen.getByRole("button", { name: "Sort: Suggested" })).toBeInTheDocument();
   });
@@ -37,7 +70,7 @@ describe("SortDropdown", () => {
     // The visible label has to be *contained* in the accessible name, in
     // order, or "click Price" does nothing for a voice-control user.
     render(
-      <SortDropdown active="price" options={OPTIONS} sortLabel="Sort" onChoose={() => undefined} />,
+      <SortDropdown active="price" options={OPTIONS} sortLabel="Sort:" onChoose={() => undefined} />,
     );
     const trigger = screen.getByRole("button", { name: /Price$/ });
     expect(trigger).toHaveTextContent("Price");
@@ -45,7 +78,7 @@ describe("SortDropdown", () => {
 
   it("lists every option, with only the active one checked", () => {
     render(
-      <SortDropdown active="price" options={OPTIONS} sortLabel="Sort" onChoose={() => undefined} />,
+      <SortDropdown active="price" options={OPTIONS} sortLabel="Sort:" onChoose={() => undefined} />,
     );
     fireEvent.click(screen.getByRole("button", { name: /^Sort:/ }));
 
@@ -64,16 +97,23 @@ describe("SortDropdown", () => {
     );
   });
 
-  it("marks the active order in the brand colour, and no other", () => {
+  it("marks the active order in headline navy, and no other", () => {
+    // Navy and not the brand blue: blue belongs to the header and the search
+    // bar's button, never to anything in the results, and navy is what
+    // everything else that is "on" wears — the filled pill, the current page
+    // number, the tick box.
     render(
-      <SortDropdown active="price" options={OPTIONS} sortLabel="Sort" onChoose={() => undefined} />,
+      <SortDropdown active="price" options={OPTIONS} sortLabel="Sort:" onChoose={() => undefined} />,
     );
     fireEvent.click(screen.getByRole("button", { name: /^Sort:/ }));
 
     expect(screen.getByRole("menuitemradio", { name: "Price" }).className).toContain(
-      "--color-primary",
+      "--color-headline",
     );
     expect(screen.getByRole("menuitemradio", { name: "Newest" }).className).not.toContain(
+      "--color-headline",
+    );
+    expect(screen.getByRole("menuitemradio", { name: "Price" }).className).not.toContain(
       "--color-primary",
     );
   });
@@ -83,7 +123,7 @@ describe("SortDropdown", () => {
     // a same-sized placeholder in its place — an absent one would let the
     // label creep rightward on every row that is not currently checked.
     render(
-      <SortDropdown active="price" options={OPTIONS} sortLabel="Sort" onChoose={() => undefined} />,
+      <SortDropdown active="price" options={OPTIONS} sortLabel="Sort:" onChoose={() => undefined} />,
     );
     fireEvent.click(screen.getByRole("button", { name: /^Sort:/ }));
 
@@ -93,7 +133,7 @@ describe("SortDropdown", () => {
 
   it("chooses the default order as an absent value, never a value of its own", () => {
     const onChoose = vi.fn();
-    render(<SortDropdown active="price" options={OPTIONS} sortLabel="Sort" onChoose={onChoose} />);
+    render(<SortDropdown active="price" options={OPTIONS} sortLabel="Sort:" onChoose={onChoose} />);
     fireEvent.click(screen.getByRole("button", { name: /^Sort:/ }));
     fireEvent.click(screen.getByRole("menuitemradio", { name: "Suggested" }));
 
@@ -106,7 +146,7 @@ describe("SortDropdown", () => {
     // being cloned onto a forwarding component rather than an element.
     const user = userEvent.setup();
     const onChoose = vi.fn();
-    render(<SortDropdown active={undefined} options={OPTIONS} sortLabel="Sort" onChoose={onChoose} />);
+    render(<SortDropdown active={undefined} options={OPTIONS} sortLabel="Sort:" onChoose={onChoose} />);
 
     const trigger = screen.getByRole("button", { name: /^Sort:/ });
     trigger.focus();
@@ -122,7 +162,7 @@ describe("SortDropdown", () => {
 
   it("chooses a named order by its value", () => {
     const onChoose = vi.fn();
-    render(<SortDropdown active={undefined} options={OPTIONS} sortLabel="Sort" onChoose={onChoose} />);
+    render(<SortDropdown active={undefined} options={OPTIONS} sortLabel="Sort:" onChoose={onChoose} />);
     fireEvent.click(screen.getByRole("button", { name: /^Sort:/ }));
     fireEvent.click(screen.getByRole("menuitemradio", { name: "Newest" }));
 

@@ -12,6 +12,12 @@
   "loadError": "Não foi possível carregar as suas notificações.",
   "showingCount": "A mostrar {{shown}} de {{total}}.",
   "loadMore": "Carregar mais",
+  "markRead": "Marcar como lida",
+  "openConversation": "Abrir a conversa",
+  "unreadOfTotal": "{{count}} por ler de {{total}}",
+  "unreadOfTotal_other": "{{count}} por ler de {{total}}",
+  "loading": "A carregar notificações",
+  "markError": "Não foi possível marcar como lida. Tente novamente.",
   "type": {
     "welcome": "Bem-vindo à Ntizo",
     "providerWorkspaceWelcome": "O seu espaço de trabalho está pronto",

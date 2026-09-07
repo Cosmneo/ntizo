@@ -37,8 +37,8 @@ const READ_BY_THE_CARDS = [
   // client turns it into a translated phrase.
   "categoryName",
   "locationType",
-  // The chip a service card shares with its provider card — see
-  // `service-listing-card.tsx`'s `service.providerVerified` read.
+  // The seal a service tile shares with its provider's own row — see
+  // `service-tile.tsx`'s `service.providerVerified` read.
   "providerVerified",
   // The stars beside it, both dereferenced by the same card. Trimming these
   // two out of `SERVICE_FIELDS` would take the rating off every service card

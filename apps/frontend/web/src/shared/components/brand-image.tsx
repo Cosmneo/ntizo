@@ -1,4 +1,5 @@
 import { useState } from "react";
+import type { ReactNode } from "react";
 import { cn } from "@ntizo/frontend-ui";
 import { BrandMark } from "@/shared/components/brand-mark";
 
@@ -84,6 +85,7 @@ export function BrandImage({
   alt,
   className,
   loading = "lazy",
+  fallback,
 }: {
   /** Null is a legitimate state, not an error — most listings have no photo. */
   src: string | null | undefined;
@@ -95,10 +97,19 @@ export function BrandImage({
   alt: string;
   className?: string;
   loading?: "lazy" | "eager";
+  /**
+   * What stands in when there is no photo, or the photo fails to load.
+   * Defaults to `MediaFallback`, which is what every caller in the product
+   * wants and what all of them take: one treatment for a missing picture
+   * everywhere. The prop stays for the caller who one day needs something
+   * else in that box — pass it only with a reason a reader would agree with,
+   * since a second placeholder is a second thing to learn.
+   */
+  fallback?: ReactNode;
 }) {
   const [failedUrl, setFailedUrl] = useState<string | null>(null);
 
-  if (!src || src === failedUrl) return <MediaFallback className={className} />;
+  if (!src || src === failedUrl) return <>{fallback ?? <MediaFallback className={className} />}</>;
 
   return (
     <img

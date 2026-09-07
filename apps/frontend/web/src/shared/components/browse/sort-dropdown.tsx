@@ -1,4 +1,4 @@
-import { ArrowUpDown, Check, ChevronDown } from "lucide-react";
+import { Check, ChevronDown } from "lucide-react";
 import {
   Button,
   DropdownMenu,
@@ -52,6 +52,7 @@ export function SortDropdown<Sort extends string>({
   active,
   options,
   sortLabel,
+  triggerClassName,
   onChoose,
 }: {
   /** The order presently in force — `undefined` when the URL says nothing. */
@@ -59,13 +60,26 @@ export function SortDropdown<Sort extends string>({
   /** Every order this page offers, default first. */
   options: ReadonlyArray<SortDropdownOption<Sort>>;
   /**
-   * What the trigger is *for* — "Sort" — said in front of the order it is
-   * showing. Not the trigger's whole name: an `aria-label` here would replace
-   * the order with the word "Sort", so the one thing this control exists to
-   * state would be visible and nowhere else. Voice control needs the visible
-   * words to be in the name to act on them (WCAG 2.5.3, Label in Name).
+   * What the trigger is *for* — "Sort:" — read in front of the order it is
+   * showing, and now drawn rather than hidden: the trigger is plain text on
+   * the heading's right ("Sort: Newest ⌄"), so the word is on screen and the
+   * button is named by what it says. It was an `sr-only` span while an icon
+   * carried the meaning for sighted readers; with the word visible a second
+   * copy for assistive technology would be the same word twice. Not an
+   * `aria-label`, then or now: that would replace the order with "Sort", so
+   * the one thing this control exists to state would be visible and nowhere
+   * else, and voice control needs the visible words to be in the name to act
+   * on them (WCAG 2.5.3, Label in Name).
    */
   sortLabel: string;
+  /**
+   * Where this copy of the control is standing, from the page that placed it.
+   * The two placements are the heading's right (`hidden lg:inline-flex`, so
+   * the phone gets one sort and not two) and the phone's floating capsule
+   * (`floatingControlClass()`), which is why nothing here paints its own
+   * ground or its own ink — see `text-inherit` below.
+   */
+  triggerClassName?: string;
   /**
    * Writes the chosen order. Built by the page from `browseSearch` /
    * `directorySearch` — never by hand, which is the bug those two functions
@@ -82,19 +96,22 @@ export function SortDropdown<Sort extends string>({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
+        {/* `text-inherit`, not a colour of its own: this same button is drawn
+            on the white heading row and inside the phone's navy capsule, and
+            a token painted here would be navy ink on navy ground in the
+            second. It also turns off `ghost`'s own blue, which would have put
+            the site's blue inside the results, where it never appears — it is
+            the header's and the search bar's button's. The muted prefix is
+            `opacity`, for the same reason — a
+            grey token legible on white is not legible on navy. */}
         <Button
           type="button"
-          variant="outline"
+          variant="ghost"
           size="sm"
-          className="rounded-full"
+          className={cn("gap-1.5 px-2.5 text-inherit hover:bg-[var(--color-muted)]", triggerClassName)}
         >
-          <ArrowUpDown className="h-4 w-4" aria-hidden="true" />
-          {/* Read, not seen — the icon says this to a sighted reader and says
-              nothing to anyone else. In front of the order rather than
-              replacing it, so the button is named "Sort: Newest" and the word
-              on screen is part of what it is called. */}
-          <span className="sr-only">{sortLabel}: </span>
-          {current?.label}
+          <span className="font-medium opacity-65">{sortLabel}</span>
+          <span className="font-bold">{current?.label}</span>
           <ChevronDown className="h-4 w-4 opacity-60" aria-hidden="true" />
         </Button>
       </DropdownMenuTrigger>
@@ -111,9 +128,14 @@ export function SortDropdown<Sort extends string>({
               // menuitem would announce the chosen one exactly like the rest.
               role="menuitemradio"
               aria-checked={isActive}
+              // Headline navy on the chosen row rather than the brand blue:
+              // blue belongs to the header's nav pill and sign-in and to the
+              // search bar's button, never to anything in the results, and
+              // navy is what everything else that is "on" wears — the filled
+              // pill, the current page number, the tick box.
               className={cn(
                 "justify-between gap-6",
-                isActive ? "font-semibold text-[var(--color-primary)]" : "",
+                isActive ? "font-semibold text-[var(--color-headline)]" : "",
               )}
             >
               {option.label}

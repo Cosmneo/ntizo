@@ -1,17 +1,14 @@
 /*
- * Self-hosted rather than fetched from a font CDN: no third-party request on
- * first paint, nothing to fail in a market with patchy connectivity, and the
- * weights below are the only ones the type scale uses — loading the full
- * families would ship megabytes nobody renders.
- *
- * Poppins carries the headings, Inter the text. Both are named in the design
- * system; the weights map one-to-one onto it.
+ * One family, as the brand manual specifies (p. 11). The app shipped Poppins
+ * and Inter, neither of which the manual mentions; Figtree is the face the
+ * logotype was drawn from, so headings finally match the wordmark above them.
+ * Four weights, because that is what the type scale below asks for — the full
+ * family is megabytes nobody renders.
  */
-@import "@fontsource/poppins/500.css";
-@import "@fontsource/poppins/600.css";
-@import "@fontsource/inter/400.css";
-@import "@fontsource/inter/500.css";
-@import "@fontsource/inter/700.css";
+@import "@fontsource/figtree/400.css";
+@import "@fontsource/figtree/500.css";
+@import "@fontsource/figtree/600.css";
+@import "@fontsource/figtree/700.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -119,6 +116,16 @@
   --color-primary-deep: #0a4fbd;
 
   /*
+   * Navy, from the manual (p. 8, #00244C), in the three roles it actually
+   * plays. One token could not do all three: on a dark ground a navy heading
+   * is invisible and a navy fill is indistinguishable from the page, so each
+   * role needs its own dark value.
+   */
+  --color-headline: #00244c;
+  --color-navy-surface: #00244c;
+  --color-navy-on: #ffffff;
+
+  /*
    * One elevation scale, so a card cannot lift by a different amount than its
    * neighbour. `browse-service-card.tsx` and `provider-card.tsx` carry
    * character-identical copies of the first two today — they agree by
@@ -166,6 +173,15 @@
   --color-primary-deep: #3d9bff;
 
   /*
+   * Headline text goes near-white rather than navy — the same reason
+   * `--shadow-*` deepens here. The surface lifts to a slate that still reads
+   * as "chosen" against #0a0d14, and what sits on it stays legible.
+   */
+  --color-headline: #e6e9ef;
+  --color-navy-surface: #1b2740;
+  --color-navy-on: #e8ecf3;
+
+  /*
    * Deeper and more opaque than the light scale, and that is not a tweak: a
    * shadow tuned for a white page is invisible on a near-black one. The lift
    * has to come from a darker shadow, never from a paler one.
@@ -180,14 +196,13 @@
 }
 
 @theme inline {
-  /*
-   * Two families, as the system specifies: Poppins for headings, Inter for
-   * everything read as text. `font-rounded` is kept as an alias for Poppins
-   * because the landing page already asks for it by that name.
-   */
-  --font-display: "Poppins", ui-sans-serif, system-ui, sans-serif;
-  --font-rounded: "Poppins", ui-sans-serif, system-ui, sans-serif;
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Figtree", ui-sans-serif, system-ui, sans-serif;
+  --font-rounded: "Figtree", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Figtree", ui-sans-serif, system-ui, sans-serif;
+
+  --color-headline: var(--color-headline);
+  --color-navy-surface: var(--color-navy-surface);
+  --color-navy-on: var(--color-navy-on);
 
   --radius-field: var(--radius-field);
   --radius-card-sm: var(--radius-card-sm);
