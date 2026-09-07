@@ -11,6 +11,7 @@ export * from "./review";
 export * from "./contact";
 export * from "./notification";
 export * from "./activity";
+export * from "./quote";
 export * from "./outbox/schemas/outbox-event.schema";
 // Reference data, owned by no bounded context.
 export * from "./reference";

@@ -21,7 +21,8 @@ export interface BookingListRow {
    * pair. `NOT NULL` on the table, so never null in a row.
    */
   serviceId: string;
-  serviceOptionId: string;
+  /** Null on a booking born from a quote: the price is the proposal's, not an option's. Screens render the service name alone in that case. */
+  serviceOptionId: string | null;
   /** Identity too, and `NOT NULL` on the table — see `bookingReadModel.providerId`. */
   providerId: string;
 
@@ -58,7 +59,8 @@ export interface BookingListRow {
   serviceImageKeys: string[] | null;
   providerLogoKey: string | null;
 
-  optionName: string;
+  /** Null on a booking born from a quote: the price is the proposal's, not an option's. Screens render the service name alone in that case. */
+  optionName: string | null;
   durationMinutes: number;
 
   /**
@@ -322,9 +324,11 @@ export interface ProviderBookingRow {
   createdAt: Date;
   customerId: string;
   serviceId: string;
-  serviceOptionId: string;
+  /** Null on a booking born from a quote: the price is the proposal's, not an option's. Screens render the service name alone in that case. */
+  serviceOptionId: string | null;
   serviceName: string;
-  optionName: string;
+  /** Null on a booking born from a quote: the price is the proposal's, not an option's. Screens render the service name alone in that case. */
+  optionName: string | null;
   durationMinutes: number;
   locationType: string | null;
   providerMemberId: string | null;

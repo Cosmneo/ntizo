@@ -85,6 +85,7 @@ export function withId(booking: Booking, id: string): Booking {
     serviceId: booking.serviceId,
     serviceOptionId: booking.serviceOptionId,
     providerMemberId: booking.providerMemberId,
+    quoteId: booking.quoteId,
     startsAt: booking.startsAt,
     endsAt: booking.endsAt,
     durationMinutes: booking.durationMinutes,

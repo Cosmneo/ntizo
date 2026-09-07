@@ -123,9 +123,12 @@ export interface BookingProps {
   readonly customerId: string;
   readonly providerId: string;
   readonly serviceId: string;
-  readonly serviceOptionId: string;
+  /** Null on a booking born from a quote; a priced booking always names its option. */
+  readonly serviceOptionId: string | null;
   /** Which member's calendar this booking occupies. */
   readonly providerMemberId: string;
+  /** Null on a priced booking. Exactly one of it and `serviceOptionId` is set. */
+  readonly quoteId: string | null;
 
   // The slot.
   readonly startsAt: Date;
@@ -228,7 +231,8 @@ export interface BookingProps {
   readonly serviceName: string;
   readonly providerName: string;
   readonly providerSlug: string;
-  readonly optionName: string;
+  /** Null on a booking born from a quote: the price is the proposal's, not an option's. */
+  readonly optionName: string | null;
   // Null on a DRAFT and only on a DRAFT: the customer holds the slot from
   // step 1 and gives the address on step 2, so a draft that has not reached
   // step 2 has no address yet. `submit` refuses to leave DRAFT without one —
@@ -415,6 +419,7 @@ export class Booking {
       serviceId: input.serviceId,
       serviceOptionId: input.serviceOptionId,
       providerMemberId: input.providerMemberId,
+      quoteId: null,
       startsAt: input.startsAt,
       endsAt,
       durationMinutes: input.durationMinutes,
@@ -475,13 +480,17 @@ export class Booking {
     Booking.requireNonBlank(props.customerId, "customerId");
     Booking.requireNonBlank(props.providerId, "providerId");
     Booking.requireNonBlank(props.serviceId, "serviceId");
-    Booking.requireNonBlank(props.serviceOptionId, "serviceOptionId");
+    // Null means "born from a quote"; "" means a bug, and is refused everywhere.
+    if (props.serviceOptionId !== null) Booking.requireNonBlank(props.serviceOptionId, "serviceOptionId");
     Booking.requireNonBlank(props.providerMemberId, "providerMemberId");
     Booking.requireNonBlank(props.currency, "currency");
     Booking.requireNonBlank(props.serviceName, "serviceName");
     Booking.requireNonBlank(props.providerName, "providerName");
     Booking.requireNonBlank(props.providerSlug, "providerSlug");
-    Booking.requireNonBlank(props.optionName, "optionName");
+    if (props.optionName !== null) Booking.requireNonBlank(props.optionName, "optionName");
+    if ((props.serviceOptionId === null) === (props.quoteId === null)) {
+      throw new BookingSnapshotInconsistentError("origin", String(props.serviceOptionId), String(props.quoteId));
+    }
 
     // Same rule `create` enforces, and for the same reason: a stored DRAFT
     // row is null here until `submit`, and a stored row past DRAFT is never
@@ -558,11 +567,14 @@ export class Booking {
   get serviceId(): string {
     return this.props.serviceId;
   }
-  get serviceOptionId(): string {
+  get serviceOptionId(): string | null {
     return this.props.serviceOptionId;
   }
   get providerMemberId(): string {
     return this.props.providerMemberId;
+  }
+  get quoteId(): string | null {
+    return this.props.quoteId;
   }
   get startsAt(): Date {
     return this.props.startsAt;
@@ -643,7 +655,7 @@ export class Booking {
   get providerSlug(): string {
     return this.props.providerSlug;
   }
-  get optionName(): string {
+  get optionName(): string | null {
     return this.props.optionName;
   }
   get addressLabel(): string | null {
