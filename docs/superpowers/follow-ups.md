@@ -4603,3 +4603,68 @@ made on evidence.
 
 **Trigger:** the first count source for admin bookings or support threads; then swap Users out for
 whichever of the two arrives, and give it `primary` and `count` in `console-nav.ts`.
+
+## #203 — Favourites has a backend and no way to reach it
+
+Tasks 1-9 of `docs/superpowers/plans/2026-08-27-favourites.md` shipped: two tables, the aggregates,
+the repositories, five commands, nine mounted GraphQL fields and the frontend hooks. Tasks 10-12 —
+the heart on a listing card, the save-to-a-list dialog, and `/favourites` plus `/favourites/$listId`
+— were deliberately not built, because the listing UI they attach to is itself being rewritten on
+`feat/listings-refresh` and the heart would have been built twice.
+
+So `/favourites` still renders the hardcoded empty state in `features/account/ui/placeholder-pages.tsx`,
+and nothing on any card calls the hooks. Everything below the UI works and is tested.
+
+Two things Tasks 10-12 must not rediscover, both now recorded in the field-name table at the top of
+`features/favourites/data/favourites.repository.ts`: `favouriteListMine` takes the generic `JSON!`
+scalar rather than a named input type, and `favouriteListById`'s `items` is a GraphQL **union**, so
+it needs inline fragments on `FavouriteListByIdOutput_Items_Item_Service` and `…_Provider` — a flat
+selection set is rejected before it reaches a resolver.
+
+**Trigger:** the listings refresh merging, which settles which card the heart goes on.
+
+## #204 — Favourites polish carried out of the final review
+
+Correct today, each with the reason it was left. `optimistic-marks.ts` snapshots and restores the
+whole marks array, so two hearts tapped within one round trip on the same page can clobber each
+other — bounded by the settle invalidation, and only reachable if that refetch also fails; per-id
+membership is the fix. `favourites-error.ts` is byte-identical to `messaging-error.ts` and, unlike
+its sibling, has no test, though `errorCode` is public API on all five hooks — two copies is the
+threshold at which `shared/lib/graphql/` starts to look right. `listForUser` has no ordering
+tiebreaker while `entriesIn` has one, so two lists stamped in the same millisecond render in
+arbitrary order. `listDisplayName` returns `""` for a nameless non-default list, unreachable through
+the API; `string | null` would let a render site branch without inventing copy. `FAVOURITE_MARKS_MAX_IDS`
+is exported as a bound but nothing enforces it — no listing page can reach 48 today, since
+`DIRECTORY_PAGE_SIZE` is 20 and none of them page infinitely, so the caller should slice when the
+heart is wired. Id inputs are `z.string().min(1).max(64)` against `uuid` columns, so a malformed id
+becomes a Postgres `22P02` and a 500 rather than a validation error; the repo convention is mixed,
+but favourites is the first feature taking ids straight off a public listing card.
+
+**Trigger:** Tasks 10-12, which give every one of these a real consumer.
+
+## #205 — Nothing caps how many favourite lists one person may own
+
+`CreateListCommand` has no ceiling. The fan-out that mattered is already bounded —
+`MAX_LISTS_WITH_COVERS = 12` in `list-my-lists.projection.ts`, derived so 12 × 4 cover tiles is
+exactly `MAX_SERVICE_PAGE`, which is what stops a caller scaling concurrent queries by making lists.
+What remains is linear and self-inflicted: `listForUser` returns every row, `countsFor` binds one
+parameter per list, and `ListListEntriesProjection` re-reads the whole set on every page of a single
+list. That last one has a named fix in its own doc comment — `findOwned({ id, userId })` on
+`FavouriteListRepositoryPort`, which collapses the ownership check and the header read into one
+query.
+
+**Trigger:** `/favourites/$listId` shipping (Task 12), which is the page that pays for the re-read;
+or any evidence of somebody making lists in bulk.
+
+## #206 — `schema-mount.test.ts` never builds a GraphQL schema
+
+It compares two lists of field *paths* — declared against mounted — which is what catches a field
+that resolves to `null` because nobody spread it. It does not construct a schema, so a read model
+the kit cannot emit would ship as a boot-time failure with every test green. Favourites is the first
+branch to put a `z.discriminatedUnion` in an output position; the final reviewer had to build the
+schema in-process by hand to confirm it emits as a union with a working `resolveType`. A test calling
+`createOnionYoga({ fields, schema: privateGraphqlSchema, … })` and `printSchema` is a handful of lines
+and would make that check permanent.
+
+**Trigger:** the next read model that is not a plain object — a union, a recursive type, or anything
+the kit has to name rather than mirror.
