@@ -316,6 +316,31 @@ describe("ServicesBrowsePage", () => {
     expect(await screen.findByRole("searchbox")).toHaveValue("barba");
   });
 
+  it("searching from a narrowed list keeps the narrowing", async () => {
+    // The bar is a control on this page like any other, so it changes one part
+    // of the URL and keeps the rest. Submitting used to write `?q=` and
+    // nothing else: a reader who had picked a category and a filter typed one
+    // word and was handed the whole platform back, with no way to see what
+    // they had lost.
+    const { router } = renderPage("/services?category=hair&locationType=at_customer&offset=24", {
+      items: [service()],
+      nextOffset: null,
+      total: 1,
+    });
+    fireEvent.change(await screen.findByRole("searchbox"), { target: { value: "barba" } });
+    fireEvent.submit(screen.getByRole("search"));
+
+    await waitFor(() => {
+      // And the page resets, like every other change that is not the page
+      // itself: page two of the old term is past the end of the new one.
+      expect(router.state.location.search).toEqual({
+        category: "hair",
+        locationType: "at_customer",
+        q: "barba",
+      });
+    });
+  });
+
   it("marks only the category actually in force as the current page", async () => {
     // TanStack matches a link's search as a *subset* of the current one, so
     // "All" — whose search is empty — was announced as the page you are on the

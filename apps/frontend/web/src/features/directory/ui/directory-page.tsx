@@ -61,11 +61,14 @@ import { resultsScope } from "@/features/directory/domain/results-scope";
  *
  * Four levels of narrowing, deliberately not the same shape. The search bar
  * under the header asks the opening question — the landing hero's own
- * `ServiceSearch`, unchanged but pointed here and asking for a business by
- * name, so the question is asked in the same shape as on the home page. The
- * category strip is full-width navigation between whole result sets. The
- * pills under the heading narrow one of those sets. The sort reorders what is
- * left. Making all four a row of chips would say they were peers.
+ * `ServiceSearch`, pointed here and asking for a business by name, so the
+ * question is asked in the same shape as on the home page. What differs is
+ * what a submit keeps: the hero starts a fresh search, and here the bar is
+ * handed this page's own `directorySearch`, so a typed name keeps the
+ * narrowing under it. The category strip is full-width navigation between
+ * whole result sets. The pills under the heading narrow one of those sets.
+ * The sort reorders what is left. Making all four a row of chips would say
+ * they were peers.
  *
  * **Nothing in the results is blue.** The site's one blue goes where the site
  * always puts it — the header's nav pill, the header's sign-in, the search
@@ -145,12 +148,17 @@ export function DirectoryPage() {
           this list and asking for a name, because that is what a reader has
           in hand when they come looking for a business rather than a job. The
           city is not one of its fields — that is the "City" filter pill
-          below, where a narrowing belongs. */}
+          below, where a narrowing belongs.
+
+          It builds its URL through `directorySearch` like every other control
+          here, which is what keeps the category, the filters, the city and
+          the sort when a name is typed, and resets the page. */}
       <div className="page-shell">
         <ServiceSearch
           to="/providers"
           placeholder={t("searchFieldProviderEmpty")}
           label={t("searchLabelProviders")}
+          search={(q) => directorySearch(current, { q, offset: undefined })}
           initialValue={current.q ?? ""}
           className="mx-auto mt-5 max-w-[760px]"
         />

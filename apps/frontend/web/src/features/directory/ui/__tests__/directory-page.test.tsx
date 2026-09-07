@@ -354,6 +354,30 @@ describe("DirectoryPage", () => {
     expect(await screen.findByRole("searchbox")).toHaveValue("mavalane");
   });
 
+  it("searching from a narrowed list keeps the narrowing", async () => {
+    // The bar is a control on this page like any other, so it changes one part
+    // of the URL and keeps the rest. Submitting used to write `?q=` and
+    // nothing else: a reader who had asked for verified businesses in Maputo
+    // typed one name and was handed every business on the platform, with no
+    // way to see what they had lost.
+    const { router } = renderPage("/providers?verified=true&city=Maputo&offset=20", {
+      items: [provider()],
+      total: 1,
+    });
+    fireEvent.change(await screen.findByRole("searchbox"), { target: { value: "mavalane" } });
+    fireEvent.submit(screen.getByRole("search"));
+
+    await waitFor(() => {
+      // And the page resets, like every other change that is not the page
+      // itself: page two of the old term is past the end of the new one.
+      expect(router.state.location.search).toEqual({
+        verified: true,
+        city: "Maputo",
+        q: "mavalane",
+      });
+    });
+  });
+
   it("marks only the category actually in force as the current page", async () => {
     // TanStack matches a link's search as a *subset* of the current one, so
     // "All" — whose search is empty — was announced as the page you are on the
