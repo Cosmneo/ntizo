@@ -86,3 +86,29 @@ export class ListNotYoursError extends ForbiddenError {
     this.name = "ListNotYoursError";
   }
 }
+
+/**
+ * A cursor `entriesIn` could not decode.
+ *
+ * `UnprocessableError`, not `NotFoundError` or `ConflictError`: nothing is
+ * missing and nothing conflicts — the value the caller sent is simply not one
+ * this repository can use. The same shape of refusal as catalog's
+ * `CategoryOrderInvalidError`.
+ *
+ * Defined here rather than imported from the activity or communication
+ * context, each of which already has a class by this name: a bounded context
+ * does not reach into another one's domain for an error type, and the `code`
+ * differs per context precisely so a client can tell whose cursor went bad.
+ * Task 7 hands GraphQL cursor input straight into `entriesIn`, so this is
+ * client-facing — a mangled cursor must read as "your cursor is bad", not as
+ * a generic 500.
+ */
+export class CursorInvalidError extends UnprocessableError {
+  constructor(public readonly cursor: string) {
+    super({
+      message: `The requested cursor is not usable: "${cursor}"`,
+      code: "FAVOURITE_CURSOR_INVALID",
+    });
+    this.name = "CursorInvalidError";
+  }
+}

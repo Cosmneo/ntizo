@@ -47,3 +47,6 @@ export const favourite = favouriteSchema.table(
     index("favourite_user_target_idx").on(t.userId, t.targetType, t.targetId),
   ],
 );
+
+export type FavouriteRow = typeof favourite.$inferSelect;
+export type NewFavouriteRow = typeof favourite.$inferInsert;

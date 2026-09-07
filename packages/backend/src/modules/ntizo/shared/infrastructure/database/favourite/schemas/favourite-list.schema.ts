@@ -61,3 +61,6 @@ export const favouriteList = favouriteSchema.table(
     index("favourite_list_user_created_idx").on(t.userId, t.createdAt.desc()),
   ],
 );
+
+export type FavouriteListRow = typeof favouriteList.$inferSelect;
+export type NewFavouriteListRow = typeof favouriteList.$inferInsert;
