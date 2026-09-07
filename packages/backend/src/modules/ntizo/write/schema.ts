@@ -9,6 +9,7 @@ import { communicationWriteSchema } from "./communication/graphql/schema/mutatio
 import { bookingWriteSchema } from "./booking/graphql/schema/mutations";
 import { contactWriteSchema } from "./contact/graphql/schema/mutations";
 import { supportWriteSchema } from "./support/graphql/schema/mutations";
+import { quoteWriteSchema } from "./quote/graphql/schema/mutations";
 
 /** The WRITE-side schema barrel — mutations only, across all bounded contexts. */
 export const writeSchema = mergeGraphQLSchemas(
@@ -22,4 +23,5 @@ export const writeSchema = mergeGraphQLSchemas(
   bookingWriteSchema,
   contactWriteSchema,
   supportWriteSchema,
+  quoteWriteSchema,
 );

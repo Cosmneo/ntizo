@@ -61,6 +61,7 @@ import {
 import { bootstrapContact } from "@ntizo/backend/modules/ntizo/bounded-contexts/contact";
 import { createBookingWriteHandlers } from "@ntizo/backend/modules/ntizo/write/booking";
 import { bootstrapBooking } from "@ntizo/backend/modules/ntizo/bounded-contexts/booking";
+import { createQuoteWriteHandlers } from "@ntizo/backend/modules/ntizo/write/quote";
 import { bootstrapQuote } from "@ntizo/backend/modules/ntizo/bounded-contexts/quote";
 import { createUserWriteHandlers } from "@ntizo/backend/modules/ntizo/write/user";
 import { bootstrapProvider } from "@ntizo/backend/modules/ntizo/bounded-contexts/provider";
@@ -152,9 +153,8 @@ export function buildPrivateGraphQLFields(): {
   // ports `QuoteBootstrapDeps` declares and this is the one place allowed to
   // know both fillers exist.
   //
-  // Not yet spread into `fields` below: `createQuoteWriteHandlers` and
-  // `createQuoteReadHandlers` (and the `quoteRead` bootstrap they take)
-  // don't exist yet — Tasks 15 and 16 mount them.
+  // `createQuoteWriteHandlers` is spread into `fields` below. `quoteRead`
+  // and `createQuoteReadHandlers` don't exist yet — Task 16 mounts them.
   const quote = bootstrapQuote({
     raiseNotification: notification.useCases.internal.raiseNotification,
     openBooking: bookingOpenerOver(booking.useCases.createBookingFromQuote),
@@ -202,6 +202,7 @@ export function buildPrivateGraphQLFields(): {
       ...createContactWriteHandlers({ contact }),
       ...createBookingWriteHandlers({ booking }),
       ...createBookingReadHandlers({ bookingRead }),
+      ...createQuoteWriteHandlers({ quote }),
       ...createNotificationWriteHandlers({ notification }),
       ...createUserWriteHandlers({
         updateMyProfile: user.useCases.updateMyProfile,
