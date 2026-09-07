@@ -9,7 +9,12 @@ import { RenameListCommand } from "../app/use-cases/rename-list.command";
 import { SetListsCommand } from "../app/use-cases/set-lists.command";
 import { FavouriteList } from "../domain/aggregates/favourite-list.aggregate";
 import type { Favourite } from "../domain/aggregates/favourite.aggregate";
-import { DefaultListNotRemovableError, ListNameTakenError, ListNotYoursError } from "../domain/exceptions";
+import {
+  DefaultListNotRemovableError,
+  ListNameTakenError,
+  ListNotYoursError,
+  UnknownFavouriteTargetError,
+} from "../domain/exceptions";
 import type { FavouriteTarget } from "../domain/favourite-target";
 
 /**
@@ -190,6 +195,32 @@ describe("SetListsCommand", () => {
     ).rejects.toThrow();
     expect(entries.setCalled).toBe(false);
   });
+
+  it("refuses a target kind the product cannot render, before checking ownership", async () => {
+    // Nothing downstream would catch this — the column has no enum or check
+    // constraint. `listIds` names a list nobody owns so that, if the target
+    // guard were missing or ran second, this would fail as `ListNotYoursError`
+    // instead, not silently pass.
+    await expect(
+      command.execute({ requesterUserId: "u1", targetType: "booking" as never, targetId: "s1", listIds: ["not-owned"] }),
+    ).rejects.toThrow(UnknownFavouriteTargetError);
+  });
+
+  it("refuses a blank target id, before checking ownership", async () => {
+    const promise = command.execute({
+      requesterUserId: "u1",
+      targetType: "service",
+      targetId: "   ",
+      listIds: ["not-owned"],
+    });
+    await expect(promise).rejects.toThrow();
+    // Confirms which guard fired: the target check, not the ownership one —
+    // an unowned list id is in `listIds`, and if ownership ran first this
+    // would be `ListNotYoursError` instead.
+    await promise.catch((error) => {
+      expect(error).not.toBeInstanceOf(ListNotYoursError);
+    });
+  });
 });
 
 describe("CreateListCommand", () => {
@@ -219,6 +250,28 @@ describe("CreateListCommand", () => {
     const out = await command.execute({ requesterUserId: "u1", name: "Casa nova" });
     expect(lists.saved!.isDefault).toBe(false);
     expect(out.id).toBe(lists.saved!.id ?? "new-list");
+  });
+
+  it("refuses a blank name as invalid, not as a collision with the nameless default", async () => {
+    // `input.name.trim()` on a blank name is `""`, and coercing the default
+    // list's `null` name to `""` for the comparison used to make `"" === ""`
+    // a match — so a blank name surfaced as `ListNameTakenError` (a 409
+    // saying "you already have a list called '   '") instead of the
+    // validation error `FavouriteList.assertName` exists to raise.
+    lists.seed({ isDefault: true, name: null });
+    const promise = command.execute({ requesterUserId: "u1", name: "   " });
+    await expect(promise).rejects.toThrow();
+    await promise.catch((error) => {
+      expect(error).not.toBeInstanceOf(ListNameTakenError);
+    });
+  });
+
+  it("does not let the nameless default collide with a name somebody actually picks", async () => {
+    // A nameless default is not a list named "" — the scan must skip a
+    // `null` name outright rather than coerce it to the empty string.
+    lists.seed({ isDefault: true, name: null });
+    const out = await command.execute({ requesterUserId: "u1", name: "Casa nova" });
+    expect(out.id).toBeTruthy();
   });
 });
 

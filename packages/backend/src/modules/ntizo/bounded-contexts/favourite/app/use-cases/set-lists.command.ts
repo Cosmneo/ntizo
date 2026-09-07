@@ -1,4 +1,5 @@
-import { ListNotYoursError } from "../../domain/exceptions";
+import { UnknownFavouriteTargetError, ListNotYoursError } from "../../domain/exceptions";
+import { isFavouriteTarget } from "../../domain/favourite-target";
 import type { FavouriteListRepositoryPort } from "../ports/outbound/favourite-list.repository.port";
 import type { FavouriteRepositoryPort } from "../ports/outbound/favourite.repository.port";
 import type { SetListsInput, SetListsOutput, SetListsPort } from "../ports/inbound/set-lists.command.port";
@@ -17,9 +18,24 @@ import type { SetListsInput, SetListsOutput, SetListsPort } from "../ports/inbou
  * the input, and the repository computes what changed in one transaction —
  * see `FavouriteRepositoryPort.setLists`'s own doc comment.
  *
- * Two steps, in order:
+ * Three steps, in order:
  *
- * 1. **Ownership**, checked before anything is written. `ownedBy` answers
+ * 1. **The target**, validated before any read or write. `QuickSaveCommand`
+ *    gets this for free by routing its single write through `Favourite.file`
+ *    — there is no equivalent aggregate here, because this command's write
+ *    is one `(targetType, targetId)` pair fanned out across many lists, not
+ *    one row. So the same two checks `Favourite.file` runs are run directly:
+ *    `isFavouriteTarget` against `targetType` (`UnknownFavouriteTargetError`
+ *    on a miss), and a blank `targetId` refused the same way `Favourite.file`
+ *    refuses one. Nothing downstream would catch either — the column is
+ *    `varchar("target_type", { length: 16 })` with no enum or check
+ *    constraint, so an unknown kind or an empty id would otherwise write
+ *    rows no projection reads and the dialog has no way to unsave.
+ *    `SetListsInput.targetType` being typed `FavouriteTarget` stops nothing
+ *    inside this backend from calling in with a bad value, but it is not the
+ *    only edge this command has: Task 6's HTTP boundary is untyped, exactly
+ *    like the one `QuickSaveCommand` guards against.
+ * 2. **Ownership**, checked before anything is written. `ownedBy` answers
  *    "which of these ids are actually `requesterUserId`'s", and if that
  *    answer is shorter than `listIds`, something in there is not theirs.
  *    Refused with `ListNotYoursError` naming the first such id, before
@@ -27,7 +43,7 @@ import type { SetListsInput, SetListsOutput, SetListsPort } from "../ports/inbou
  *    somebody else's list id could otherwise file a listing into a
  *    stranger's list, or empty it out of one, just by guessing or scraping
  *    an id.
- * 2. **`favourites.setLists`**, one call and one transaction that both adds
+ * 3. **`favourites.setLists`**, one call and one transaction that both adds
  *    what is newly ticked and removes what got unticked. Never two calls:
  *    a delete that succeeds followed by an insert that fails would leave the
  *    listing in fewer lists than either the dialog or the person asked for,
@@ -44,6 +60,16 @@ export class SetListsCommand implements SetListsPort {
   ) {}
 
   async execute(input: SetListsInput): Promise<SetListsOutput> {
+    if (!isFavouriteTarget(input.targetType)) {
+      throw new UnknownFavouriteTargetError(input.targetType);
+    }
+    if (!input.targetId.trim()) {
+      // Same wording, and same plain `Error`, `Favourite.file` throws for a
+      // blank target id — a structural mistake by the caller, not a
+      // client-facing refusal with its own error code.
+      throw new Error("[favourite] a favourite needs a target");
+    }
+
     const owned = new Set(await this.lists.ownedBy({ userId: input.requesterUserId, listIds: input.listIds }));
     // The first id that is not this person's, not merely "some id" — a
     // caller who sent three strangers' lists gets a refusal naming one of

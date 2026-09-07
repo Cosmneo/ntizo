@@ -25,23 +25,45 @@ import type { CreateListInput, CreateListOutput, CreateListPort } from "../ports
  * outside the one call built to survive the race, and `FavouriteList.create`
  * always produces `isDefault: false` regardless, so there is nothing this
  * command could do to make a second one even by accident.
+ *
+ * `FavouriteList.create` runs **before** the collision scan, not after —
+ * the same ordering `RenameListCommand` uses and for the same reason: a
+ * blank or over-length name must reach `assertName`'s validation error, not
+ * be scored against this person's lists first. Scanning first was a real
+ * bug this comment now documents the fix for: `input.name.trim()` on a
+ * blank name is `""`, and coercing a nameless default's `null` name to `""`
+ * for the comparison made `"" === ""` a match, so a blank name surfaced as
+ * `ListNameTakenError` — "you already have a list called '   '", a 409 —
+ * instead of the validation error it actually triggered. Two fixes, not
+ * one: validating first stops a blank name from ever reaching the scan, and
+ * the scan below now skips `null` names outright rather than coercing them —
+ * a nameless default is not a list named "".
  */
 export class CreateListCommand implements CreateListPort {
   constructor(private readonly lists: FavouriteListRepositoryPort) {}
 
   async execute(input: CreateListInput): Promise<CreateListOutput> {
-    const mine = await this.lists.listForUser(input.requesterUserId);
-    const wanted = input.name.trim().toLowerCase();
-    const taken = mine.some((list) => (list.name ?? "").trim().toLowerCase() === wanted);
-    if (taken) {
-      throw new ListNameTakenError(input.name);
-    }
-
+    // Validates blank/over-length here, before any read — see this class's
+    // own doc comment for why the order matters.
     const list = FavouriteList.create({
       userId: input.requesterUserId,
       name: input.name,
       createdAt: new Date(),
     });
+    // `assertName` only ever returns a non-blank string, and `create` is
+    // what sets it — `list.name` is typed `string | null` only because
+    // `FavouriteListProps.name` is shared with the (genuinely nullable)
+    // default-list case.
+    const name = list.name!;
+
+    const mine = await this.lists.listForUser(input.requesterUserId);
+    const wanted = name.trim().toLowerCase();
+    // Lists with a `null` name — the nameless default — are skipped, not
+    // coerced to `""`: a nameless default is not a list named "".
+    const taken = mine.some((existing) => existing.name !== null && existing.name.trim().toLowerCase() === wanted);
+    if (taken) {
+      throw new ListNameTakenError(name);
+    }
 
     const id = await this.lists.save(list);
     return { id };
