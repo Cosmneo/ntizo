@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { landingServiceQueries } from "../service.repository";
 
 vi.mock("@/shared/lib/graphql/public-graphql", () => ({
@@ -7,6 +7,13 @@ vi.mock("@/shared/lib/graphql/public-graphql", () => ({
 const { publicGraphql } = await import("@/shared/lib/graphql/public-graphql");
 
 describe("landingServiceQueries.popular", () => {
+  beforeEach(() => {
+    // Reset the mock's call history so each test asserts on its own call.
+    // Without this, the shared mock leaks calls between tests: test 2 makes
+    // the first call, test 3 reads mock.calls[0]! — which is test 2's call,
+    // not test 3's own. It would pass silently if test 3's own call differed.
+    vi.mocked(publicGraphql).mockClear();
+  });
   it("keys on the locale and the size, so two callers never share a payload", () => {
     expect(landingServiceQueries.popular("pt-MZ", 8).queryKey).toEqual([
       "public",
