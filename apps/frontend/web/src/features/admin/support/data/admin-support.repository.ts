@@ -71,6 +71,8 @@ const MESSAGES_PAGE_SIZE = 30;
 export interface AdminSupportSearch {
   status?: "open" | "resolved";
   audience?: "customer" | "provider";
+  /** Over the subject, on the server. Trimmed and non-empty, or absent. */
+  search?: string;
 }
 
 export const adminSupportQueries = {
@@ -93,6 +95,7 @@ export const adminSupportQueries = {
             cursor: pageParam,
             ...(search.status ? { status: search.status } : {}),
             ...(search.audience ? { audience: search.audience } : {}),
+            ...(search.search ? { search: search.search } : {}),
           },
         }).then((d) => d.supportRequests),
       // `undefined`, never `null`. The SDL declares `cursor: String`, so

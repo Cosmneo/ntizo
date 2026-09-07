@@ -32,6 +32,8 @@ export interface SupportRequestPage {
 export interface SupportRequestFilter {
   status?: SupportStatus | undefined;
   audience?: SupportAudience | undefined;
+  /** Over the subject, accents aside. Blank is no search. */
+  search?: string | undefined;
 }
 
 export interface SupportRequestRepositoryPort {

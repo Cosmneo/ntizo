@@ -247,9 +247,11 @@ describe("ListSupportRequestsProjection", () => {
     const previews = new FakeThreadPreviewReader(new Map([["t1", { body: "Paguei duas vezes", hasAttachment: false }]]));
     const projection = new ListSupportRequestsProjection(requests, messages, providerNames, customerNames, previews);
 
-    const page = await projection.execute({ status: "open", audience: undefined, limit: 500, cursor: null });
+    const page = await projection.execute({ status: "open", audience: undefined, search: "reembolso", limit: 500, cursor: null });
 
-    expect(requests.listCalls).toEqual([{ filter: { status: "open", audience: undefined }, limit: 50, cursor: null }]);
+    expect(requests.listCalls).toEqual([
+      { filter: { status: "open", audience: undefined, search: "reembolso" }, limit: 50, cursor: null },
+    ]);
     expect(messages.calls).toEqual(["countUnreadForPlatform:[t1,t2]"]);
     expect(page.nextCursor).toBe("c");
     expect(page.items[0]).toMatchObject({

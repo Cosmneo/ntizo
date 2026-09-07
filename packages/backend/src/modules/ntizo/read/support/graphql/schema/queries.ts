@@ -19,6 +19,9 @@ export const listSupportRequests = defineQuery({
     z.object({
       status: z.enum(["open", "resolved"]).optional(),
       audience: z.enum(["customer", "provider"]).optional(),
+      // Bounded, like every other free-text filter here: the string ends up in
+      // a LIKE pattern.
+      search: z.string().trim().max(120).optional(),
       ...paging,
     }),
   ),
