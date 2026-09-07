@@ -1,4 +1,5 @@
 import { useState } from "react";
+import type { ReactNode } from "react";
 import { cn } from "@ntizo/frontend-ui";
 import { BrandMark } from "@/shared/components/brand-mark";
 
@@ -84,6 +85,7 @@ export function BrandImage({
   alt,
   className,
   loading = "lazy",
+  fallback,
 }: {
   /** Null is a legitimate state, not an error — most listings have no photo. */
   src: string | null | undefined;
@@ -95,10 +97,17 @@ export function BrandImage({
   alt: string;
   className?: string;
   loading?: "lazy" | "eager";
+  /**
+   * What stands in when there is no photo, or the photo fails to load.
+   * Defaults to the grey brand mark every existing caller gets today; the
+   * browse tiles pass the navy `BrandTile` so a missing photograph reads as
+   * designed rather than as a gap.
+   */
+  fallback?: ReactNode;
 }) {
   const [failedUrl, setFailedUrl] = useState<string | null>(null);
 
-  if (!src || src === failedUrl) return <MediaFallback className={className} />;
+  if (!src || src === failedUrl) return <>{fallback ?? <MediaFallback className={className} />}</>;
 
   return (
     <img

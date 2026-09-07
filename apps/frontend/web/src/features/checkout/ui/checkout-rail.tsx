@@ -1,7 +1,8 @@
 import { useTranslation } from "react-i18next";
 import { BrandImage } from "@/shared/components/brand-image";
 import { BadgeCheck, Check, ImageIcon, Star } from "lucide-react";
-import { formatAmount, formatRating } from "@/features/directory/services/domain/service-card";
+import { formatRating } from "@/shared/domain/rating";
+import { formatAmount } from "@/features/directory/services/domain/service-card";
 import type { CompactSlot } from "@/features/checkout/domain/slot-wording";
 
 /**

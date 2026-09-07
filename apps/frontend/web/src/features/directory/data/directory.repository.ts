@@ -8,7 +8,8 @@ import type { DirectorySearch } from "@/features/directory/domain/directory-sear
 export const PROVIDER_FIELDS = `
   id name slug type description city district country logoUrl photoUrls
   verified ratingAverage reviewCount serviceCount fromAmountMinor fromCurrency
-  categories { code name }`;
+  categories { code name }
+  services { name amountMinor currency pricingMode }`;
 
 /**
  * The slug lookup asks for more than the list does, and that split is the point.

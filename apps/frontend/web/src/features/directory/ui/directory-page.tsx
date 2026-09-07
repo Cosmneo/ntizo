@@ -1,52 +1,41 @@
-import { useEffect, useId, useRef, useState } from "react";
-import type { FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
-import { Compass, MapPin, Search, SearchX, Store, Tag, X, icons } from "lucide-react";
-import { CitySelect } from "@ntizo/frontend-ui";
+import { SearchX, Store } from "lucide-react";
 import { EmptyCard } from "@/shared/components/empty-card";
 import { SiteHeader } from "@/shared/components/site-header";
+import { SearchPill } from "@/shared/components/browse/search-pill";
 import {
-  BrowseHero,
-  BrowseSearchCard,
-  BrowseSearchField,
-  SEARCH_SUBMIT_CLASS,
-} from "@/shared/components/browse/browse-hero";
-import { CategoryRail, categoryChipClass } from "@/shared/components/browse/category-rail";
-import { ResultsBar } from "@/shared/components/browse/results-bar";
-import { SortDropdown, type SortDropdownOption } from "@/shared/components/browse/sort-dropdown";
-import {
-  ActiveFilterChip,
-  ActiveFilterChips,
-  CHIP_REMOVE_CLASS,
-} from "@/shared/components/browse/active-filter-chips";
+  CATEGORY_STRIP_LIMIT,
+  CategoryStrip,
+  categoryItemClass,
+  iconComponent,
+} from "@/shared/components/browse/category-strip";
+import { SortDropdown } from "@/shared/components/browse/sort-dropdown";
+import { QuickChips, quickChipClass } from "@/shared/components/browse/quick-chips";
 import { PAGER_EDGE_CLASS, Pager, pagerPageClass } from "@/shared/components/browse/pager";
-import {
-  MOBILE_SEARCH_FIELD_CLASS,
-  MobileSearchSheet,
-  MobileSearchTrigger,
-} from "@/shared/components/browse/mobile-search-sheet";
 import { EXACT_MATCH } from "@/shared/components/browse/active-match";
+import { formatRating } from "@/shared/domain/rating";
 // Categories are platform data that happens to be fetched under `landing/`.
 // Reached through its viewmodel rather than its repository — `ui` may not
 // touch `data`, and going through the hook reuses the cache the home page has
 // usually already filled.
 import { useCategoryPreview } from "@/features/landing/viewmodel/use-categories";
 import { useDirectory, useProviderCities } from "@/features/directory/viewmodel/use-directory";
-import { ProviderListingCard } from "@/features/directory/ui/provider-listing-card";
+import { ProviderRow } from "@/features/directory/ui/provider-row";
 import {
-  MobileDirectoryFilterBar,
-  ProviderFacets,
-  clearedDirectorySearch,
-} from "@/features/directory/ui/provider-facets";
+  MobileProviderFilters,
+  ProviderFilters,
+  chooseProviderSort,
+  providerSortOptions,
+} from "@/features/directory/ui/provider-filters";
 import { DIRECTORY_PAGE_SIZE } from "@/features/directory/domain/provider-listing";
 import {
   directorySearch,
   type DirectorySearch,
-  type DirectorySort,
+  type RatingThreshold,
 } from "@/features/directory/domain/directory-search";
 import { directoryTitle } from "@/features/directory/domain/directory-title";
-import { directoryFilterChips } from "@/features/directory/domain/directory-chips";
+import { resultsScope } from "@/features/directory/domain/results-scope";
 
 /**
  * Every listed business on the platform.
@@ -56,19 +45,43 @@ import { directoryFilterChips } from "@/features/directory/domain/directory-chip
  * in the nav.
  *
  * Deliberately the twin of `ServicesBrowsePage`: the same shells in the same
- * order, differing only in its copy, its card and its page size. The two had
- * already drifted once — one grew a row of sort links and the other a
- * five-item dropdown, and each carried its own copy of the category band — and
- * a reader who has learned one browse should not have to learn the other. If
- * the two page files differ in anything else, one of them is wrong.
+ * order, differing in exactly four things — the filters it draws, the copy it
+ * counts with, a `<ul>` of rows in place of a grid of tiles, and a pager that
+ * steps by the page size because `providerPageReadModel` carries a total and
+ * no `nextOffset`. The two had already drifted once — one grew a row of sort
+ * links and the other a five-item dropdown, and each carried its own copy of
+ * the category band — and a reader who has learned one browse should not have
+ * to learn the other. If the two page files differ in anything else, one of
+ * them is wrong.
  *
- * What the *card* says does differ, and should: a service sells one job, a
- * business is something somebody is deciding whether to trust.
+ * What the *result* says does differ, and should: a service sells one job, a
+ * business is something somebody is deciding whether to trust — which is why
+ * a business gets a row with its services and their prices in it rather than
+ * the tile a service gets. See `ProviderRow`.
  *
- * White cards on a tinted ground, which is why everything below the header is
- * wrapped in `--color-surface-raised`. It is not decoration: `PriceStub`'s
- * notches are circles of the *ground* colour punched into the card's edge, and
- * on a white page they are invisible.
+ * Four levels of narrowing, deliberately not the same shape. The header's
+ * search pill asks the opening question, in the same place it is asked on
+ * every page of the site. The category strip is full-width navigation between
+ * whole result sets. The pills under the heading narrow one of those sets. The
+ * sort reorders what is left. Making all four a row of chips would say they
+ * were peers.
+ *
+ * **A white page with one blue on it** — the pill's search button. Everything
+ * else is headline navy, ink, grey and the amber star, which is why the rows
+ * carry no border, no shadow and no button of their own: what the eye should
+ * land on down a column of results is the photographs, the ratings and the
+ * prices, not twenty identical calls to action.
+ *
+ * **Nothing straddles the strip.** The header sits above it, the strip is a
+ * plain white band with a hairline under it, and `main` starts below. The
+ * search that used to sit in a card across that band's top edge lives in the
+ * header now, so the strip is a single positioned layer with no paint-order
+ * split — anything reintroduced there on a negative margin would be painted
+ * over by it.
+ *
+ * **The phone is not this page shrunk.** The pills give way to four one-tap
+ * chips above the results and one navy capsule at the thumb holding the
+ * filters and the sort; see `MobileProviderFilters`.
  *
  * `useSuspenseQuery` under `useDirectory`, not `useQuery`: this page is
  * server-rendered so a crawler finds the listings in the HTML. A plain
@@ -76,10 +89,10 @@ import { directoryFilterChips } from "@/features/directory/domain/directory-chip
  * no content in it — which is the one outcome a page built to rank must not
  * have.
  *
- * Paging is `total` and never `items.length`. The projection drops rows it
- * cannot render, so a page can be shorter than the page size while more pages
- * remain — counting what arrived told somebody with 40 matches that they had
- * 20.
+ * Paging is `page.total` and never `items.length`. The projection drops rows
+ * it cannot render, so a page can be shorter than the page size while more
+ * pages remain — counting what arrived told somebody with 40 matches that they
+ * had 20, and stepping by it would have refetched the same row forever.
  */
 export function DirectoryPage() {
   const { t, i18n } = useTranslation("directory");
@@ -96,32 +109,10 @@ export function DirectoryPage() {
   const navigate = useNavigate();
   // A plain query, unlike the listings: this is a control, not the content a
   // crawler came for, so it may arrive a beat later.
-  const categories = useCategoryPreview(CATEGORY_RAIL_LIMIT).data?.items ?? [];
+  const categories = useCategoryPreview(CATEGORY_STRIP_LIMIT).data?.items ?? [];
   const categoryName = categories.find((c) => c.code === category)?.name ?? null;
 
   const title = directoryTitle(current, categoryName);
-  const chips = directoryFilterChips(current);
-
-  /** Every order this page offers, default first — `SortDropdown`'s menu. */
-  const sortOptions: ReadonlyArray<SortDropdownOption<DirectorySort>> = [
-    { value: undefined, label: t("sortOption.default") },
-    { value: "rating", label: t("sortOption.rating") },
-    { value: "reviews", label: t("sortOption.reviews") },
-    { value: "price", label: t("sortOption.price") },
-    { value: "name", label: t("sortOption.name") },
-  ];
-
-  /**
-   * Writes the chosen order and resets to the first page — page 3 of "best
-   * rated" is not page 3 of "cheapest". `directorySearch` is what keeps every
-   * other filter and writes the default order as an absent parameter rather
-   * than `sort=relevance`.
-   */
-  const chooseSort = (value: DirectorySort | undefined) =>
-    void navigate({
-      to: "/providers",
-      search: directorySearch(current, { sort: value, offset: undefined }),
-    });
 
   /**
    * Whether the reader narrowed the list at all — which is what "nothing here"
@@ -143,462 +134,261 @@ export function DirectoryPage() {
 
   return (
     <>
-      <SiteHeader current="providers" />
+      <SiteHeader current="providers" search={<HeroSearch current={current} />} />
 
-      <div className="bg-[var(--color-surface-raised)]">
-        <BrowseHero
-          title={t(title.key, title.values)}
-          subtitle={t("heroSubtitleProviders")}
-          search={<HeroSearch current={current} />}
+      <CategoryStrip label={t("categoryStripLabel")}>
+        <StripItem
+          search={directorySearch(current, { category: undefined, offset: undefined })}
+          label={t("providersAllCategories")}
+          icon={null}
+          isAll
+          active={!category}
         />
-
-        <CategoryRail label={t("providersFilterByCategory")}>
-          <RailChip
-            search={directorySearch(current, { category: undefined, offset: undefined })}
-            label={t("providersAllCategories")}
-            icon={null}
-            isAll
-            active={!category}
+        {categories.map((c) => (
+          <StripItem
+            key={c.id}
+            search={directorySearch(current, { category: c.code, offset: undefined })}
+            label={c.name}
+            icon={c.icon}
+            active={category === c.code}
           />
-          {categories.map((c) => (
-            <RailChip
-              key={c.id}
-              search={directorySearch(current, { category: c.code, offset: undefined })}
-              label={c.name}
-              icon={c.icon}
-              active={category === c.code}
-            />
-          ))}
-        </CategoryRail>
+        ))}
+      </CategoryStrip>
 
-        <main className="page-shell">
-          <div className="grid items-start gap-11 py-8 lg:grid-cols-[250px_minmax(0,1fr)]">
-            <ProviderFacets current={current} />
-
-            <div className="min-w-0">
-              <ResultsBar
-                summary={
-                  // Two translated pieces, and the second is a whole clause
-                  // per scope — never "in" plus a name. That is what lets a
-                  // language order, inflect or case the category and the city
-                  // as its own grammar needs, instead of receiving them in the
-                  // order English happened to put them. The values are
-                  // `directoryTitle`'s own, so the heading and this line agree
-                  // about whether the category name has resolved yet.
-                  <>
-                    <b className="font-semibold text-[var(--color-foreground)]">
-                      {t("providersFound", { count: page.total })}
-                    </b>{" "}
-                    {t(`resultsScope.${resultsScope(title.values)}`, title.values)}
-                  </>
-                }
-              >
-                <SortDropdown
-                  active={sort}
-                  options={sortOptions}
-                  sortLabel={t("sortLabel")}
-                  onChoose={chooseSort}
-                />
-              </ResultsBar>
-
-              {/* Only when something is on. An empty chip row is a band of
-                  padding between the results bar and the first card. */}
-              {chips.length > 0 && (
-                <div className="pt-3.5">
-                  <ActiveFilterChips label={t("activeFiltersLabel")}>
-                    {chips.map((chip) => (
-                      <ActiveFilterChip
-                        key={chip.key}
-                        label={t(chip.label.key, chip.label.values ?? {})}
-                        remove={
-                          <Link
-                            to="/providers"
-                            activeOptions={EXACT_MATCH}
-                            search={chip.next}
-                            aria-label={t("chipRemove")}
-                            className={CHIP_REMOVE_CLASS}
-                          >
-                            <X className="h-2.5 w-2.5" aria-hidden="true" />
-                          </Link>
-                        }
-                      />
-                    ))}
-                    <li>
-                      <Link
-                        to="/providers"
-                        activeOptions={EXACT_MATCH}
-                        search={clearedDirectorySearch(current)}
-                        className="type-caption ml-0.5 font-semibold text-[var(--color-primary)] hover:underline"
-                      >
-                        {t("filtersClearAll")}
-                      </Link>
-                    </li>
-                  </ActiveFilterChips>
-                </div>
-              )}
-
-              {page.items.length === 0 ? (
-                // Two different sentences, because they are two different
-                // situations. An empty platform is "nobody has joined yet"; an
-                // empty search is "nothing matches", and telling a reader who
-                // filtered that the platform is empty is simply false. Only the
-                // first is an empty list, so only the first carries the mark.
-                isNarrowed ? (
-                  <EmptyCard
-                    className="mt-6"
-                    icon={SearchX}
-                    title={t("noResultsTitle")}
-                    body={t("noResultsHint")}
-                  />
-                ) : (
-                  <EmptyCard
-                    className="mt-6"
-                    badge={Store}
-                    title={t("emptyTitle")}
-                    body={t("empty")}
-                  />
-                )
-              ) : (
-                <>
-                  {/* `items-start`: a stretched card puts its empty space
-                      inside itself, under the last line of text. Sized to what
-                      it has to say, the space falls between the cards. */}
-                  <ul className="mt-4 grid list-none items-start gap-3.5 p-0">
-                    {page.items.map((provider) => (
-                      <ProviderListingCard
-                        key={provider.id}
-                        provider={provider}
-                        locale={locale}
-                      />
-                    ))}
-                  </ul>
-
-                  <Pager
-                    total={page.total}
-                    pageSize={DIRECTORY_PAGE_SIZE}
-                    offset={offset}
-                    label={t("pagerLabel")}
-                    renderPage={(slot) => (
-                      <Link
-                        key={slot.page}
-                        to="/providers"
-                        activeOptions={EXACT_MATCH}
-                        search={directorySearch(current, { offset: slot.offset })}
-                        aria-current={slot.current ? "page" : undefined}
-                        className={pagerPageClass(slot.current)}
-                      >
-                        {slot.page}
-                      </Link>
-                    )}
-                    {...(offset > 0
-                      ? {
-                          previous: (
-                            <Link
-                              to="/providers"
-                              activeOptions={EXACT_MATCH}
-                              search={directorySearch(current, {
-                                offset: Math.max(offset - DIRECTORY_PAGE_SIZE, 0),
-                              })}
-                              className={PAGER_EDGE_CLASS}
-                            >
-                              {t("providersPrevious")}
-                            </Link>
-                          ),
-                        }
-                      : {})}
-                    {...(offset + DIRECTORY_PAGE_SIZE < page.total
-                      ? {
-                          next: (
-                            <Link
-                              to="/providers"
-                              // Stepped from the total rather than from a
-                              // server-issued cursor: `providerPageReadModel`
-                              // carries a count and no `nextOffset`, because
-                              // this directory pages by a fixed size rather
-                              // than scrolling further. Never
-                              // `offset + items.length` — a row dropped for
-                              // being unrenderable still occupied a position
-                              // in the underlying order, and stepping by the
-                              // shorter number would fetch it again forever.
-                              activeOptions={EXACT_MATCH}
-                              search={directorySearch(current, {
-                                offset: offset + DIRECTORY_PAGE_SIZE,
-                              })}
-                              className={PAGER_EDGE_CLASS}
-                            >
-                              {t("providersNext")}
-                            </Link>
-                          ),
-                        }
-                      : {})}
-                  />
-                </>
-              )}
-            </div>
+      <main className="page-shell pb-14">
+        <div className="flex items-end justify-between gap-5 pt-6 pb-3.5">
+          <div>
+            <h1 className="text-[26px] leading-tight font-bold tracking-[-0.02em] text-[var(--color-headline)]">
+              {t(title.key, title.values)}
+            </h1>
+            {/* Two translated pieces, and the second is a whole clause per
+                scope — never "in" plus a name. That is what lets a language
+                order, inflect or case the category and the city as its own
+                grammar needs, instead of receiving them in the order English
+                happened to put them. The values are `directoryTitle`'s own, so
+                the heading and this line agree about whether the category name
+                has resolved yet. */}
+            <p className="mt-1 text-[14.5px] text-[var(--color-muted-foreground)]">
+              <b className="font-semibold text-[var(--color-foreground)]">
+                {t("providersFound", { count: page.total })}
+              </b>{" "}
+              {t(`resultsScope.${resultsScope(title.values)}`, title.values)}
+            </p>
           </div>
-        </main>
-      </div>
 
-      <MobileDirectoryFilterBar current={current} />
+          {/* One sort per width: the phone's copy rides in the floating
+              capsule (see `MobileProviderFilters`), so this one is drawn only
+              where that capsule is not. Both read the same list and write
+              through the same chooser, so they can never come to offer
+              different orders. */}
+          <SortDropdown
+            active={sort}
+            options={providerSortOptions(t)}
+            sortLabel={t("sortTrigger")}
+            triggerClassName="hidden text-[var(--color-headline)] lg:inline-flex"
+            onChoose={chooseProviderSort(navigate, current)}
+          />
+        </div>
+
+        <ProviderFilters current={current} />
+
+        {/* The phone's four narrowings, one tap each, above the results they
+            narrow — the pills are a toolbar and a toolbar does not fit a
+            thumb. Hidden exactly where the floating capsule is hidden, so a
+            reader is never offered both.
+
+            Not drawn over an empty platform: four ways to narrow nothing,
+            under a sentence saying nobody is listed, offers a reader work
+            that cannot help them. They stay on an empty *search*, because
+            there they are one tap out of it. */}
+        {(page.items.length > 0 || isNarrowed) && (
+          <div className="pb-5 lg:hidden">
+            <QuickChips label={t("quickChipsLabel")}>
+              <QuickChip
+                current={current}
+                active={current.verified === true}
+                // `verified: false` is never written — `directorySearch` drops
+                // it — so taking the chip off is taking the parameter off.
+                change={{ verified: current.verified === true ? undefined : true }}
+                label={t("filterVerifiedOnly")}
+              />
+              <QuickChip
+                current={current}
+                active={current.minRating === QUICK_MIN_RATING}
+                change={{
+                  minRating: current.minRating === QUICK_MIN_RATING ? undefined : QUICK_MIN_RATING,
+                }}
+                // The threshold is a decimal, so it is written the way this
+                // reader writes decimals — the same function the rating pill
+                // formats its own rows with, rather than a "4.5" hard-coded
+                // for one of the eight languages the platform ships.
+                label={t("filterRatingOption", {
+                  score: formatRating(QUICK_MIN_RATING, locale),
+                })}
+              />
+              <QuickChip
+                current={current}
+                active={current.providerType === "individual"}
+                change={{
+                  providerType: current.providerType === "individual" ? undefined : "individual",
+                }}
+                label={t("filterProviderKindOption.individual")}
+              />
+              <QuickChip
+                current={current}
+                active={current.providerType === "organization"}
+                change={{
+                  providerType:
+                    current.providerType === "organization" ? undefined : "organization",
+                }}
+                label={t("filterProviderKindOption.organization")}
+              />
+            </QuickChips>
+          </div>
+        )}
+
+        {page.items.length === 0 ? (
+          // Two different sentences, because they are two different
+          // situations. An empty platform is "nobody has joined yet"; an
+          // empty search is "nothing matches", and telling a reader who
+          // filtered that the platform is empty is simply false. Only the
+          // first is an empty list, so only the first carries the mark.
+          isNarrowed ? (
+            <EmptyCard icon={SearchX} title={t("noResultsTitle")} body={t("noResultsHint")} />
+          ) : (
+            <EmptyCard badge={Store} title={t("emptyTitle")} body={t("empty")} />
+          )
+        ) : (
+          <>
+            {/* No gap of its own: a row draws the hairline that separates it
+                from the one above, and space between them as well would be
+                two separations doing one job. The first row is told it is
+                first rather than working it out from a `first:` variant —
+                inside `<li>` every article is its parent's first child, so
+                the variant stripped the hairline from all of them. */}
+            <ul className="grid list-none p-0">
+              {page.items.map((provider, index) => (
+                <li key={provider.id}>
+                  <ProviderRow provider={provider} locale={locale} first={index === 0} />
+                </li>
+              ))}
+            </ul>
+
+            <Pager
+              total={page.total}
+              pageSize={DIRECTORY_PAGE_SIZE}
+              offset={offset}
+              label={t("pagerLabel")}
+              renderPage={(slot) => (
+                <Link
+                  key={slot.page}
+                  to="/providers"
+                  activeOptions={EXACT_MATCH}
+                  search={directorySearch(current, { offset: slot.offset })}
+                  aria-current={slot.current ? "page" : undefined}
+                  className={pagerPageClass(slot.current)}
+                >
+                  {slot.page}
+                </Link>
+              )}
+              {...(offset > 0
+                ? {
+                    previous: (
+                      <Link
+                        to="/providers"
+                        activeOptions={EXACT_MATCH}
+                        search={directorySearch(current, {
+                          offset: Math.max(offset - DIRECTORY_PAGE_SIZE, 0),
+                        })}
+                        className={PAGER_EDGE_CLASS}
+                      >
+                        {t("providersPrevious")}
+                      </Link>
+                    ),
+                  }
+                : {})}
+              {...(offset + DIRECTORY_PAGE_SIZE < page.total
+                ? {
+                    next: (
+                      <Link
+                        to="/providers"
+                        // Stepped from the total rather than from a
+                        // server-issued cursor: `providerPageReadModel`
+                        // carries a count and no `nextOffset`, because this
+                        // directory pages by a fixed size rather than
+                        // scrolling further. Never `offset + items.length` —
+                        // a row dropped for being unrenderable still occupied
+                        // a position in the underlying order, and stepping by
+                        // the shorter number would fetch it again forever.
+                        activeOptions={EXACT_MATCH}
+                        search={directorySearch(current, {
+                          offset: offset + DIRECTORY_PAGE_SIZE,
+                        })}
+                        className={PAGER_EDGE_CLASS}
+                      >
+                        {t("providersNext")}
+                      </Link>
+                    ),
+                  }
+                : {})}
+            />
+          </>
+        )}
+      </main>
+
+      <MobileProviderFilters current={current} total={page.total} />
     </>
   );
 }
 
 /**
- * How many categories the rail offers.
+ * The threshold the phone's rating chip offers.
  *
- * The same page size the category browse uses, so the two ask for one set and
- * share a cache entry rather than fetching overlapping halves.
+ * One of `RATING_THRESHOLDS` rather than a number of its own: a quick filter
+ * is one tap onto a value the rating pill also offers, so tapping the chip and
+ * picking the pill's top row have to write the same URL, and the chip has to
+ * come back on when the pill was used instead.
  */
-const CATEGORY_RAIL_LIMIT = 24;
+const QUICK_MIN_RATING: RatingThreshold = 4.5;
 
 /**
- * Which `resultsScope` clause the summary ends with.
- *
- * Derived from `directoryTitle`'s resolved values rather than from the raw
- * search, so the heading and the line under it can never disagree — the title
- * falls back to the plainer form while the category query is still in flight,
- * and this falls back with it instead of interpolating an empty name.
- */
-function resultsScope(values: { category?: string; city?: string }): string {
-  if (values.category) return values.city ? "categoryCity" : "category";
-  return values.city ? "city" : "all";
-}
-
-/**
- * The hero's search card.
- *
- * Two fields and a button, as the approved mockup draws them. `BrowseSearchField`
- * is a button rather than an input because both fields *open* something; what
- * they open here is themselves — the resting state shows what is currently
- * searched, and choosing one swaps a real control into the same grid cell so
- * nothing on the card moves.
- *
- * **One form, one submission.** Both fields are drafts until the button is
- * pressed, and the URL is written from the drafts, not from what the URL
- * already said. Composing from `current` instead threw away a typed term the
- * moment the other field was touched: type a name, pick Beira, and you got
- * `?city=Beira` with the name gone. It is a real `<form>` with a real
- * `type="submit"`, so Enter in the text field works because browsers make it
- * work, and the card is not the one control on a page of links that needs
- * JavaScript to do anything.
- *
- * The city field opens a `CitySelect` — the same combobox `AddressesPage` and
- * provider `Settings` already use — rather than the raw `<select>` the first
- * version of this reached for under time pressure. A native select carries no
- * card styling into its own popup, so opened it looked like a control from a
- * different application; it also needed two clicks, because focusing a select
- * and opening its list are two different things. `CitySelect` is focused as it
- * mounts, and because *its own* focus handler is what opens its list, the swap
- * that reveals it is the one click that opens it too. Typing and arrowing
- * through the list still do not navigate — only picking a city or submitting
- * the form does — which matters because a native select's `change` fired on
- * every arrow key on Windows and Firefox, and would have run a search per city
- * passed.
- *
- * Escape on the *service* field closes it and puts focus back on the button
- * that opened it — a control that unmounts under the cursor and drops focus on
- * `<body>` sends a keyboard user back to the top of the document. The city
- * field has no such hand-rolled handler: `CitySelect` already closes its own
- * list on Escape, and layering a second handler on top of a control that
- * manages its own open state would fight it rather than help it.
- *
- * **Not drawn at all below `md`.** Two fields and a button in 360px is a
- * control nobody completes, so the card hides itself there and
- * `MobileSearchTrigger` takes the width — one row that opens a sheet holding
- * the same two fields, full size. Both write the URL through one `apply`,
- * because they are the same search asked at two widths and not two searches.
+ * The header's search, wired to this page's URL. `SearchPill` owns the fields,
+ * the drafts, the phone sheet and every reason for them — see its own comment;
+ * all this adds is where an applied search goes.
  */
 function HeroSearch({ current }: { current: DirectorySearch }) {
   const { t } = useTranslation("directory");
   const navigate = useNavigate();
   const cities = useProviderCities();
-  const cityFieldId = useId();
-  const [open, setOpen] = useState<"q" | "city" | null>(null);
-  // The phone's sheet, which is the whole card at that width. Its own state
-  // rather than a third value of `open`: the two never overlap, because one is
-  // drawn only below `md` and the other only from `md` up.
-  const [sheet, setSheet] = useState(false);
-  const [term, setTerm] = useState(current.q ?? "");
-  const [city, setCity] = useState(current.city ?? "");
-  const termButton = useRef<HTMLButtonElement>(null);
-  const cityButton = useRef<HTMLButtonElement>(null);
-  // `CitySelect` does no filtering of its own — it only shows what it is
-  // given — so narrowing the offered set as the reader types is this field's
-  // job, not the combobox's.
-  const cityOptions = cities
-    .map((c) => c.city)
-    .filter((c) => c.toLowerCase().includes(city.trim().toLowerCase()));
-
-  // The URL is the authority. Going back to a previous search has to put that
-  // search back in both fields, or they would go on offering a question the
-  // results no longer answer.
-  useEffect(() => {
-    setTerm(current.q ?? "");
-    setCity(current.city ?? "");
-    setOpen(null);
-  }, [current.q, current.city]);
-
-  /**
-   * Closing hands focus back to the button that opened the field, because the
-   * control the reader is standing on is about to stop existing.
-   */
-  const close = () => {
-    const back = open === "q" ? termButton : cityButton;
-    setOpen(null);
-    // After the swap, not before: the button does not exist yet at this point.
-    queueMicrotask(() => back.current?.focus());
-  };
-
-  /**
-   * The drafts, written to the URL.
-   *
-   * Shared by the card and the sheet, which are the same search asked at two
-   * widths — two copies of this is how one of them starts dropping a
-   * parameter the other keeps.
-   */
-  const apply = () => {
-    setOpen(null);
-    void navigate({
-      to: "/providers",
-      // Both fields, from the drafts. Either may have been edited without the
-      // other being submitted first.
-      search: directorySearch(current, {
-        q: term.trim() || undefined,
-        city: city.trim() || undefined,
-        offset: undefined,
-      }),
-    });
-  };
-
-  const submit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    apply();
-  };
-
-  const onEscape = (event: { key: string; preventDefault: () => void }) => {
-    if (event.key === "Escape") {
-      event.preventDefault();
-      close();
-    }
-  };
 
   return (
-    <>
-      <BrowseSearchCard
-        onSubmit={submit}
-        action={
-          <button type="submit" className={SEARCH_SUBMIT_CLASS}>
-            <Search className="h-4 w-4" aria-hidden="true" />
-            {t("searchSubmit")}
-          </button>
-        }
-      >
-        {open === "q" ? (
-          <input
-            type="search"
-            autoFocus
-            value={term}
-            onChange={(e) => setTerm(e.target.value)}
-            onKeyDown={onEscape}
-            aria-label={t("searchFieldProvider")}
-            placeholder={t("searchFieldProviderEmpty")}
-            className="type-body min-w-0 rounded-[var(--radius-card-sm)] bg-[var(--color-surface-raised)] px-4 py-3 outline-none"
-          />
-        ) : (
-          <BrowseSearchField
-            ref={termButton}
-            icon={Search}
-            label={t("searchFieldProvider")}
-            value={term || t("searchFieldProviderEmpty")}
-            onClick={() => setOpen("q")}
-          />
-        )}
-
-        {open === "city" ? (
-          <div className="flex min-w-0 items-center">
-            {/* Visually hidden: the button it replaces carries its own label
-                above the value, and putting a second one here would be the
-                card growing a line it never had at rest. */}
-            <label htmlFor={cityFieldId} className="sr-only">
-              {t("searchFieldCity")}
-            </label>
-            <CitySelect
-              id={cityFieldId}
-              value={city}
-              onChange={setCity}
-              cities={cityOptions}
-              autoFocus
-              placeholder={t("searchFieldCityEmpty")}
-              toggleLabel={t("searchFieldCityToggle")}
-              noResultsText={t("searchFieldCityNoResults")}
-              className="w-full"
-            />
-          </div>
-        ) : (
-          <BrowseSearchField
-            ref={cityButton}
-            icon={MapPin}
-            label={t("searchFieldCity")}
-            value={city || t("searchFieldCityEmpty")}
-            onClick={() => setOpen("city")}
-          />
-        )}
-      </BrowseSearchCard>
-
-      <MobileSearchTrigger
-        label={term || t("searchFieldProviderEmpty")}
-        value={city || t("searchFieldCityEmpty")}
-        onOpen={() => setSheet(true)}
-      />
-
-      {/* Real controls, both of them, rather than the card's click-to-open
-          fields: the sheet is the whole screen, so there is nothing to save by
-          collapsing them and nothing on the card left to shift when they
-          expand. */}
-      <MobileSearchSheet
-        open={sheet}
-        onOpenChange={setSheet}
-        title={t("mobileSearchTitle")}
-        apply={t("mobileSearchApply")}
-        onApply={apply}
-      >
-        <label className="grid gap-1.5">
-          <span className="type-caption font-semibold">{t("searchFieldProvider")}</span>
-          <input
-            type="search"
-            value={term}
-            onChange={(e) => setTerm(e.target.value)}
-            placeholder={t("searchFieldProviderEmpty")}
-            className={MOBILE_SEARCH_FIELD_CLASS}
-          />
-        </label>
-
-        <label className="grid gap-1.5">
-          <span className="type-caption font-semibold">{t("searchFieldCity")}</span>
-          {/* The same `CitySelect` the card uses, and for the same reason the
-              card carries it: a raw `<select>` here still opened the OS's own
-              popup, which is exactly the mismatch a screenshot caught on the
-              card. Wrapped in the `<label>` above rather than given an `id`,
-              like `Provider`'s own input beside it — the label's one labelable
-              descendant is `CitySelect`'s `<input>`, so the association still
-              holds without one. */}
-          <CitySelect
-            value={city}
-            onChange={setCity}
-            cities={cityOptions}
-            placeholder={t("searchFieldCityEmpty")}
-            toggleLabel={t("searchFieldCityToggle")}
-            noResultsText={t("searchFieldCityNoResults")}
-          />
-        </label>
-      </MobileSearchSheet>
-    </>
+    <SearchPill
+      termLabel={t("searchFieldProvider")}
+      termPlaceholder={t("searchFieldProviderEmpty")}
+      cityLabel={t("searchFieldCity")}
+      cityPlaceholder={t("searchFieldCityEmpty")}
+      term={current.q ?? ""}
+      city={current.city ?? ""}
+      cities={cities.map((c) => c.city)}
+      onApply={({ term, city }) =>
+        void navigate({
+          to: "/providers",
+          // Both fields, from the pill's drafts. Either may have been edited
+          // without the other being submitted first, which is why they arrive
+          // together rather than being read back off `current`.
+          search: directorySearch(current, {
+            q: term || undefined,
+            city: city || undefined,
+            offset: undefined,
+          }),
+        })
+      }
+    />
   );
 }
 
-/** One category, as a chip in the rail. */
-function RailChip({
+/** One category, as an item in the strip: its icon over its name. */
+function StripItem({
   search,
   label,
   icon,
@@ -619,26 +409,48 @@ function RailChip({
       to="/providers"
       activeOptions={EXACT_MATCH}
       search={search}
-      className={categoryChipClass(active)}
+      className={categoryItemClass(active)}
     >
-      <span className="inline-flex items-center gap-2">
-        <Icon className="h-4 w-4" aria-hidden="true" />
-        {label}
-      </span>
+      <Icon className="h-6 w-6" strokeWidth={1.5} aria-hidden="true" />
+      <span>{label}</span>
     </Link>
   );
 }
 
 /**
- * A Lucide name from the database, resolved to the component.
+ * One of the phone's quick narrowings.
  *
- * Looked up rather than imported one by one: the set lives in a table an
- * administrator edits, so the code cannot know it at build time. An unknown or
- * missing name falls back to a tag rather than rendering nothing — a rail with
- * a hole in it reads as a broken row, not as a category without an icon.
+ * A link like every other filter on this page, and a toggle like every option
+ * row: tapping the one already on hands back the same search without it, so a
+ * chip comes off the way it went on. `directorySearch` builds the URL, so a
+ * chip cannot drop the term, the category or the order the way a hand-built
+ * search object at this call site would.
  */
-function iconComponent(name: string | null, isAll: boolean) {
-  if (isAll) return Compass;
-  if (!name) return Tag;
-  return icons[name as keyof typeof icons] ?? Tag;
+function QuickChip({
+  current,
+  active,
+  change,
+  label,
+}: {
+  current: DirectorySearch;
+  active: boolean;
+  /** The one parameter this chip writes — or clears, when it is already on. */
+  change: DirectorySearch;
+  label: string;
+}) {
+  return (
+    /* `shrink-0` here as well as on the link: this `<li>` is the flex item
+       `QuickChips` lays out, and it is the one that was being squeezed. */
+    <li className="shrink-0">
+      <Link
+        to="/providers"
+        activeOptions={EXACT_MATCH}
+        search={directorySearch(current, { ...change, offset: undefined })}
+        aria-pressed={active}
+        className={quickChipClass(active)}
+      >
+        {label}
+      </Link>
+    </li>
+  );
 }

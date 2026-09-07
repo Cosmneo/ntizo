@@ -49,4 +49,8 @@ describe("provider GraphQL selections", () => {
   it("BY_SLUG query includes the weekly hours nested selection", () => {
     expect(BY_SLUG).toContain("weeklyHours { weekday intervals { startMinute endMinute } }");
   });
+
+  it("asks for the three services a row prints", () => {
+    expect(PROVIDER_FIELDS).toContain("services { name amountMinor currency pricingMode }");
+  });
 });

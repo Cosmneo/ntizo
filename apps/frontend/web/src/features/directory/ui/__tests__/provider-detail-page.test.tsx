@@ -79,6 +79,7 @@ function provider(over: Partial<ProviderPublicDetailDTO> = {}): ProviderPublicDe
     serviceCount: 3,
     fromAmountMinor: 120000,
     fromCurrency: "MZN",
+    services: [],
     memberSince: "2025-03",
     serviceLocationTypes: ["at_customer"],
     weeklyHours: [

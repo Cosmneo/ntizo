@@ -8,10 +8,8 @@ import { BrandImage } from "@/shared/components/brand-image";
 import { EmptyCard } from "@/shared/components/empty-card";
 import { initialsFrom } from "@/shared/lib/initials";
 import { slotWording } from "@/features/checkout/domain/slot-wording";
-import {
-  formatAmount,
-  formatRating,
-} from "@/features/directory/services/domain/service-card";
+import { formatRating } from "@/shared/domain/rating";
+import { formatAmount } from "@/features/directory/services/domain/service-card";
 import { MessageProviderButton } from "@/features/directory/ui/provider-rail";
 import { useCurrentUser } from "@/features/user/viewmodel/use-current-user";
 import {

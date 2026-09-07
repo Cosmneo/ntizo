@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { Pager } from "../pager";
+import { Pager, pagerPageClass } from "../pager";
 
 const renderPage = (slot: { page: number; offset: number; current: boolean }) => (
   <a
@@ -54,5 +54,19 @@ describe("Pager", () => {
     );
     expect(screen.queryByText("Previous")).not.toBeInTheDocument();
     expect(screen.getByText("Next")).toBeInTheDocument();
+  });
+
+  it("moves only the colours between a current page and the rest", () => {
+    // A number that grew when it became current would shift every number
+    // after it as the reader paged. Both states take `type-body-medium`'s
+    // weight and neither adds a `font-*` of its own.
+    const on = pagerPageClass(true);
+    const off = pagerPageClass(false);
+    for (const size of ["h-9", "min-w-9", "px-2.5", "type-body-medium"]) {
+      expect(on).toContain(size);
+      expect(off).toContain(size);
+    }
+    expect(on).not.toMatch(/font-(bold|semibold|medium)/);
+    expect(off).not.toMatch(/font-(bold|semibold|medium)/);
   });
 });

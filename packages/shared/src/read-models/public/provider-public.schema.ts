@@ -82,6 +82,29 @@ export const providerPublicReadModel = z.object({
   serviceCount: z.number().int().min(0),
 
   /**
+   * The cheapest few things this business sells, so a directory row can say
+   * what it does without the reader opening it.
+   *
+   * Capped at three **here**, not in the client: a row draws three chips and a
+   * "+n", and a model that could return forty would let one business push the
+   * price off every row beside it. `serviceCount` above is still the true
+   * total, and `serviceCount - services.length` is the "+n".
+   *
+   * A quote-priced service has no amount and is skipped rather than sent as a
+   * zero, which a client would print as "0 MZN".
+   */
+  services: z
+    .array(
+      z.object({
+        name: z.string(),
+        amountMinor: z.number().int(),
+        currency: z.string(),
+        pricingMode: z.string(),
+      }),
+    )
+    .max(3),
+
+  /**
    * The cheapest thing this business sells, in minor units — null when it
    * publishes nothing priced.
    *
