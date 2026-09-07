@@ -1,6 +1,4 @@
 {
-  "title": "Pannello di amministrazione Ntizo",
-  "welcome": "Bentornato.",
   "adminConsole": "Amministrazione",
   "nav": {
     "platform": "Piattaforma",
@@ -17,6 +15,50 @@
     "bookings": "Prenotazioni",
     "work": "Lavoro",
     "manage": "Gestire"
+  },
+  "overview": {
+    "greeting": {
+      "morning": "Buongiorno, {{name}}",
+      "afternoon": "Buon pomeriggio, {{name}}",
+      "evening": "Buonasera, {{name}}"
+    },
+    "subtitle": "Cosa ti aspetta, come sono andati gli ultimi 30 giorni e chi si è candidato.",
+    "needsYou": {
+      "disputed": "Contestazioni da decidere",
+      "disputedAction": "Decidere",
+      "providers": "Fornitori da esaminare",
+      "providersAction": "Esaminare",
+      "support": "Richieste di assistenza aperte",
+      "supportAction": "Rispondere",
+      "contact": "Messaggi di contatto aperti",
+      "contactAction": "Rispondere"
+    },
+    "bookingsTitle": "Prenotazioni (30 giorni)",
+    "bookingsHint_one": "{{count}} completata",
+    "bookingsHint_other": "{{count}} completate",
+    "bookingsHint_many": "{{count}} completate",
+    "grossTitle": "Importo prenotato (30 giorni)",
+    "grossHint": "Quanto i clienti hanno pagato per lavoro completato.",
+    "commissionTitle": "Commissione guadagnata (30 giorni)",
+    "commissionHint": "La quota di Ntizo sull'importo sopra.",
+    "nothingCompleted": "Ancora niente di completato negli ultimi 30 giorni.",
+    "newProvidersTitle": "Nuovi fornitori (30 giorni)",
+    "chartTitle": "Richieste e conferme",
+    "chartRange": "Ultimi 30 giorni, in tutti gli spazi di lavoro",
+    "chartRequests": "Richieste",
+    "chartConfirmed": "Confermate",
+    "chartEmpty": "Nessuna attività negli ultimi 30 giorni.",
+    "chartTableDay": "Giorno",
+    "chartDayLabel": "{{date}} · richieste {{requests}} · confermate {{confirmed}}",
+    "applicationsTitle": "Ultime candidature",
+    "applicationsAll": "Vedi tutti i fornitori",
+    "applicationsBusiness": "Attività",
+    "applicationsStatus": "Stato",
+    "applicationsApplied": "Candidatura",
+    "applicationsEmptyTitle": "Ancora nessuna candidatura",
+    "applicationsEmpty": "Le attività che completano la registrazione compaiono qui.",
+    "loadError": "Impossibile caricare i numeri.",
+    "retry": "Riprova"
   },
   "providersTitle": "Operatori",
   "providersSubtitle": "Tutte le attività della piattaforma.",

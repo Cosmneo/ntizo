@@ -1,6 +1,4 @@
 {
-  "title": "Ntizo Admin-Dashboard",
-  "welcome": "Willkommen zurück.",
   "adminConsole": "Administration",
   "nav": {
     "platform": "Plattform",
@@ -17,6 +15,50 @@
     "bookings": "Buchungen",
     "work": "Arbeit",
     "manage": "Verwalten"
+  },
+  "overview": {
+    "greeting": {
+      "morning": "Guten Morgen, {{name}}",
+      "afternoon": "Guten Tag, {{name}}",
+      "evening": "Guten Abend, {{name}}"
+    },
+    "subtitle": "Was auf Sie wartet, wie die letzten 30 Tage liefen und wer sich beworben hat.",
+    "needsYou": {
+      "disputed": "Zu entscheidende Reklamationen",
+      "disputedAction": "Entscheiden",
+      "providers": "Anbieter zur Prüfung",
+      "providersAction": "Prüfen",
+      "support": "Offene Supportanfragen",
+      "supportAction": "Antworten",
+      "contact": "Offene Kontaktnachrichten",
+      "contactAction": "Antworten"
+    },
+    "bookingsTitle": "Buchungen (30 Tage)",
+    "bookingsHint_one": "{{count}} abgeschlossen",
+    "bookingsHint_other": "{{count}} abgeschlossen",
+    "bookingsHint_many": "{{count}} abgeschlossen",
+    "grossTitle": "Gebuchter Umsatz (30 Tage)",
+    "grossHint": "Was Kunden für abgeschlossene Arbeit bezahlt haben.",
+    "commissionTitle": "Verdiente Provision (30 Tage)",
+    "commissionHint": "Ntizos Anteil am obigen Betrag.",
+    "nothingCompleted": "In den letzten 30 Tagen noch nichts abgeschlossen.",
+    "newProvidersTitle": "Neue Anbieter (30 Tage)",
+    "chartTitle": "Anfragen und Bestätigungen",
+    "chartRange": "Letzte 30 Tage, über alle Arbeitsbereiche",
+    "chartRequests": "Anfragen",
+    "chartConfirmed": "Bestätigt",
+    "chartEmpty": "Keine Aktivität in den letzten 30 Tagen.",
+    "chartTableDay": "Tag",
+    "chartDayLabel": "{{date}} · Anfragen {{requests}} · bestätigt {{confirmed}}",
+    "applicationsTitle": "Neueste Bewerbungen",
+    "applicationsAll": "Alle Anbieter ansehen",
+    "applicationsBusiness": "Unternehmen",
+    "applicationsStatus": "Status",
+    "applicationsApplied": "Beworben",
+    "applicationsEmptyTitle": "Noch keine Bewerbungen",
+    "applicationsEmpty": "Unternehmen, die die Registrierung abschließen, erscheinen hier.",
+    "loadError": "Die Zahlen konnten nicht geladen werden.",
+    "retry": "Erneut versuchen"
   },
   "providersTitle": "Anbieter",
   "providersSubtitle": "Alle Betriebe der Plattform.",

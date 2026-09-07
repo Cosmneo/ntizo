@@ -1,6 +1,4 @@
 {
-  "title": "Ntizo Admin Dashboard",
-  "welcome": "Welcome back.",
   "adminConsole": "Admin",
   "nav": {
     "platform": "Platform",
@@ -17,6 +15,50 @@
     "bookings": "Bookings",
     "work": "Work",
     "manage": "Manage"
+  },
+  "overview": {
+    "greeting": {
+      "morning": "Good morning, {{name}}",
+      "afternoon": "Good afternoon, {{name}}",
+      "evening": "Good evening, {{name}}"
+    },
+    "subtitle": "What needs you, how the last 30 days went, and who applied.",
+    "needsYou": {
+      "disputed": "Disputes to decide",
+      "disputedAction": "Decide",
+      "providers": "Providers awaiting review",
+      "providersAction": "Review",
+      "support": "Open support requests",
+      "supportAction": "Answer",
+      "contact": "Contact messages open",
+      "contactAction": "Answer"
+    },
+    "bookingsTitle": "Bookings (30 days)",
+    "bookingsHint_one": "{{count}} completed",
+    "bookingsHint_other": "{{count}} completed",
+    "bookingsHint_many": "{{count}} completed",
+    "grossTitle": "Gross booked (30 days)",
+    "grossHint": "What customers paid for completed work.",
+    "commissionTitle": "Commission earned (30 days)",
+    "commissionHint": "Ntizo's share of the gross.",
+    "nothingCompleted": "Nothing completed in the last 30 days yet.",
+    "newProvidersTitle": "New providers (30 days)",
+    "chartTitle": "Requests and confirmations",
+    "chartRange": "Last 30 days, across every workspace",
+    "chartRequests": "Requests",
+    "chartConfirmed": "Confirmed",
+    "chartEmpty": "No activity in the last 30 days.",
+    "chartTableDay": "Day",
+    "chartDayLabel": "{{date}} · requests {{requests}} · confirmed {{confirmed}}",
+    "applicationsTitle": "Latest applications",
+    "applicationsAll": "See all providers",
+    "applicationsBusiness": "Business",
+    "applicationsStatus": "Status",
+    "applicationsApplied": "Applied",
+    "applicationsEmptyTitle": "No applications yet",
+    "applicationsEmpty": "Businesses that finish signing up appear here.",
+    "loadError": "Could not load the numbers.",
+    "retry": "Try again"
   },
   "providersTitle": "Providers",
   "providersSubtitle": "Every business on the platform.",

@@ -1,6 +1,4 @@
 {
-  "title": "Tableau de bord d'administration Ntizo",
-  "welcome": "Bon retour.",
   "adminConsole": "Administration",
   "nav": {
     "platform": "Plateforme",
@@ -17,6 +15,50 @@
     "bookings": "Réservations",
     "work": "Travail",
     "manage": "Gérer"
+  },
+  "overview": {
+    "greeting": {
+      "morning": "Bonjour, {{name}}",
+      "afternoon": "Bon après-midi, {{name}}",
+      "evening": "Bonsoir, {{name}}"
+    },
+    "subtitle": "Ce qui vous attend, les 30 derniers jours et les nouvelles candidatures.",
+    "needsYou": {
+      "disputed": "Litiges à trancher",
+      "disputedAction": "Trancher",
+      "providers": "Prestataires à examiner",
+      "providersAction": "Examiner",
+      "support": "Demandes d'assistance ouvertes",
+      "supportAction": "Répondre",
+      "contact": "Messages de contact ouverts",
+      "contactAction": "Répondre"
+    },
+    "bookingsTitle": "Réservations (30 jours)",
+    "bookingsHint_one": "{{count}} terminée",
+    "bookingsHint_other": "{{count}} terminées",
+    "bookingsHint_many": "{{count}} terminées",
+    "grossTitle": "Montant réservé (30 jours)",
+    "grossHint": "Ce que les clients ont payé pour le travail terminé.",
+    "commissionTitle": "Commission perçue (30 jours)",
+    "commissionHint": "La part de Ntizo sur le montant ci-dessus.",
+    "nothingCompleted": "Rien de terminé ces 30 derniers jours pour l'instant.",
+    "newProvidersTitle": "Nouveaux prestataires (30 jours)",
+    "chartTitle": "Demandes et confirmations",
+    "chartRange": "30 derniers jours, tous espaces confondus",
+    "chartRequests": "Demandes",
+    "chartConfirmed": "Confirmées",
+    "chartEmpty": "Aucune activité ces 30 derniers jours.",
+    "chartTableDay": "Jour",
+    "chartDayLabel": "{{date}} · demandes {{requests}} · confirmées {{confirmed}}",
+    "applicationsTitle": "Dernières candidatures",
+    "applicationsAll": "Voir tous les prestataires",
+    "applicationsBusiness": "Entreprise",
+    "applicationsStatus": "Statut",
+    "applicationsApplied": "Candidature",
+    "applicationsEmptyTitle": "Pas encore de candidature",
+    "applicationsEmpty": "Les entreprises qui terminent leur inscription apparaissent ici.",
+    "loadError": "Impossible de charger les chiffres.",
+    "retry": "Réessayer"
   },
   "providersTitle": "Prestataires",
   "providersSubtitle": "Toutes les entreprises de la plateforme.",

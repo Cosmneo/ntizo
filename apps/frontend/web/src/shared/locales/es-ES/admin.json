@@ -1,6 +1,4 @@
 {
-  "title": "Panel de administración de Ntizo",
-  "welcome": "Bienvenido de nuevo.",
   "adminConsole": "Administración",
   "nav": {
     "platform": "Plataforma",
@@ -17,6 +15,50 @@
     "bookings": "Reservas",
     "work": "Trabajo",
     "manage": "Gestionar"
+  },
+  "overview": {
+    "greeting": {
+      "morning": "Buenos días, {{name}}",
+      "afternoon": "Buenas tardes, {{name}}",
+      "evening": "Buenas noches, {{name}}"
+    },
+    "subtitle": "Qué necesita de ti, cómo fueron los últimos 30 días y quién se ha inscrito.",
+    "needsYou": {
+      "disputed": "Reclamaciones por decidir",
+      "disputedAction": "Decidir",
+      "providers": "Proveedores por revisar",
+      "providersAction": "Revisar",
+      "support": "Solicitudes de soporte abiertas",
+      "supportAction": "Responder",
+      "contact": "Mensajes de contacto abiertos",
+      "contactAction": "Responder"
+    },
+    "bookingsTitle": "Reservas (30 días)",
+    "bookingsHint_one": "{{count}} completada",
+    "bookingsHint_other": "{{count}} completadas",
+    "bookingsHint_many": "{{count}} completadas",
+    "grossTitle": "Importe reservado (30 días)",
+    "grossHint": "Lo que los clientes pagaron por trabajo completado.",
+    "commissionTitle": "Comisión ganada (30 días)",
+    "commissionHint": "La parte de Ntizo del importe anterior.",
+    "nothingCompleted": "Todavía nada completado en los últimos 30 días.",
+    "newProvidersTitle": "Nuevos proveedores (30 días)",
+    "chartTitle": "Solicitudes y confirmaciones",
+    "chartRange": "Últimos 30 días, en todos los espacios de trabajo",
+    "chartRequests": "Solicitudes",
+    "chartConfirmed": "Confirmadas",
+    "chartEmpty": "Sin actividad en los últimos 30 días.",
+    "chartTableDay": "Día",
+    "chartDayLabel": "{{date}} · solicitudes {{requests}} · confirmadas {{confirmed}}",
+    "applicationsTitle": "Últimas inscripciones",
+    "applicationsAll": "Ver todos los proveedores",
+    "applicationsBusiness": "Negocio",
+    "applicationsStatus": "Estado",
+    "applicationsApplied": "Inscrito",
+    "applicationsEmptyTitle": "Todavía sin inscripciones",
+    "applicationsEmpty": "Los negocios que terminan el registro aparecen aquí.",
+    "loadError": "No se pudieron cargar los números.",
+    "retry": "Reintentar"
   },
   "providersTitle": "Proveedores",
   "providersSubtitle": "Todos los negocios de la plataforma.",

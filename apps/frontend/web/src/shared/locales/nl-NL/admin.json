@@ -1,6 +1,4 @@
 {
-  "title": "Ntizo-beheerdashboard",
-  "welcome": "Welkom terug.",
   "adminConsole": "Beheer",
   "nav": {
     "platform": "Platform",
@@ -17,6 +15,50 @@
     "bookings": "Boekingen",
     "work": "Werk",
     "manage": "Beheren"
+  },
+  "overview": {
+    "greeting": {
+      "morning": "Goedemorgen, {{name}}",
+      "afternoon": "Goedemiddag, {{name}}",
+      "evening": "Goedenavond, {{name}}"
+    },
+    "subtitle": "Wat op u wacht, hoe de laatste 30 dagen gingen en wie zich heeft aangemeld.",
+    "needsYou": {
+      "disputed": "Geschillen om te beslissen",
+      "disputedAction": "Beslissen",
+      "providers": "Aanbieders ter beoordeling",
+      "providersAction": "Beoordelen",
+      "support": "Open supportverzoeken",
+      "supportAction": "Beantwoorden",
+      "contact": "Open contactberichten",
+      "contactAction": "Beantwoorden"
+    },
+    "bookingsTitle": "Boekingen (30 dagen)",
+    "bookingsHint_one": "{{count}} afgerond",
+    "bookingsHint_other": "{{count}} afgerond",
+    "bookingsHint_many": "{{count}} afgerond",
+    "grossTitle": "Geboekt bedrag (30 dagen)",
+    "grossHint": "Wat klanten betaalden voor afgerond werk.",
+    "commissionTitle": "Verdiende commissie (30 dagen)",
+    "commissionHint": "Het aandeel van Ntizo in het bedrag hierboven.",
+    "nothingCompleted": "Nog niets afgerond in de laatste 30 dagen.",
+    "newProvidersTitle": "Nieuwe aanbieders (30 dagen)",
+    "chartTitle": "Aanvragen en bevestigingen",
+    "chartRange": "Laatste 30 dagen, over alle werkruimten",
+    "chartRequests": "Aanvragen",
+    "chartConfirmed": "Bevestigd",
+    "chartEmpty": "Geen activiteit in de laatste 30 dagen.",
+    "chartTableDay": "Dag",
+    "chartDayLabel": "{{date}} · aanvragen {{requests}} · bevestigd {{confirmed}}",
+    "applicationsTitle": "Nieuwste aanmeldingen",
+    "applicationsAll": "Alle aanbieders bekijken",
+    "applicationsBusiness": "Bedrijf",
+    "applicationsStatus": "Status",
+    "applicationsApplied": "Aangemeld",
+    "applicationsEmptyTitle": "Nog geen aanmeldingen",
+    "applicationsEmpty": "Bedrijven die de registratie afronden verschijnen hier.",
+    "loadError": "De cijfers konden niet worden geladen.",
+    "retry": "Opnieuw proberen"
   },
   "providersTitle": "Aanbieders",
   "providersSubtitle": "Alle bedrijven op het platform.",
