@@ -8,3 +8,4 @@ export * from "./provider-enums";
 export * from "./wallet-enums";
 export * from "./contact-enums";
 export * from "./activity-enums";
+export * from "./quote-enums";

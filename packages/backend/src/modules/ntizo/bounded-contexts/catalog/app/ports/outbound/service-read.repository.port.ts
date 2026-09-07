@@ -144,6 +144,13 @@ export interface ServiceDetailRow extends Omit<ServicePublicRow, "providerReview
   providerDistrict: string | null;
   /** Active options only, cheapest first. */
   options: ServiceDetailOptionRow[];
+  /**
+   * What this provider asks a customer who wants a price, and what they
+   * promise back — the same shape `ServiceOwnerRow` already carries for the
+   * provider's own screen. Null for a priced service, which has no form at
+   * all: nothing here ever fabricates one.
+   */
+  quoteForm: ServiceOwnerQuoteFormRow | null;
   /** `provider_member.id`s who perform this service. */
   memberIds: string[];
 }

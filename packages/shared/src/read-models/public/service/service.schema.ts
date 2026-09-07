@@ -225,6 +225,21 @@ export const serviceDetailReadModel = z.object({
   imageUrls: z.array(z.string()),
   /** Every active option, cheapest first. Empty for a `quote` service. */
   options: z.array(serviceDetailOptionReadModel),
+  /**
+   * What this provider asks a customer who wants a price, and what they
+   * promise back. Null for a priced service. It is the provider's own
+   * configuration and has always been theirs to publish — the page that shows
+   * "responde em 48 h" is the first thing to read it.
+   */
+  quoteForm: z
+    .object({
+      responseHours: z.number().int(),
+      askDeadline: z.boolean(),
+      askPhotos: z.boolean(),
+      askLocation: z.boolean(),
+      intro: z.string().nullable(),
+    })
+    .nullable(),
   performers: z.array(servicePerformerReadModel),
   isFallback: z.boolean(),
 });

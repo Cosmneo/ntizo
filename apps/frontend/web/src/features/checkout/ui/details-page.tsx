@@ -170,7 +170,7 @@ export function DetailsPage({ bookingId }: { bookingId: string }) {
       void navigate({
         to: "/book/$serviceId",
         params: { serviceId: booking.serviceId },
-        search: { expired: true, optionId: booking.serviceOptionId },
+        search: { expired: true, optionId: booking.serviceOptionId ?? undefined },
         replace: true,
       });
       return;
@@ -365,7 +365,7 @@ function Details({ booking }: { booking: CheckoutBooking }) {
     void navigate({
       to: "/book/$serviceId",
       params: { serviceId: booking.serviceId },
-      search: { optionId: booking.serviceOptionId },
+      search: { optionId: booking.serviceOptionId ?? undefined },
     });
   }
 
@@ -437,7 +437,7 @@ function Details({ booking }: { booking: CheckoutBooking }) {
         <Link
           to="/book/$serviceId"
           params={{ serviceId: booking.serviceId }}
-          search={{ optionId: booking.serviceOptionId }}
+          search={{ optionId: booking.serviceOptionId ?? undefined }}
           className="type-caption inline-flex items-center gap-1.5 text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]"
         >
           <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
@@ -783,7 +783,7 @@ function Details({ booking }: { booking: CheckoutBooking }) {
                   <CheckoutCountdown
                     expiresAt={booking.expiresAt}
                     serviceId={booking.serviceId}
-                    optionId={booking.serviceOptionId}
+                    optionId={booking.serviceOptionId ?? undefined}
                   />
                 ) : undefined
               }

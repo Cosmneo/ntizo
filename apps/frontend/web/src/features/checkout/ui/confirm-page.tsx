@@ -139,7 +139,7 @@ export function ConfirmPage({ bookingId }: { bookingId: string }) {
       void navigate({
         to: "/book/$serviceId",
         params: { serviceId: booking.serviceId },
-        search: { expired: true, optionId: booking.serviceOptionId },
+        search: { expired: true, optionId: booking.serviceOptionId ?? undefined },
         replace: true,
       });
       return;
@@ -290,7 +290,7 @@ function Confirm({ booking }: { booking: CheckoutBooking }) {
     void navigate({
       to: "/book/$serviceId",
       params: { serviceId: booking.serviceId },
-      search: { optionId: booking.serviceOptionId },
+      search: { optionId: booking.serviceOptionId ?? undefined },
     });
   }
 
@@ -538,7 +538,7 @@ function Confirm({ booking }: { booking: CheckoutBooking }) {
                     <CheckoutCountdown
                       expiresAt={booking.expiresAt}
                       serviceId={booking.serviceId}
-                      optionId={booking.serviceOptionId}
+                      optionId={booking.serviceOptionId ?? undefined}
                       sending={request.pending}
                     />
                   ) : undefined

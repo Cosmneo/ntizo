@@ -64,11 +64,12 @@ export const bookingReadModel = z.object({
    * made two sources for one fact: a shared or bookmarked link could name a
    * service that disagreed with the booking, and nothing would notice.
    *
-   * `NOT NULL` on the table, so never null here. A booking without a service
-   * option is not a booking.
+   * `NOT NULL` on the table, so never null here. `serviceOptionId` below is
+   * the one exception — see its own comment.
    */
   serviceId: z.string().min(1),
-  serviceOptionId: z.string().min(1),
+  /** Null on a booking born from a quote: the price is the proposal's, not an option's. Screens render the service name alone in that case. */
+  serviceOptionId: z.string().nullable(),
 
   /**
    * The business this booking is with — identity, on the same terms as the
@@ -142,7 +143,8 @@ export const bookingReadModel = z.object({
   serviceImageUrl: z.string().nullable(),
   providerLogoUrl: z.string().nullable(),
 
-  optionName: z.string(),
+  /** Null on a booking born from a quote: the price is the proposal's, not an option's. Screens render the service name alone in that case. */
+  optionName: z.string().nullable(),
   durationMinutes: z.number().int().positive(),
 
   /**

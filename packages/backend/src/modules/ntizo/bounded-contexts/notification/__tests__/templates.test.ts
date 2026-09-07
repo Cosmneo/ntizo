@@ -13,6 +13,13 @@ import { BY_LOCALE as NEW_MESSAGE_BY_LOCALE, newMessageTemplate } from "../infra
 import { BY_LOCALE as PROVIDER_BOOKING_RECEIVED_BY_LOCALE } from "../infrastructure/templates/provider-booking-received.template";
 import { BY_LOCALE as BOOKING_ACCEPTED_BY_LOCALE } from "../infrastructure/templates/booking-accepted.template";
 import { BY_LOCALE as BOOKING_DECLINED_BY_LOCALE } from "../infrastructure/templates/booking-declined.template";
+import { BY_LOCALE as QUOTE_RECEIVED_BY_LOCALE } from "../infrastructure/templates/quote-received.template";
+import { BY_LOCALE as QUOTE_ACCEPTED_BY_LOCALE } from "../infrastructure/templates/quote-accepted.template";
+import { BY_LOCALE as QUOTE_DECLINED_BY_LOCALE } from "../infrastructure/templates/quote-declined.template";
+import { BY_LOCALE as QUOTE_EXPIRED_BY_LOCALE } from "../infrastructure/templates/quote-expired.template";
+import { BY_LOCALE as PROVIDER_QUOTE_REQUESTED_BY_LOCALE } from "../infrastructure/templates/provider-quote-requested.template";
+import { BY_LOCALE as PROVIDER_QUOTE_ACCEPTED_BY_LOCALE } from "../infrastructure/templates/provider-quote-accepted.template";
+import { BY_LOCALE as PROVIDER_QUOTE_SLOT_TAKEN_BY_LOCALE } from "../infrastructure/templates/provider-quote-slot-taken.template";
 
 const renderer = new LocalTemplateRenderer();
 
@@ -83,6 +90,59 @@ const PAYLOADS: Record<string, Record<string, unknown>> = {
     priceMinor: 80000,
     currency: "MZN",
     reason: "outside_area",
+  },
+  // Matches ProposeQuoteCommand's raiseQuietly call exactly.
+  [NotificationType.QuoteReceived]: {
+    quoteId: "q-1",
+    serviceName: "Instalação de ar condicionado",
+    priceMinor: 980000,
+    currency: "MZN",
+    startsAt: "2026-09-20T09:00:00.000Z",
+    validUntil: "2026-09-10T16:40:00.000Z",
+    revision: false,
+  },
+  // Matches AcceptQuoteCommand's customer-facing raiseQuietly call exactly.
+  [NotificationType.QuoteAccepted]: {
+    quoteId: "q-1",
+    bookingId: "bk-1",
+    serviceName: "Instalação de ar condicionado",
+    priceMinor: 980000,
+    currency: "MZN",
+    payBy: "2026-09-07T09:15:00.000Z",
+  },
+  // Matches DeclineQuoteCommand's raiseQuietly call exactly.
+  [NotificationType.QuoteDeclined]: {
+    quoteId: "q-1",
+    reason: "outside_area",
+    note: null,
+  },
+  // Matches SweepQuoteCommand's customer-facing raiseQuietly call exactly.
+  [NotificationType.QuoteExpired]: {
+    quoteId: "q-1",
+    serviceName: "Instalação de ar condicionado",
+    cause: "provider_did_not_respond",
+  },
+  // Matches RequestQuoteCommand's raiseQuietly call exactly.
+  [NotificationType.ProviderQuoteRequested]: {
+    quoteId: "q-1",
+    serviceName: "Instalação de ar condicionado",
+    respondBy: "2026-09-09T09:00:00.000Z",
+    neededBy: "2026-09-20",
+  },
+  // Matches AcceptQuoteCommand's provider-facing raiseQuietly call exactly.
+  [NotificationType.ProviderQuoteAccepted]: {
+    quoteId: "q-1",
+    bookingId: "bk-1",
+    serviceName: "Instalação de ar condicionado",
+    priceMinor: 980000,
+    currency: "MZN",
+    startsAt: "2026-09-20T09:00:00.000Z",
+  },
+  // Matches MarkProposalStaleInternalCommand's raiseQuietly call exactly.
+  [NotificationType.ProviderQuoteSlotTaken]: {
+    quoteId: "q-1",
+    serviceName: "Instalação de ar condicionado",
+    respondBy: "2026-09-09T09:00:00.000Z",
   },
 };
 
@@ -264,6 +324,13 @@ describe("every template's locale table actually has all eight keys", () => {
     [NotificationType.ProviderBookingReceived]: PROVIDER_BOOKING_RECEIVED_BY_LOCALE,
     [NotificationType.BookingAccepted]: BOOKING_ACCEPTED_BY_LOCALE,
     [NotificationType.BookingDeclined]: BOOKING_DECLINED_BY_LOCALE,
+    [NotificationType.QuoteReceived]: QUOTE_RECEIVED_BY_LOCALE,
+    [NotificationType.QuoteAccepted]: QUOTE_ACCEPTED_BY_LOCALE,
+    [NotificationType.QuoteDeclined]: QUOTE_DECLINED_BY_LOCALE,
+    [NotificationType.QuoteExpired]: QUOTE_EXPIRED_BY_LOCALE,
+    [NotificationType.ProviderQuoteRequested]: PROVIDER_QUOTE_REQUESTED_BY_LOCALE,
+    [NotificationType.ProviderQuoteAccepted]: PROVIDER_QUOTE_ACCEPTED_BY_LOCALE,
+    [NotificationType.ProviderQuoteSlotTaken]: PROVIDER_QUOTE_SLOT_TAKEN_BY_LOCALE,
   };
 
   for (const [type, table] of Object.entries(TABLES)) {
