@@ -6,7 +6,6 @@ import { LayoutGrid, SearchX } from "lucide-react";
 import { EmptyCard } from "@/shared/components/empty-card";
 import { SiteHeader } from "@/shared/components/site-header";
 import { SortDropdown } from "@/shared/components/browse/sort-dropdown";
-import { QuickChips, quickChipClass } from "@/shared/components/browse/quick-chips";
 import { PAGER_EDGE_CLASS, Pager, pagerPageClass } from "@/shared/components/browse/pager";
 import { EXACT_MATCH } from "@/shared/components/browse/active-match";
 // Categories are platform data that happens to be fetched under `landing/`.
@@ -241,49 +240,6 @@ export function ServicesBrowsePage() {
 
         <ServiceFilters current={current} />
 
-        {/* The phone's two or three narrowings, one tap each, above the results
-            they narrow — the pills are a toolbar and a toolbar does not fit a
-            thumb. Hidden exactly where the floating capsule is hidden, so a
-            reader is never offered both.
-
-            Not drawn over an empty platform: three ways to narrow nothing,
-            under a sentence saying nothing is published, offers a reader work
-            that cannot help them. They stay on an empty *search*, because
-            there they are one tap out of it. */}
-        {(page.items.length > 0 || isNarrowed) && (
-          <div className="pb-5 lg:hidden">
-            <QuickChips label={t("quickChipsLabel")}>
-              <QuickChip
-                current={current}
-                active={current.paymentMode === "fixed"}
-                change={{ paymentMode: current.paymentMode === "fixed" ? undefined : "fixed" }}
-                label={t("filterPaymentOption.fixed")}
-              />
-              <QuickChip
-                current={current}
-                active={current.locationType === "at_customer"}
-                change={{
-                  locationType: current.locationType === "at_customer" ? undefined : "at_customer",
-                }}
-                label={t("filterWhereOption.at_customer")}
-              />
-              <QuickChip
-                current={current}
-                active={current.maxPrice === QUICK_MAX_PRICE}
-                change={{
-                  maxPrice: current.maxPrice === QUICK_MAX_PRICE ? undefined : QUICK_MAX_PRICE,
-                }}
-                // The amount is money, so it is formatted as money — the same
-                // function and the same locale the tiles print their prices
-                // with, rather than a bare number the reader has to guess a
-                // currency for.
-                label={t("quickChipMaxPrice", {
-                  amount: formatHeadlinePrice(QUICK_MAX_PRICE * 100, DEFAULT_CURRENCY, locale),
-                })}
-              />
-            </QuickChips>
-          </div>
-        )}
 
         {page.items.length === 0 ? (
           // Two different sentences, because they are two different
@@ -436,62 +392,3 @@ function serviceListing(service: ServiceDTO, t: TFunction, locale: string) {
   };
 }
 
-/**
- * The currency the phone's price chip is written in.
- *
- * The one price on this page that does not come from data: every amount on a
- * tile carries its own service's currency, and this chip is a threshold the
- * page invents, so it has no row to take one from. Mozambique is a
- * single-currency market and `MZN` is right today; the day a second one is
- * listed, this constant is where the page has to start asking somebody.
- */
-const DEFAULT_CURRENCY = "MZN";
-
-/**
- * The ceiling the phone's price chip offers, in whole meticais.
- *
- * One number rather than a range, because a quick filter is one tap: the chip
- * says "Até 1 000 MZN" and taps off again. Whole units, which is what the URL
- * and `PriceRangeFilter`'s own boxes carry — the chip's own label multiplies
- * by 100 for `formatHeadlinePrice`, which speaks minor units like every price
- * on a tile, rather than the two being written out separately and drifting.
- */
-const QUICK_MAX_PRICE = 1000;
-
-/**
- * One of the phone's quick narrowings.
- *
- * A link like every other filter on this page, and a toggle like every option
- * row: tapping the one already on hands back the same search without it, so a
- * chip comes off the way it went on. `browseSearch` builds the URL, so a chip
- * cannot drop the term, the category or the order the way a hand-built search
- * object at this call site would.
- */
-function QuickChip({
-  current,
-  active,
-  change,
-  label,
-}: {
-  current: BrowseSearch;
-  active: boolean;
-  /** The one parameter this chip writes — or clears, when it is already on. */
-  change: BrowseSearch;
-  label: string;
-}) {
-  return (
-    /* `shrink-0` here as well as on the link: this `<li>` is the flex item
-       `QuickChips` lays out, and it is the one that was being squeezed. */
-    <li className="shrink-0">
-      <Link
-        to="/services"
-        activeOptions={EXACT_MATCH}
-        search={browseSearch(current, { ...change, offset: undefined })}
-        aria-pressed={active}
-        className={quickChipClass(active)}
-      >
-        {label}
-      </Link>
-    </li>
-  );
-}

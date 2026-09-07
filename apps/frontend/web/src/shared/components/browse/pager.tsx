@@ -72,8 +72,8 @@ export function Pager({
  *
  * Only the colours move between the two states, never the size — a number
  * that grew when it became current would shift every number after it as the
- * reader paged, which is the same rule `quickChipClass` and
- * `facetOptionClass` follow. The weight is the size: both states take
+ * reader paged, which is the same rule `facetOptionClass` and
+ * `FilterPill`'s own summary follow. The weight is the size: both states take
  * `type-body-medium`'s 500 and neither adds a `font-*` of its own, which is
  * what the `font-bold` on the current page was quietly breaking.
  */

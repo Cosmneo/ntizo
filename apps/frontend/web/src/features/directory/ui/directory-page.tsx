@@ -7,10 +7,8 @@ import type { ProviderPublicDTO } from "@ntizo/shared";
 import { EmptyCard } from "@/shared/components/empty-card";
 import { SiteHeader } from "@/shared/components/site-header";
 import { SortDropdown } from "@/shared/components/browse/sort-dropdown";
-import { QuickChips, quickChipClass } from "@/shared/components/browse/quick-chips";
 import { PAGER_EDGE_CLASS, Pager, pagerPageClass } from "@/shared/components/browse/pager";
 import { EXACT_MATCH } from "@/shared/components/browse/active-match";
-import { formatRating } from "@/shared/domain/rating";
 import { formatHeadlinePrice } from "@/features/directory/services/domain/service-card";
 // Categories are platform data that happens to be fetched under `landing/`.
 // Reached through its viewmodel rather than its repository — `ui` may not
@@ -38,7 +36,6 @@ import { DIRECTORY_PAGE_SIZE } from "@/features/directory/domain/provider-listin
 import {
   directorySearch,
   type DirectorySearch,
-  type RatingThreshold,
 } from "@/features/directory/domain/directory-search";
 import { directoryTitle } from "@/features/directory/domain/directory-title";
 import { resultsScope, scopeValues } from "@/features/directory/domain/results-scope";
@@ -242,60 +239,6 @@ export function DirectoryPage() {
 
         <ProviderFilters current={current} />
 
-        {/* The phone's four narrowings, one tap each, above the results they
-            narrow — the pills are a toolbar and a toolbar does not fit a
-            thumb. Hidden exactly where the floating capsule is hidden, so a
-            reader is never offered both.
-
-            Not drawn over an empty platform: four ways to narrow nothing,
-            under a sentence saying nobody is listed, offers a reader work
-            that cannot help them. They stay on an empty *search*, because
-            there they are one tap out of it. */}
-        {(page.items.length > 0 || isNarrowed) && (
-          <div className="pb-5 lg:hidden">
-            <QuickChips label={t("quickChipsLabel")}>
-              <QuickChip
-                current={current}
-                active={current.verified === true}
-                // `verified: false` is never written — `directorySearch` drops
-                // it — so taking the chip off is taking the parameter off.
-                change={{ verified: current.verified === true ? undefined : true }}
-                label={t("filterVerifiedOnly")}
-              />
-              <QuickChip
-                current={current}
-                active={current.minRating === QUICK_MIN_RATING}
-                change={{
-                  minRating: current.minRating === QUICK_MIN_RATING ? undefined : QUICK_MIN_RATING,
-                }}
-                // The threshold is a decimal, so it is written the way this
-                // reader writes decimals — the same function the rating pill
-                // formats its own rows with, rather than a "4.5" hard-coded
-                // for one of the eight languages the platform ships.
-                label={t("filterRatingOption", {
-                  score: formatRating(QUICK_MIN_RATING, locale),
-                })}
-              />
-              <QuickChip
-                current={current}
-                active={current.providerType === "individual"}
-                change={{
-                  providerType: current.providerType === "individual" ? undefined : "individual",
-                }}
-                label={t("filterProviderKindOption.individual")}
-              />
-              <QuickChip
-                current={current}
-                active={current.providerType === "organization"}
-                change={{
-                  providerType:
-                    current.providerType === "organization" ? undefined : "organization",
-                }}
-                label={t("filterProviderKindOption.organization")}
-              />
-            </QuickChips>
-          </div>
-        )}
 
         {page.items.length === 0 ? (
           // Two different sentences, because they are two different
@@ -424,16 +367,6 @@ export function DirectoryPage() {
 }
 
 /**
- * The threshold the phone's rating chip offers.
- *
- * One of `RATING_THRESHOLDS` rather than a number of its own: a quick filter
- * is one tap onto a value the rating pill also offers, so tapping the chip and
- * picking the pill's top row have to write the same URL, and the chip has to
- * come back on when the pill was used instead.
- */
-const QUICK_MIN_RATING: RatingThreshold = 4.5;
-
-/**
  * What the dialog draws down its left panel: this business, said the way the
  * card beside it says it.
  *
@@ -469,40 +402,3 @@ function providerListing(provider: ProviderPublicDTO, t: TFunction, locale: stri
   };
 }
 
-/**
- * One of the phone's quick narrowings.
- *
- * A link like every other filter on this page, and a toggle like every option
- * row: tapping the one already on hands back the same search without it, so a
- * chip comes off the way it went on. `directorySearch` builds the URL, so a
- * chip cannot drop the term, the category or the order the way a hand-built
- * search object at this call site would.
- */
-function QuickChip({
-  current,
-  active,
-  change,
-  label,
-}: {
-  current: DirectorySearch;
-  active: boolean;
-  /** The one parameter this chip writes — or clears, when it is already on. */
-  change: DirectorySearch;
-  label: string;
-}) {
-  return (
-    /* `shrink-0` here as well as on the link: this `<li>` is the flex item
-       `QuickChips` lays out, and it is the one that was being squeezed. */
-    <li className="shrink-0">
-      <Link
-        to="/providers"
-        activeOptions={EXACT_MATCH}
-        search={directorySearch(current, { ...change, offset: undefined })}
-        aria-pressed={active}
-        className={quickChipClass(active)}
-      >
-        {label}
-      </Link>
-    </li>
-  );
-}
