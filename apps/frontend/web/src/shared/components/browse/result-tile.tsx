@@ -44,8 +44,27 @@ export const TILE_TITLE_LINK_CLASS =
  * placeholder in, behind a photo that will never arrive: navy there was a dark
  * box flashing in front of the placeholder's pale blue, on exactly the slow
  * connections this list is read on.
+ *
+ * **It is also where the favourite goes**, which is why this box and not the
+ * tile is the slot's home: the box is already the positioning context the
+ * heart places itself against, and it is the same box whether the listing has
+ * a photograph or the site's placeholder — so the control does not move
+ * depending on whether a business uploaded a picture. Putting the heart in
+ * the tile instead would mean positioning it against the `<article>`, whose
+ * top-right corner below `sm` is the *text* column.
  */
-export function TileMedia({ src }: { src: string | null }) {
+export function TileMedia({
+  src,
+  favourite,
+}: {
+  src: string | null;
+  /**
+   * The heart, or nothing. A node rather than a `saved` flag because the
+   * marks for a whole page come from one query in the page — see
+   * `useFavouriteMarks` — and this component knows nothing about sessions.
+   */
+  favourite?: ReactNode;
+}) {
   return (
     <div
       className={cn(
@@ -67,6 +86,7 @@ export function TileMedia({ src }: { src: string | null }) {
         alt=""
         className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.035]"
       />
+      {favourite}
     </div>
   );
 }

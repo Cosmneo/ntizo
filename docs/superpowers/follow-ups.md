@@ -4743,3 +4743,47 @@ and would make that check permanent.
 
 **Trigger:** the next read model that is not a plain object — a union, a recursive type, or anything
 the kit has to name rather than mirror.
+
+## #214 — `--color-destructive` fails contrast as text, in 110 places
+
+`globals.css:54` defines it as `#ee4040`, which is **3.86:1** on white — under the 4.5:1 AA
+threshold for small text. It is used **110 times as `text-[var(--color-destructive)]` across 74
+files**: every error line in bookings, checkout, auth, help-center, provider and all seven admin
+surfaces. Line 152 redefines it as `#ef4444` for dark, which computes around 5.2:1 on the dark
+ground, so this is light-mode only.
+
+The favourites dialog's new "We couldn't save that change" line is the 110th instance. It was
+shipped deliberately rather than deviated locally: making one refusal message a different red from
+the other 109 would leave the defect everywhere and add an inconsistency on top, and a hardcoded
+red would lose the correct dark-mode value the token already carries.
+
+The fix is at the token: darken light-mode `--color-destructive` toward `#d32f2f` (4.98:1), or add
+a `--color-destructive-text` and repoint the text usages while `#ee4040` keeps serving surfaces,
+borders and `color-mix` tints. Either way it wants a visual pass, not a search and replace.
+
+**The same defect exists for `--color-success`** (`#21b872`, 2.57:1 on white), still used as text in
+`bookings/ui/booking-page.tsx:476`, `directory/services/ui/service-row.tsx:117` and
+`packages/frontend/src/components/badge.tsx:24`. The favourites dialog's confirmation line was
+fixed locally because that one was a regression against an explicitly approved mockup colour; these
+three are not, and belong with the token pass.
+
+**Trigger:** the first accessibility audit, or any work that touches the palette — do both tokens
+in one pass.
+
+## #215 — The save dialog's alert and footer can contradict each other
+
+`save-to-list-dialog.tsx:370` (the write-failed alert) and `:390` (the footer). `writeError` is
+independent of `selected`, and the footer's branch keys off `picked` — the reader's intent, not the
+server's answer. So a reader who unticks their last list and whose write then fails sees "We
+couldn't save that change. Try again in a moment." directly above "**No longer saved.** Tick a list
+to save it again.", one of which is false, while the heart behind the dialog has already refilled.
+
+Strictly better than the behaviour it replaced, where the footer lied silently; and the alert is
+`role="alert"`, assertive and immediately above, so it is the one that gets read. One line closes
+it: gate the footer on `!writeFailed`, or move the alert into the footer so the two cannot coexist.
+
+This is the third instance of one defect shape in this dialog — two lines about the same state,
+each true about a different source. The first two were fixed in the final review's wave; this one
+was found by its re-review and deliberately not turned into a second wave.
+
+**Trigger:** the next change to this dialog, or Task 12, which reuses its list rows.

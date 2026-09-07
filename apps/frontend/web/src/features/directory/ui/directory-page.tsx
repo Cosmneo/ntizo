@@ -1,6 +1,9 @@
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { SearchX, Store } from "lucide-react";
+import type { ProviderPublicDTO } from "@ntizo/shared";
 import { EmptyCard } from "@/shared/components/empty-card";
 import { SiteHeader } from "@/shared/components/site-header";
 import {
@@ -14,12 +17,19 @@ import { QuickChips, quickChipClass } from "@/shared/components/browse/quick-chi
 import { PAGER_EDGE_CLASS, Pager, pagerPageClass } from "@/shared/components/browse/pager";
 import { EXACT_MATCH } from "@/shared/components/browse/active-match";
 import { formatRating } from "@/shared/domain/rating";
+import { formatHeadlinePrice } from "@/features/directory/services/domain/service-card";
 // Categories are platform data that happens to be fetched under `landing/`.
 // Reached through its viewmodel rather than its repository — `ui` may not
 // touch `data`, and going through the hook reuses the cache the home page has
 // usually already filled.
 import { useCategoryPreview } from "@/features/landing/viewmodel/use-categories";
 import { useDirectory } from "@/features/directory/viewmodel/use-directory";
+// One question about the hearts for the whole page, and the control that
+// answers it — see the `useFavouriteMarks` call below for why the page owns
+// the query rather than the row.
+import { useFavouriteMarks } from "@/features/favourites/viewmodel/use-favourite-marks";
+import { FavouriteButton } from "@/features/favourites/ui/favourite-button";
+import { SaveToListDialog } from "@/features/favourites/ui/save-to-list-dialog";
 import { ProviderRow } from "@/features/directory/ui/provider-row";
 import {
   MobileProviderFilters,
@@ -112,6 +122,32 @@ export function DirectoryPage() {
   const current = useSearch({ strict: false }) as DirectorySearch;
   const { category, q, sort, offset = 0 } = current;
   const page = useDirectory(current, locale);
+  /**
+   * Which of the businesses on this page the reader has already saved — asked
+   * **once, here**, and handed down as a filled or empty heart.
+   *
+   * `"provider"` and not `"service"`: a service and a business may
+   * legitimately share an id, so the type rides along on every question and
+   * every write, or one page's marks fill the other's hearts. Never a hook
+   * inside the row, which would be one round trip per result. See
+   * `useFavouriteMarks`.
+   */
+  const marks = useFavouriteMarks(
+    "provider",
+    page.items.map((item) => item.id),
+  );
+  /**
+   * Which business the save-to-a-list dialog is about, and what its heart's
+   * own save answered with. `null` is closed.
+   *
+   * The whole DTO rather than an id, and one dialog for the page rather than
+   * one per row — the same two rulings `ServicesBrowsePage` records, since
+   * these two pages differ only in what they list.
+   */
+  const [filing, setFiling] = useState<{
+    provider: ProviderPublicDTO;
+    listIds?: string[];
+  } | null>(null);
   const navigate = useNavigate();
   // A plain query, unlike the listings: this is a control, not the content a
   // crawler came for, so it may arrive a beat later.
@@ -298,7 +334,26 @@ export function DirectoryPage() {
             <ul className="grid list-none p-0">
               {page.items.map((provider, index) => (
                 <li key={provider.id}>
-                  <ProviderRow provider={provider} locale={locale} first={index === 0} />
+                  <ProviderRow
+                    provider={provider}
+                    locale={locale}
+                    first={index === 0}
+                    favourite={
+                      <FavouriteButton
+                        targetType="provider"
+                        targetId={provider.id}
+                        saved={marks.isMarked(provider.id)}
+                        // Fires when the save answers, never on the press:
+                        // the lists come from the mutation's own data, so the
+                        // dialog opens already knowing which are ticked. A
+                        // press on an already-filled heart brings none, and
+                        // the dialog asks for itself.
+                        onSaved={({ listIds }) =>
+                          setFiling({ provider, ...(listIds ? { listIds } : {}) })
+                        }
+                      />
+                    }
+                  />
                 </li>
               ))}
             </ul>
@@ -366,6 +421,19 @@ export function DirectoryPage() {
       </main>
 
       <MobileProviderFilters current={current} total={page.total} />
+
+      {/* Mounted only while it is open, so its focus trap and the return of
+          focus to the heart run on mount and unmount rather than off a prop. */}
+      {filing && (
+        <SaveToListDialog
+          open
+          onOpenChange={(open) => !open && setFiling(null)}
+          targetType="provider"
+          targetId={filing.provider.id}
+          listing={providerListing(filing.provider, t, locale)}
+          {...(filing.listIds ? { savedListIds: filing.listIds } : {})}
+        />
+      )}
     </>
   );
 }
@@ -379,6 +447,42 @@ export function DirectoryPage() {
  * come back on when the pill was used instead.
  */
 const QUICK_MIN_RATING: RatingThreshold = 4.5;
+
+/**
+ * What the dialog draws down its left panel: this business, said the way the
+ * row beside it says it.
+ *
+ * Here rather than in the dialog, which is handed a listing and knows nothing
+ * about providers. The photograph falls back to the logo — a business with no
+ * cover photo usually has one, and the dialog's whole job is saying *which*
+ * listing this is about.
+ *
+ * The price is `priceFrom`, never a bare amount: `fromAmountMinor` is the
+ * cheapest of everything the business sells, and printing it alone would read
+ * as a fixed price for whatever the reader was looking at.
+ */
+function providerListing(provider: ProviderPublicDTO, t: TFunction, locale: string) {
+  const place = [provider.district, provider.city].filter(Boolean).join(", ");
+  return {
+    imageUrl: provider.photoUrls[0] ?? provider.logoUrl ?? null,
+    name: provider.name,
+    byline:
+      place ||
+      provider.categories[0]?.name ||
+      t(`filterProviderKindOption.${provider.type}`),
+    ...(provider.fromAmountMinor !== null && provider.fromCurrency !== null
+      ? {
+          price: t("priceFrom", {
+            amount: formatHeadlinePrice(
+              provider.fromAmountMinor,
+              provider.fromCurrency,
+              locale,
+            ),
+          }),
+        }
+      : {}),
+  };
+}
 
 /** One category, as a chip in the strip: its icon beside its name. */
 function StripItem({
