@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import { Sparkles, icons } from "lucide-react";
 import { Skeleton } from "@ntizo/frontend-ui";
+import { BrandImage } from "@/shared/components/brand-image";
 import { useCategoryPreview } from "@/features/landing/viewmodel/use-categories";
 import { SectionHead } from "@/features/landing/ui/section-head";
 
@@ -67,22 +68,21 @@ export function CategoryGrid() {
                     className="group block"
                   >
                     <div className="relative aspect-square overflow-hidden rounded-2xl bg-[var(--color-navy-surface)]">
-                      {c.imageUrl ? (
-                        <img
-                          src={c.imageUrl}
-                          alt=""
-                          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.035]"
-                        />
-                      ) : (
-                        <span className="grid h-full w-full place-items-center">
-                          <Icon
-                            data-testid={isFallback ? "category-icon-fallback" : `category-icon-${c.icon}`}
-                            className="h-9 w-9 text-[var(--color-navy-on)]"
-                            strokeWidth={1.4}
-                            aria-hidden="true"
-                          />
-                        </span>
-                      )}
+                      <BrandImage
+                        src={c.imageUrl}
+                        alt=""
+                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.035]"
+                        fallback={
+                          <span className="grid h-full w-full place-items-center">
+                            <Icon
+                              data-testid={isFallback ? "category-icon-fallback" : `category-icon-${c.icon}`}
+                              className="h-9 w-9 text-[var(--color-navy-on)]"
+                              strokeWidth={1.4}
+                              aria-hidden="true"
+                            />
+                          </span>
+                        }
+                      />
                     </div>
                     <b className="mt-2.5 block truncate text-center text-sm font-semibold group-hover:underline group-hover:underline-offset-[3px]">
                       {c.name}

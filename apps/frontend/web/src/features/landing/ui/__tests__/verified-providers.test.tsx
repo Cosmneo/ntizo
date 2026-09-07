@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   RouterProvider,
@@ -140,6 +140,30 @@ describe("VerifiedProviders", () => {
       await screen.findByText("Oficina do Zeca");
       expect(screen.getByTestId("media-fallback")).toBeInTheDocument();
       expect(document.querySelectorAll("img")).toHaveLength(0);
+    });
+
+    // The bug live on dev today: two providers' logo URLs fail to load, and
+    // `<img>` alone drew the browser's broken-image glyph in the badge. A
+    // logo that fails must read as "no logo" — the provider's initials —
+    // never as a broken picture.
+    it("shows the provider's initials in the badge when the logo fails to load", async () => {
+      await renderProviders([
+        provider({
+          name: "Oficina do Zeca",
+          photoUrls: ["https://cdn.test/photo.jpg"],
+          logoUrl: "https://cdn.test/logo.png",
+        }),
+      ]);
+      await screen.findByText("Oficina do Zeca");
+      const images = document.querySelectorAll("img");
+      expect(images).toHaveLength(2);
+      const logo = images[1]!;
+      expect(logo.getAttribute("src")).toBe("https://cdn.test/logo.png");
+
+      fireEvent.error(logo);
+
+      expect(await screen.findByText("OD")).toBeInTheDocument();
+      expect(document.querySelectorAll("img")).toHaveLength(1);
     });
   });
 });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   RouterProvider,
@@ -85,5 +85,17 @@ describe("CategoryGrid", () => {
   it("falls back to one shape for a category with an unknown icon name", async () => {
     await renderGrid([category({ imageUrl: null, icon: "NotARealIcon" })]);
     expect(await screen.findByTestId("category-icon-fallback")).toBeInTheDocument();
+  });
+
+  // The bug live on dev today: "Mecânico"'s image URL 403s. `imageUrl` being
+  // present is not the same as it loading, and a category whose photo fails
+  // must land on its own icon — not the browser's broken-image glyph, and not
+  // the shared `MediaFallback` mark every other category would also show.
+  it("falls back to its own icon when the photograph fails to load", async () => {
+    await renderGrid([category({ icon: "Wrench" })]);
+    fireEvent.error(screen.getByRole("presentation"));
+    expect(await screen.findByTestId("category-icon-Wrench")).toBeInTheDocument();
+    expect(screen.queryByTestId("media-fallback")).toBeNull();
+    expect(screen.queryByRole("presentation")).toBeNull();
   });
 });

@@ -4,6 +4,7 @@ import { Check } from "lucide-react";
 import { Skeleton } from "@ntizo/frontend-ui";
 import { BrandImage } from "@/shared/components/brand-image";
 import { RatingMark, TILE_TITLE_LINK_CLASS } from "@/shared/components/browse/result-tile";
+import { initialsFrom } from "@/shared/lib/initials";
 import { formatRating } from "@/shared/domain/rating";
 import { formatHeadlinePrice } from "@/features/directory/services/domain/service-card";
 import { usePopularProviders } from "@/features/landing/viewmodel/use-popular-providers";
@@ -72,10 +73,25 @@ export function VerifiedProviders() {
                           the background is `BrandImage`'s own `MediaFallback`,
                           not the logo, so the two can never repeat the same
                           picture — unlike the background itself, this has
-                          nothing to fall back to when it is absent. */}
+                          nothing to fall back to when it is absent. A logo
+                          that 404s falls back to the provider's initials
+                          rather than the brand mark: this badge is the
+                          business's own face, not a missing photograph. */}
                       {p.logoUrl ? (
                         <span className="absolute bottom-3 left-3 z-[2] grid h-11 w-11 place-items-center overflow-hidden rounded-xl bg-white shadow-md">
-                          <img src={p.logoUrl} alt="" className="h-full w-full object-cover" />
+                          <BrandImage
+                            src={p.logoUrl}
+                            alt=""
+                            className="h-full w-full object-cover"
+                            fallback={
+                              <span
+                                aria-hidden="true"
+                                className="text-[13px] font-semibold text-[var(--color-primary)]"
+                              >
+                                {initialsFrom(p.name)}
+                              </span>
+                            }
+                          />
                         </span>
                       ) : null}
                     </div>
