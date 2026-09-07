@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Star } from "lucide-react";
 import { Skeleton, cn } from "@ntizo/frontend-ui";
 import { initialsOf } from "@/shared/domain/initials";
+import { ScrollRail } from "@/shared/components/browse/scroll-rail";
 import { TILE_TITLE_LINK_CLASS } from "@/shared/components/browse/result-tile";
 import { useFeaturedReviews } from "@/features/landing/viewmodel/use-featured-reviews";
 import { useLocale } from "@/features/landing/viewmodel/use-locale";
@@ -42,17 +43,19 @@ export const LANDING_STORIES = 3;
  *   statistic.
  * - the **bottom row** is who wrote it and when.
  *
- * `p-5` rather than the `p-4` the other two cards use, and `gap-6` rather than
- * their `gap-x-6 gap-y-6`'s sibling `gap-9` here: a photograph gives those
- * cards their top mass for nothing, and a card made only of words has to buy
- * the same presence with its margins.
+ * `p-5` rather than the `p-4` the other two cards use: a photograph gives
+ * those cards their top mass for nothing, and a card made only of words has
+ * to buy the same presence with its margins. The gaps are no longer this
+ * section's own to pick — `ScrollRail` supplies them, which is what finally
+ * lines these columns up with the rows above.
  *
  * **The alignment is still the feature.** Reviews are different lengths, so
  * the reviewer block takes `margin-top: auto` inside a flex column and every
- * card is stretched by the grid — the reviewer's row lands on one baseline
- * across all three however long the quote runs. Three footers at three
- * different heights is what made the block this replaces read as unfinished,
- * and a border around each one would have made it read as broken.
+ * card is stretched by its row — the flex rail below `sm`, the grid above it,
+ * both of which stretch a child by default — so the reviewer's row lands on
+ * one baseline across all three however long the quote runs. Three footers at
+ * three different heights is what made the block this replaces read as
+ * unfinished, and a border around each one would have made it read as broken.
  */
 export function CustomerReviews() {
   const { t } = useTranslation("landing"); // t:CustomerReviews
@@ -67,7 +70,18 @@ export function CustomerReviews() {
   return (
     <section className="page-shell pt-14">
       <SectionHead title={t("home.storiesTitle")} blurb={t("home.storiesBlurb")} />
-      <ul className="grid items-stretch gap-6 sm:grid-cols-2 lg:grid-cols-3">
+      {/* Below `sm` this is `ScrollRail`'s sideways row, like the two sections
+          above it: once the reviews are cards, three of them stacked down a
+          390px screen is three full-width boxes to scroll past before the
+          page continues, and the rail was already the answer the rest of the
+          home page gives to exactly that.
+
+          `cardWidth="78%"` is `VerifiedProviders`' own width rather than
+          `PopularServices`' 72%. The two sections that end in three desktop
+          columns should come to rest in the same rhythm on a phone, and this
+          card has no photograph to give it height — a narrower card only
+          spends the difference on wrapping the quote onto more lines. */}
+      <ScrollRail as="ul" columns={2} cardWidth="78%" className="lg:grid-cols-3">
         {isLoading
           ? Array.from({ length: LANDING_STORIES }, (_, i) => (
               <li key={i}>
@@ -164,7 +178,7 @@ export function CustomerReviews() {
                 </article>
               </li>
             ))}
-      </ul>
+      </ScrollRail>
     </section>
   );
 }
