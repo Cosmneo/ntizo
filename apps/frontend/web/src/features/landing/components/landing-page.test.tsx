@@ -98,7 +98,17 @@ describe("LandingPage", () => {
   it("shows no empty section headings when there is nothing to put in them", async () => {
     await renderPage();
     await screen.findByRole("heading", { name: "How it works" });
+    // Three assertions that something is absent all pass — vacuously — on a
+    // completely blank document, and this tree has no Error Boundary
+    // anywhere: if any section threw while rendering, React would unmount
+    // the whole page, not just that section, and the three `toBeNull` checks
+    // below would then pass against nothing on screen at all. So this block
+    // also asserts the page is still actually there: "How it works" again,
+    // plus the provider band's CTA (not data-driven, and further down the
+    // tree), alongside the three negatives.
     await waitFor(() => {
+      expect(screen.getByRole("heading", { name: "How it works" })).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: "Create a provider account" })).toBeInTheDocument();
       expect(screen.queryByRole("heading", { name: "Popular services" })).toBeNull();
       expect(screen.queryByRole("heading", { name: "Verified providers" })).toBeNull();
       expect(screen.queryByRole("heading", { name: "What customers say" })).toBeNull();
