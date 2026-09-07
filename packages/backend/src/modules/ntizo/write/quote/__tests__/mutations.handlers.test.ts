@@ -257,7 +257,7 @@ describe("createQuoteWriteHandlers", () => {
         ctx({ requesterUserId: "u-member", role: "individual_provider" }),
       );
 
-      expect(out).toEqual({ quoteId: "q-1" });
+      expect(out).toEqual({ quoteId: "q-1", applied: true });
       expect(spies.declineQuote.calls).toEqual([
         { quoteId: "q-1", requesterUserId: "u-member", reason: "outside_area", note: null, attachments: [] },
       ]);
@@ -271,7 +271,7 @@ describe("createQuoteWriteHandlers", () => {
         ctx({ requesterUserId: "u-cust" }),
       );
 
-      expect(out).toEqual({ quoteId: "q-1" });
+      expect(out).toEqual({ quoteId: "q-1", applied: true });
       expect(spies.rejectQuote.calls).toEqual([
         { quoteId: "q-1", requesterUserId: "u-cust", reason: "too_expensive", note: null, attachments: [] },
       ]);
@@ -285,7 +285,7 @@ describe("createQuoteWriteHandlers", () => {
         ctx({ requesterUserId: "u-cust" }),
       );
 
-      expect(out).toEqual({ quoteId: "q-1" });
+      expect(out).toEqual({ quoteId: "q-1", applied: true });
       expect(spies.withdrawQuote.calls).toEqual([
         { quoteId: "q-1", requesterUserId: "u-cust", note: null, attachments: [] },
       ]);
@@ -329,38 +329,70 @@ describe("createQuoteWriteHandlers", () => {
   /**
    * `declineQuote`, `rejectQuote` and `withdrawQuote` can lose the very same
    * compare-and-swap `proposeQuote` can — `closeQuote`'s save returns `null`
-   * when the quote already moved. Their output has no second field to signal
-   * it on, and losing the race there means the quote is already closed,
-   * which is the caller's own intended end-state either way — so the handler
-   * answers with the id regardless of whether this call was the one that
-   * actually wrote it.
+   * when the quote already moved. Unlike a "quote already closed" story, the
+   * lost race is not always the caller's own intended end-state: `Quote.decline`
+   * is legal from either open state, so a colleague's `propose` racing this
+   * call can move the quote to `PROPOSED` while the decline transition still
+   * succeeds in memory, with the save the thing that actually fails. Reporting
+   * plain success there would tell a provider they declined a request that is
+   * now a live proposal, or a customer they withdrew a request the provider
+   * just declined — both false and both visible to a real person. So these
+   * three answer the same way `quote.propose` does: the id, plus `applied:
+   * false` whenever this call's own transition did not land, never an error.
    */
-  describe("a lost close race answers with the id, not an error", () => {
-    it("quote.decline", async () => {
+  describe("a lost close race is reported honestly, not swallowed as success", () => {
+    it("quote.decline answers applied: true when the transition lands", async () => {
+      const { module } = makeModule({ declineQuote: spyUseCase({ quoteId: "q-1" }) });
+      const out = await handlerFor(module, "quote.decline").handler(
+        { quoteId: "q-1", reason: "not_available" },
+        ctx({ requesterUserId: "u-member", role: "individual_provider" }),
+      );
+      expect(out).toEqual({ quoteId: "q-1", applied: true });
+    });
+
+    it("quote.decline answers applied: false when a colleague's propose won the race", async () => {
       const { module } = makeModule({ declineQuote: spyUseCase(null) });
       const out = await handlerFor(module, "quote.decline").handler(
         { quoteId: "q-1", reason: "not_available" },
         ctx({ requesterUserId: "u-member", role: "individual_provider" }),
       );
-      expect(out).toEqual({ quoteId: "q-1" });
+      expect(out).toEqual({ quoteId: "q-1", applied: false });
     });
 
-    it("quote.reject", async () => {
+    it("quote.reject answers applied: true when the transition lands", async () => {
+      const { module } = makeModule({ rejectQuote: spyUseCase({ quoteId: "q-1" }) });
+      const out = await handlerFor(module, "quote.reject").handler(
+        { quoteId: "q-1", reason: "wrong_time" },
+        ctx({ requesterUserId: "u-cust" }),
+      );
+      expect(out).toEqual({ quoteId: "q-1", applied: true });
+    });
+
+    it("quote.reject answers applied: false when the quote moved under it", async () => {
       const { module } = makeModule({ rejectQuote: spyUseCase(null) });
       const out = await handlerFor(module, "quote.reject").handler(
         { quoteId: "q-1", reason: "wrong_time" },
         ctx({ requesterUserId: "u-cust" }),
       );
-      expect(out).toEqual({ quoteId: "q-1" });
+      expect(out).toEqual({ quoteId: "q-1", applied: false });
     });
 
-    it("quote.withdraw", async () => {
+    it("quote.withdraw answers applied: true when the transition lands", async () => {
+      const { module } = makeModule({ withdrawQuote: spyUseCase({ quoteId: "q-1" }) });
+      const out = await handlerFor(module, "quote.withdraw").handler(
+        { quoteId: "q-1" },
+        ctx({ requesterUserId: "u-cust" }),
+      );
+      expect(out).toEqual({ quoteId: "q-1", applied: true });
+    });
+
+    it("quote.withdraw answers applied: false when the provider declined it first", async () => {
       const { module } = makeModule({ withdrawQuote: spyUseCase(null) });
       const out = await handlerFor(module, "quote.withdraw").handler(
         { quoteId: "q-1" },
         ctx({ requesterUserId: "u-cust" }),
       );
-      expect(out).toEqual({ quoteId: "q-1" });
+      expect(out).toEqual({ quoteId: "q-1", applied: false });
     });
   });
 });

@@ -43,11 +43,16 @@ function requireUser(ctx: GraphQLHandlerContext): string {
  *
  * `quote.decline`, `quote.reject` and `quote.withdraw` can lose the very same
  * kind of race — `closeQuote`'s compare-and-swap answers `null` the same way
- * — but their output carries only the quote id, with no second field to
- * signal it on. Losing that race there means the quote is already closed,
- * which is the caller's own intended end-state either way, so the handler
- * answers with the id regardless rather than inventing an error for an
- * outcome that already happened.
+ * — and, on reflection, losing it is *not* always the caller's own intended
+ * end-state: `Quote.decline` is legal from either open state, so a colleague's
+ * `propose` racing a `decline` can move the quote to `PROPOSED` while the
+ * decline transition still succeeds in memory, with the *save* the one thing
+ * that fails. Reporting success there would tell a provider they declined a
+ * request that is now a live proposal, or tell a customer they withdrew a
+ * request the provider just declined. So these three answer the same way
+ * `quote.propose` does: the id, plus `applied: false` when this call's own
+ * transition did not land — never an error, because nothing about the
+ * caller's own request was invalid; the ground just moved under it.
  */
 export function createQuoteWriteHandlers(mod: QuoteWriteModule) {
   const uc = mod.quote.useCases;
@@ -99,33 +104,35 @@ export function createQuoteWriteHandlers(mod: QuoteWriteModule) {
       return result ?? { quoteId: args.input.quoteId, validUntil: null };
     })
     .handle("quote.decline", async (args, ctx) => {
-      await uc.declineQuote.execute({
+      const result = await uc.declineQuote.execute({
         quoteId: args.input.quoteId,
         requesterUserId: requireUser(ctx),
         reason: args.input.reason,
         note: args.input.note ?? null,
         attachments: args.input.attachments ?? [],
       });
-      return { quoteId: args.input.quoteId };
+      // `null` is a lost compare-and-swap, not a failure — see this file's
+      // own doc comment.
+      return { quoteId: args.input.quoteId, applied: result !== null };
     })
     .handle("quote.reject", async (args, ctx) => {
-      await uc.rejectQuote.execute({
+      const result = await uc.rejectQuote.execute({
         quoteId: args.input.quoteId,
         requesterUserId: requireUser(ctx),
         reason: args.input.reason,
         note: args.input.note ?? null,
         attachments: args.input.attachments ?? [],
       });
-      return { quoteId: args.input.quoteId };
+      return { quoteId: args.input.quoteId, applied: result !== null };
     })
     .handle("quote.withdraw", async (args, ctx) => {
-      await uc.withdrawQuote.execute({
+      const result = await uc.withdrawQuote.execute({
         quoteId: args.input.quoteId,
         requesterUserId: requireUser(ctx),
         note: args.input.note ?? null,
         attachments: args.input.attachments ?? [],
       });
-      return { quoteId: args.input.quoteId };
+      return { quoteId: args.input.quoteId, applied: result !== null };
     })
     .handle("quote.accept", async (args, ctx) =>
       uc.acceptQuote.execute({

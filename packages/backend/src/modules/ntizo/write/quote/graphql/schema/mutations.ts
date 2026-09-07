@@ -98,6 +98,14 @@ export const proposeQuote = defineMutation({
  * No `requesterUserId` field, for the same reason `proposeQuote` has none:
  * the member comes from `requireUser(ctx)`, and `DeclineQuoteCommand` checks
  * their membership in the quote's own workspace.
+ *
+ * **`applied` is `false` when the compare-and-swap lost.** `Quote.decline`
+ * is legal from either open state, so a colleague's `propose` racing this
+ * call can move the quote to `PROPOSED` while this transition still succeeds
+ * in memory — the save is what actually loses. `false` here means the
+ * quote changed under this call and *this* decline did not land; the screen
+ * must reload the quote rather than report the decline as done, the same
+ * discipline `proposeQuote`'s null `validUntil` already asks for.
  */
 export const declineQuote = defineMutation({
   input: zodSchema(
@@ -108,7 +116,7 @@ export const declineQuote = defineMutation({
       attachments: attachmentsInput,
     }),
   ),
-  output: zodSchema(z.object({ quoteId: z.string().min(1) })),
+  output: zodSchema(z.object({ quoteId: z.string().min(1), applied: z.boolean() })),
   docs: { summary: "Refuse a request, or take a proposal back", tags: ["Quote"] },
 });
 
@@ -120,6 +128,12 @@ export const declineQuote = defineMutation({
  * `RejectQuoteCommand` checks them directly against the quote's own
  * `customerId` — no member reader, because there is no workspace to be a
  * member of on this side.
+ *
+ * **`applied` is `false` when the compare-and-swap lost** — e.g. the
+ * provider withdrew the very proposal this call was refusing. `false` means
+ * this rejection did not land; the screen must reload rather than report a
+ * refusal that never happened. See `declineQuote`'s own doc comment for the
+ * fuller argument.
  */
 export const rejectQuote = defineMutation({
   input: zodSchema(
@@ -130,7 +144,7 @@ export const rejectQuote = defineMutation({
       attachments: attachmentsInput,
     }),
   ),
-  output: zodSchema(z.object({ quoteId: z.string().min(1) })),
+  output: zodSchema(z.object({ quoteId: z.string().min(1), applied: z.boolean() })),
   docs: { summary: "Refuse a proposal", tags: ["Quote"] },
 });
 
@@ -142,6 +156,12 @@ export const rejectQuote = defineMutation({
  * No `reason` field: there is only one reason a customer withdraws, and the
  * aggregate records it as the fixed token `"withdrawn"`. No `requesterUserId`
  * field either, for the same reason `rejectQuote` has none.
+ *
+ * **`applied` is `false` when the compare-and-swap lost** — e.g. the
+ * provider declined the very request this call was withdrawing. `false`
+ * means this withdrawal did not land; the screen must reload rather than
+ * report a withdrawal that never happened. See `declineQuote`'s own doc
+ * comment for the fuller argument.
  */
 export const withdrawQuote = defineMutation({
   input: zodSchema(
@@ -151,7 +171,7 @@ export const withdrawQuote = defineMutation({
       attachments: attachmentsInput,
     }),
   ),
-  output: zodSchema(z.object({ quoteId: z.string().min(1) })),
+  output: zodSchema(z.object({ quoteId: z.string().min(1), applied: z.boolean() })),
   docs: { summary: "Take a request back before it is answered", tags: ["Quote"] },
 });
 
