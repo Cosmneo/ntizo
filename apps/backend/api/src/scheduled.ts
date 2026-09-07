@@ -7,8 +7,15 @@ import {
   bootstrapBooking,
   type OpenDisputeThreadPort,
 } from "@ntizo/backend/modules/ntizo/bounded-contexts/booking";
+import {
+  bootstrapQuote,
+  type BookingOpenerPort,
+  type StartThreadPort,
+} from "@ntizo/backend/modules/ntizo/bounded-contexts/quote";
 import { AttachmentStorageAdapter } from "./attachment-storage.adapter";
 import { disputeThreadOver } from "./dispute-thread.adapter";
+import { bookingOpenerOver } from "./booking-opener.adapter";
+import { startThreadOver } from "./start-thread.adapter";
 import type { AppBindings } from "./types";
 
 /**
@@ -66,6 +73,16 @@ export const BOOKING_SWEEP_LIMIT = 200;
 export const BOOKING_CHARGE_LIMIT = 5;
 
 /**
+ * How many due quotes one sweep may claim.
+ *
+ * The same budget as the booking sweep and for the same arithmetic: this is
+ * database work, two hundred rows is two hundred short transactions, and the
+ * clocks it watches are measured in hours rather than minutes, so whatever
+ * goes stale in any one minute is a small fraction of the ceiling.
+ */
+export const QUOTE_SWEEP_LIMIT = 200;
+
+/**
  * The dispute-thread port `bootstrapBooking` requires, for a caller that will
  * never open a dispute.
  *
@@ -101,6 +118,39 @@ function disputeThreadForCron(): OpenDisputeThreadPort {
           attachmentStorage: new AttachmentStorageAdapter(),
         }).useCases.openSupportRequest,
       ).execute(input),
+  };
+}
+
+/**
+ * The booking-opener and thread ports the quote bootstrap requires, for a
+ * caller that will never accept or request anything.
+ *
+ * The sweep reaches `internal.sweepDue` and nothing else, but a bootstrap that
+ * constructs every use case constructs the acceptance too. Same situation as
+ * `disputeThreadForCron` above, and the same answer: build the real graph
+ * lazily, inside `execute`, so a run that never accepts never builds it.
+ */
+function bookingOpenerForCron(): BookingOpenerPort {
+  return {
+    async openFromQuote(input) {
+      const booking = bootstrapBooking({
+        raiseNotification: bootstrapNotification().useCases.internal.raiseNotification,
+        openDisputeThread: disputeThreadForCron(),
+      });
+      return await bookingOpenerOver(booking.useCases.createBookingFromQuote).openFromQuote(input);
+    },
+  };
+}
+
+function startThreadForCron(): StartThreadPort {
+  return {
+    async execute(input) {
+      const communication = bootstrapCommunication({
+        raiseNotification: bootstrapNotification().useCases.internal.raiseNotification,
+        attachmentStorage: new AttachmentStorageAdapter(),
+      });
+      return await startThreadOver(communication.useCases.startThread).execute(input);
+    },
   };
 }
 
@@ -312,6 +362,29 @@ export async function scheduled(
           }
         } catch (error) {
           console.error("[scheduled] booking charge sweep threw", error);
+        }
+
+        // The cron's fourth question, and its own `try` for the same reason
+        // the others have one: it must run whether or not any sweep above
+        // threw, and it must be judged on its own outcome. Like the two
+        // booking sweeps, it needs the same DB context and nothing from
+        // `waitUntil` — a due quote just expires, it does not open anything.
+        try {
+          const quote = bootstrapQuote({
+            raiseNotification: bootstrapNotification().useCases.internal.raiseNotification,
+            openBooking: bookingOpenerForCron(),
+            startThread: startThreadForCron(),
+            attachmentStorage: new AttachmentStorageAdapter(),
+          });
+          const { swept, failed: quoteFailed } = await quote.useCases.internal.sweepDue.execute({
+            limit: QUOTE_SWEEP_LIMIT,
+          });
+
+          if (quoteFailed > 0) {
+            console.error(`[scheduled] quote sweep: ${swept} swept, ${quoteFailed} failed`);
+          }
+        } catch (error) {
+          console.error("[scheduled] quote sweep threw", error);
         }
       } finally {
         // Workers run nothing after this function returns unless scheduled —

@@ -61,6 +61,7 @@ import {
 import { bootstrapContact } from "@ntizo/backend/modules/ntizo/bounded-contexts/contact";
 import { createBookingWriteHandlers } from "@ntizo/backend/modules/ntizo/write/booking";
 import { bootstrapBooking } from "@ntizo/backend/modules/ntizo/bounded-contexts/booking";
+import { bootstrapQuote } from "@ntizo/backend/modules/ntizo/bounded-contexts/quote";
 import { createUserWriteHandlers } from "@ntizo/backend/modules/ntizo/write/user";
 import { bootstrapProvider } from "@ntizo/backend/modules/ntizo/bounded-contexts/provider";
 import { bootstrapProviderWorkflows } from "@ntizo/backend/modules/ntizo/orchestrations/workflows/provider";
@@ -72,6 +73,8 @@ import { graphqlCorsFetch } from "./cors";
 import { AttachmentStorageAdapter, runWithAttachmentsBucket } from "../attachment-storage.adapter";
 import { disputeThreadOver } from "../dispute-thread.adapter";
 import { bookingCompletionOver } from "../booking-completion.adapter";
+import { bookingOpenerOver } from "../booking-opener.adapter";
+import { startThreadOver } from "../start-thread.adapter";
 import type { AppBindings } from "../types";
 
 /**
@@ -140,6 +143,23 @@ export function buildPrivateGraphQLFields(): {
   const booking = bootstrapBooking({
     raiseNotification: notification.useCases.internal.raiseNotification,
     openDisputeThread: disputeThreadOver(communication.useCases.openSupportRequest),
+  });
+  // Below both `bootstrapBooking` and `bootstrapCommunication`, because it
+  // consumes both: accepting a quote opens a booking
+  // (`bookingOpenerOver(booking.useCases.createBookingFromQuote)`) and a
+  // request starts the thread it will be discussed on
+  // (`startThreadOver(communication.useCases.startThread)`) — the same two
+  // ports `QuoteBootstrapDeps` declares and this is the one place allowed to
+  // know both fillers exist.
+  //
+  // Not yet spread into `fields` below: `createQuoteWriteHandlers` and
+  // `createQuoteReadHandlers` (and the `quoteRead` bootstrap they take)
+  // don't exist yet — Tasks 15 and 16 mount them.
+  const quote = bootstrapQuote({
+    raiseNotification: notification.useCases.internal.raiseNotification,
+    openBooking: bookingOpenerOver(booking.useCases.createBookingFromQuote),
+    startThread: startThreadOver(communication.useCases.startThread),
+    attachmentStorage: new AttachmentStorageAdapter(),
   });
   // Below `bootstrapBooking` rather than up with the other reads, because it
   // now takes one of its use cases: the customer's review is what ends a
