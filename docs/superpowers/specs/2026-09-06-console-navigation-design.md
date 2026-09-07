@@ -349,6 +349,24 @@ Both dashboards are the same skeleton, in this order:
 This is the bookings spec's dashboard section, reordered by the rule. Its data model and query are
 unchanged. Fig. 11.
 
+**The admin's sources, as built (2026-09-07).** Two of the admin's three "Needs you" sources above
+predate what `dev` shipped since, and neither exists as data: reviews are only *published* or
+*hidden*, and no cross-provider "documents awaiting verification" read exists. So the admin's row
+reads from four sources in a fixed priority order and shows the first three that are above zero:
+disputed bookings, providers awaiting review, open support requests, open contact messages. Each
+card is a count and a link into its queue, already filtered. The pending-provider count comes from
+the count-by-status read the backend already has and never wired (`countByStatus`), so the card and
+the sidebar badge share one exact number instead of the length of a 25-row page. Documents to
+verify stays a follow-up until a read exists.
+
+The admin's **This month** is a real month, not a set of live totals: one platform-wide query,
+`bookingStatsForAdmin`, the same shape as `bookingStatsForProvider` without the provider filter,
+plus what the platform itself earned. Four tiles — bookings this month, gross booked, commission
+earned (with the same 30-day chart the provider has, drawn from the same `perDay` series), new
+providers this month. **Next up** is the five newest applications as a `CollectionCard`, each row
+opening the provider's detail. The stat tile leaves the provider feature for
+`shared/components/` on the way, since the admin is not a provider screen.
+
 ### Forms: three patterns kept, one skeleton, the mobile hole closed
 
 | Pattern | Mobile today | Mobile now |
