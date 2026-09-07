@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { ListCover } from "../list-cover";
 
 /**
@@ -44,6 +44,23 @@ describe("ListCover", () => {
 
     expect(screen.queryByTestId("cover-empty")).not.toBeInTheDocument();
     expect(screen.queryAllByRole("presentation")).toHaveLength(0);
+  });
+
+  it("gives a cover the browser could not fetch back to the ground", () => {
+    // A raw `<img>` on a 404 is the browser's broken-image glyph in a 21px
+    // cell — the one outcome `BrandImage` exists to refuse, and on dev today
+    // most seeded covers 404. The cell falls back to what an unfilled cell
+    // already draws, and the tiles beside it keep their places.
+    render(<ListCover urls={["gone.jpg", "here.jpg"]} empty={false} />);
+
+    fireEvent.error(screen.getAllByRole("presentation")[0]!);
+
+    const left = screen.getAllByRole("presentation");
+    expect(left).toHaveLength(1);
+    expect(left[0]).toHaveAttribute("src", "here.jpg");
+    // Not the empty mark: the list still holds its items, and nothing about a
+    // photograph failing says otherwise.
+    expect(screen.queryByTestId("cover-empty")).not.toBeInTheDocument();
   });
 
   it("says nothing to a screen reader, because the list's name already did", () => {

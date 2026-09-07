@@ -65,6 +65,22 @@ export function useSetLists() {
     saving: mutation.isPending,
     /** The membership the server settled on, once it has answered. */
     listIds: mutation.data,
+    /**
+     * Whether the last write was refused — and the one a caller drawing a
+     * message has to read.
+     *
+     * Separate from `errorCode` for the reason `useListsFor.failed` gives: a
+     * network failure is not a `GraphqlError`, so `favouritesErrorCode`
+     * answers `undefined` for it by contract, which is indistinguishable from
+     * "nothing has gone wrong". It is also the failure this mutation is most
+     * likely to meet, since the optimistic patch has already told the reader
+     * it worked.
+     *
+     * It clears itself: the next `mutate` puts the mutation back into
+     * `pending`, so a message drawn from this disappears the moment the reader
+     * tries again.
+     */
+    failed: mutation.isError,
     /** `"UNAUTHENTICATED"` when a session expired between render and save. See `favouritesErrorCode`. */
     errorCode: favouritesErrorCode(mutation.error),
   };

@@ -109,7 +109,7 @@ export function SaveToListDialog({
   const nameId = useId();
 
   const { lists } = useMyLists();
-  const { setLists } = useSetLists();
+  const { setLists, failed: writeFailed } = useSetLists();
   // Asked only when the press could not answer. See `useListsFor`.
   const asked = useListsFor(targetType, targetId, { enabled: savedListIds === undefined });
 
@@ -173,43 +173,92 @@ export function SaveToListDialog({
   // the list the heart saved into — which is what the note is about.
   const savedIn = lists.find((list) => selected.includes(list.id));
 
-  const naming = useNewList({ selected, onCreated: choose });
+  const naming = useNewList({
+    selected,
+    // The filter goes with the creation. Above six lists the search field is
+    // on screen, and a reader who typed "praia", found nothing and made the
+    // list would otherwise watch it be created, ticked and filed — and never
+    // appear, because `shown` still excludes every list the filter excludes.
+    onCreated: (next) => {
+      setQuery("");
+      choose(next);
+    },
+  });
 
   const panel = useRef<HTMLDivElement>(null);
   useModalFocus(panel, open && !isMobile, () => onOpenChange(false));
 
   /**
-   * The one line in the header, and the four things it can truthfully say.
+   * The one line in the header: the three things it can truthfully say, and
+   * the silence that is the fourth.
    *
-   * Ordered by what is actually known. The two grey lines never appear while
-   * the membership is in flight: a header telling somebody to untick
-   * everything, over a listing whose heart is filled and whose lists have not
-   * arrived, is the one sentence this dialog exists not to print.
+   * Ordered by what is actually known. The apology never appears over ticks
+   * the dialog *does* know — `unknown &&`, not `asked.failed` alone. Every
+   * write here invalidates the whole `["favourites"]` prefix, so on the
+   * filled-heart path `listsFor` is still mounted and refetches after each
+   * tick, and TanStack v5 flips `status` to `error` on a failed refetch while
+   * keeping the data it already had. Ungated, one network blip would replace
+   * an accurate "Saved in Casa nova" with an apology over boxes that are live
+   * and correct — and a reader who had just unticked everything would be told
+   * in the header that the lists could not be checked and in the footer that
+   * the listing is no longer saved, in the same frame. An error nobody can
+   * act on is worth printing only when it is the reason there is nothing else
+   * to print.
+   *
+   * `role="status"` on every branch, so React keeps one node in this slot and
+   * the reader hears it change: somebody who opened during the loading window
+   * is otherwise never told the rows have gone permanently inert, and the same
+   * region announces "Saved in Casa nova" when the membership lands.
+   *
+   * **When the membership is known and nothing is ticked, it says nothing.**
+   * It used to say "untick every list to stop saving it" — over a listing
+   * already in no list, while the footer beside Done said "No longer saved.
+   * Tick a list to save it again." Two opposite instructions in one frame, in
+   * the state every removal passes through. The footer owns that sentence and
+   * owns it better: it sits where the reader is looking when they finish. The
+   * header's job is to report what happened, and nothing has.
    */
-  const note = asked.failed ? (
-    // `failed`, not `errorCode`: a network failure carries no code at all
-    // (`favouritesErrorCode` returns `undefined` for anything that is not a
-    // `GraphqlError`), and that is exactly the case that would otherwise
-    // leave this dialog waiting in silence for an answer that is not coming.
-    <p className="mt-1.5 text-[13px] text-[var(--color-muted-foreground)]">
-      {t("saveToListListsError")}
-    </p>
-  ) : unknown || selected.length > 0 ? (
-    <p className="mt-1.5 flex items-center gap-1.5 text-[13px] font-semibold text-[var(--color-success)]">
-      <Check aria-hidden="true" strokeWidth={2.6} className="h-3.5 w-3.5" />
-      {/* Which list it is in is a second fact, and it arrives second — with
-          the lists on a first open, and with `favouriteListsFor` on a filled
-          heart. Until then the line says only what the filled heart already
-          said, which is true throughout. */}
-      {savedIn ? t("saveToListSavedIn", { name: listDisplayName(savedIn, t) }) : t("favouriteSaved")}
-    </p>
-  ) : (
-    // The same slot, so the panel does not jump a line taller the moment
-    // the last tick comes off.
-    <p className="mt-1.5 text-[13px] text-[var(--color-muted-foreground)]">
-      {t("saveToListHowToUnsave")}
-    </p>
-  );
+  const note =
+    unknown && asked.failed ? (
+      // `failed`, not `errorCode`: a network failure carries no code at all
+      // (`favouritesErrorCode` returns `undefined` for anything that is not a
+      // `GraphqlError`), and that is exactly the case that would otherwise
+      // leave this dialog waiting in silence for an answer that is not coming.
+      <p role="status" className="mt-1.5 text-[13px] text-[var(--color-muted-foreground)]">
+        {t("saveToListListsError")}
+      </p>
+    ) : unknown || selected.length > 0 ? (
+      // The tint is the tick's alone. `--color-success` is #21b872, which is
+      // 2.57:1 on white — under even the 3:1 that large text is allowed, and
+      // this is 13px — so the sentence is carried by the weight it already
+      // had and by the site's own foreground, exactly as the footer's is.
+      <p
+        role="status"
+        className="mt-1.5 flex items-center gap-1.5 text-[13px] font-semibold text-[var(--color-foreground)]"
+      >
+        <Check
+          aria-hidden="true"
+          strokeWidth={2.6}
+          className="h-3.5 w-3.5 text-[var(--color-success)]"
+        />
+        {/* Which list it is in is a second fact, and it arrives second — with
+            the lists on a first open, and with `favouriteListsFor` on a filled
+            heart. Until then the line says only what the filled heart already
+            said, which is true throughout. */}
+        {savedIn
+          ? t("saveToListSavedIn", { name: listDisplayName(savedIn, t) })
+          : t("favouriteSaved")}
+      </p>
+    ) : (
+      // The same slot, so the panel does not jump a line shorter the moment
+      // the last tick comes off. The space is `aria-hidden` because it is
+      // holding a line of height, not saying anything: this element is the
+      // live region above, and a region whose content is one blank character
+      // is a region that has just announced a blank character.
+      <p role="status" className="mt-1.5 text-[13px] text-[var(--color-muted-foreground)]">
+        <span aria-hidden="true">&nbsp;</span>
+      </p>
+    );
 
   const search = lists.length > SEARCH_VISIBLE_ABOVE && (
     <div className="mx-3 mb-2 flex items-center gap-2 rounded-[10px] border border-[var(--color-border-strong)] px-3 py-2">
@@ -303,6 +352,27 @@ export function SaveToListDialog({
     </div>
   );
 
+  /**
+   * The one failure in this dialog a reader can see happening to them.
+   *
+   * A refused `setLists` rolls the marks cache back, so the heart behind the
+   * dialog empties again — while the box the reader just pressed stays ticked,
+   * because `picked` is the reader's own choice and nothing about a failed
+   * write makes it untrue that they asked for it. Without this line the two
+   * simply disagree and neither says why.
+   *
+   * `mutation.isError`, not `errorCode`: a network failure carries no code
+   * (`favouritesErrorCode`), and it is the failure most likely to be seen.
+   * One sentence for all of them, because the reader's next move is the same
+   * whichever it was — press it again — and TanStack clears the flag the
+   * moment they do.
+   */
+  const writeError = writeFailed && (
+    <p role="alert" className="type-caption px-[22px] pb-2.5 text-[var(--color-destructive)]">
+      {t("saveToListSaveError")}
+    </p>
+  );
+
   const footer = (
     <div
       className={cn(
@@ -318,11 +388,13 @@ export function SaveToListDialog({
           in that window and this sentence would be a claim about a listing
           whose lists have not arrived. */}
       {!unknown && selected.length === 0 && (
-        // Plain words about a thing already done, not a confirmation. The
-        // mockup's amber is the bold half's job here: amber text at 12.5px
-        // fails contrast on white, so the sentence that matters is carried by
-        // weight and the site's own foreground instead of by a colour nobody
-        // can read.
+        // Plain words about a thing already done, not a confirmation, and the
+        // only place this dialog says them. The mockup's `.warn` amber
+        // (#9a5b00, 5.4:1) reads perfectly well; what a colour cannot do is
+        // say which half of the sentence is the fact and which half is the
+        // way back. Weight does that, and it does it without spending a
+        // colour this palette does not otherwise use — so the fact is bold in
+        // the site's own foreground and the instruction after it stays grey.
         <p className="max-w-[38ch] text-[12.5px] leading-snug text-[var(--color-muted-foreground)]">
           <b className="font-semibold text-[var(--color-foreground)]">{t("saveToListUnsaved")}</b>{" "}
           {t("saveToListSaveAgain")}
@@ -370,6 +442,7 @@ export function SaveToListDialog({
           {search}
           {newList}
           {rows}
+          {writeError}
           {footer}
         </SheetContent>
       </Sheet>
@@ -423,6 +496,7 @@ export function SaveToListDialog({
             {search}
             {newList}
             {rows}
+            {writeError}
             {footer}
           </div>
         </div>

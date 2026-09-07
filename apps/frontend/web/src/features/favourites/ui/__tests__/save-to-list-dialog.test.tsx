@@ -91,6 +91,16 @@ function installFakeServer(
     hold?: { release: () => void };
     /** Refuses `favouriteListsFor`, so the membership never arrives at all. */
     refuseListsFor?: boolean;
+    /**
+     * Flipped by the test *after* a first answer has landed, so every later
+     * `favouriteListsFor` refuses. That is a failed **refetch**, not a failed
+     * load: every write invalidates the whole `["favourites"]` prefix, so this
+     * query is asked again after each tick, and TanStack answers `error` while
+     * keeping the membership it already has.
+     */
+    breakListsFor?: { now: boolean };
+    /** Refuses `favouriteSetLists`, so the one write a reader watches fails. */
+    refuseSetLists?: boolean;
   } = {},
 ) {
   const lists = [...(options.lists ?? THREE_LISTS)];
@@ -106,11 +116,12 @@ function installFakeServer(
 
     if (text.includes("favouriteListMine")) return { favouriteListMine: lists } as never;
     if (text.includes("favouriteListsFor")) {
-      if (options.refuseListsFor) throw new Error("UNAUTHENTICATED");
+      if (options.refuseListsFor || options.breakListsFor?.now) throw new Error("UNAUTHENTICATED");
       if (options.hold) await held;
       return { favouriteListsFor: membership } as never;
     }
     if (text.includes("favouriteSetLists")) {
+      if (options.refuseSetLists) throw new Error("the network went away mid-tick");
       membership = input.listIds ?? [];
       return { favouriteSetLists: { listIds: membership } } as never;
     }
@@ -308,6 +319,27 @@ describe("SaveToListDialog", () => {
     expect(screen.queryByRole("checkbox", { name: /Urgente/ })).not.toBeInTheDocument();
   });
 
+  it("shows a list it has just created, even under a filter that excludes it", async () => {
+    // The filter goes with the creation. Otherwise the list is created,
+    // ticked and filed, and never appears — `shown` still excludes it — so
+    // the reader's own answer to "none of these" vanishes as they make it.
+    installFakeServer({ lists: SEVEN_LISTS });
+    renderDialog({ savedListIds: ["l-default"] });
+
+    const box = await screen.findByRole("searchbox");
+    fireEvent.change(box, { target: { value: "zzz" } });
+    expect(screen.queryAllByRole("checkbox")).toHaveLength(0);
+
+    fireEvent.click(screen.getByRole("button", { name: "Create new list" }));
+    fireEvent.change(screen.getByRole("textbox", { name: /list name/i }), {
+      target: { value: "Casa da praia" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Create" }));
+
+    expect(await screen.findByRole("checkbox", { name: /Casa da praia/ })).toBeChecked();
+    expect(box).toHaveValue("");
+  });
+
   it("files the listing the moment a list is ticked, rather than waiting for Done", async () => {
     // The dialog files; Done only closes it. A membership that landed only on
     // Done would be lost by a reader who closed with Escape.
@@ -341,6 +373,86 @@ describe("SaveToListDialog", () => {
 
     await waitFor(() => expect(savedMemberships(spy)).toHaveLength(1));
     expect(savedMemberships(spy)[0]).toEqual([]);
+  });
+
+  it("does not also tell the reader to untick everything once they have", async () => {
+    // The footer owns that sentence, and owns it where the reader is looking
+    // when they finish. The header printing "untick every list" over a
+    // listing already in no list is the same frame saying two opposite
+    // things — the state every removal passes through.
+    installFakeServer();
+    renderDialog({ savedListIds: ["l-default"] });
+
+    fireEvent.click(await screen.findByRole("checkbox", { name: /Favourites/ }));
+
+    expect(await screen.findByText(/no longer saved/i)).toBeInTheDocument();
+    expect(screen.queryByText(/untick every list/i)).not.toBeInTheDocument();
+    // The slot stays, so the panel does not jump a line shorter — and it is
+    // the same live region, now with nothing to announce.
+    expect(screen.getByRole("status")).toHaveTextContent("");
+  });
+
+  it("says so when the write is refused, rather than leaving the tick and the heart to disagree", async () => {
+    // The marks cache rolls back on a refusal, so the heart behind the dialog
+    // empties while the box the reader pressed stays ticked. Without a word
+    // between them, the two simply disagree.
+    installFakeServer({ refuseSetLists: true });
+    renderDialog({ savedListIds: ["l-default"] });
+
+    fireEvent.click(await screen.findByRole("checkbox", { name: /Casa nova/ }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "We couldn't save that change. Try again in a moment.",
+    );
+  });
+
+  describe("when a tick's own invalidation re-asks which lists hold it", () => {
+    /**
+     * Every write invalidates the whole `["favourites"]` prefix, so on the
+     * filled-heart path `listsFor` is refetched after each tick — and a
+     * refetch can fail while the membership it already fetched is still
+     * perfectly good. TanStack keeps the data and flips the status, so a
+     * dialog reading "failed" alone apologises over ticks it knows.
+     */
+    it("keeps the membership it already has when the refetch fails", async () => {
+      const breakListsFor = { now: false };
+      installFakeServer({ listsFor: ["l-casa"], breakListsFor });
+      renderDialog();
+
+      await waitFor(() => expect(tickBox(/Casa nova/)).toBeChecked());
+      expect(await screen.findByText("Saved in Casa nova")).toBeInTheDocument();
+
+      breakListsFor.now = true;
+      fireEvent.click(tickBox(/Urgente/));
+      await settle();
+
+      expect(screen.getByText("Saved in Casa nova")).toBeInTheDocument();
+      expect(
+        screen.queryByText("We couldn't check which lists this is in right now."),
+      ).not.toBeInTheDocument();
+      expect(tickBox(/Urgente/)).toBeChecked();
+    });
+
+    it("never says both that it cannot check the lists and that they are empty", async () => {
+      // The two sentences are independent branches, so an ungated apology and
+      // the footer's "No longer saved." can be on screen at once, one frame
+      // apart in meaning: the header claiming it knows nothing over a footer
+      // reporting exactly what it knows.
+      const breakListsFor = { now: false };
+      installFakeServer({ listsFor: ["l-casa"], breakListsFor });
+      renderDialog();
+
+      await waitFor(() => expect(tickBox(/Casa nova/)).toBeChecked());
+
+      breakListsFor.now = true;
+      fireEvent.click(tickBox(/Casa nova/));
+      await settle();
+
+      expect(screen.getByText(/no longer saved/i)).toBeInTheDocument();
+      expect(
+        screen.queryByText("We couldn't check which lists this is in right now."),
+      ).not.toBeInTheDocument();
+    });
   });
 
   it("creates a list inline rather than opening a second dialog", async () => {
@@ -457,15 +569,13 @@ describe("SaveToListDialog", () => {
     it("does not tell a saved listing it is no longer saved", async () => {
       // Every row is unticked in this window because the answer has not
       // arrived — not because the listing is in no list. The footer's
-      // sentence and the header's grey line are both claims this dialog
-      // cannot make yet.
+      // sentence is a claim this dialog cannot make yet.
       const hold = { release: () => {} };
       installFakeServer({ listsFor: ["l-casa"], hold });
       renderDialog();
 
       await screen.findByRole("checkbox", { name: /Casa nova/ });
       expect(screen.queryByText(/no longer saved/i)).not.toBeInTheDocument();
-      expect(screen.queryByText("Untick every list to stop saving it")).not.toBeInTheDocument();
       // What it does say is the one thing the filled heart already proved.
       // Scoped to the dialog: the harness's own heart is labelled "Saved".
       expect(within(screen.getByRole("dialog")).getByText("Saved")).toBeInTheDocument();

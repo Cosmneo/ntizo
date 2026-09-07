@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Heart } from "lucide-react";
 import { cn } from "@ntizo/frontend-ui";
 import { FAVOURITE_COVER_TILES } from "@ntizo/shared/read-models";
@@ -36,6 +37,24 @@ export function ListCover({
   empty: boolean;
   className?: string;
 }) {
+  /**
+   * The urls a browser could not fetch, so a 404 shows the ground a
+   * photograph would have sat on rather than the browser's broken-image
+   * glyph — which is the one outcome `BrandImage` exists to refuse, and on
+   * dev today the common one.
+   *
+   * Kept here rather than by reaching for `BrandImage` itself, because its
+   * fallback is the brand mark and the brand mark inside a 21px cell of a
+   * 42px mosaic is a smudge. A failed tile falls back to exactly what an
+   * unfilled cell already draws.
+   *
+   * The *url* that failed, not a boolean per index — the same distinction
+   * `BrandImage` makes, and it matters here for the reason this component's
+   * key already names: two listings in one list can share a photograph, and
+   * one that 404s 404s in both cells.
+   */
+  const [failedUrls, setFailedUrls] = useState<readonly string[]>([]);
+
   const box = cn(
     "h-[42px] w-[42px] shrink-0 overflow-hidden rounded-[9px] bg-[var(--color-muted)]",
     className,
@@ -60,21 +79,31 @@ export function ListCover({
     // of the same tint the unfilled cells show rather than by a border that
     // would only exist on some of the four edges.
     <span className={cn(box, "grid grid-cols-2 grid-rows-2 gap-px")}>
-      {urls.slice(0, FAVOURITE_COVER_TILES).map((url, index) => (
-        <img
-          // The index too, not the url alone: two listings saved to the same
-          // list can share a photograph — a provider's own picture standing in
-          // for two of its services — and a duplicate key is a React warning
-          // over a mosaic that then drops a tile. The order is the server's
-          // and this list is never reordered on the client, which is the
-          // condition an index key asks for.
-          key={`${index}-${url}`}
-          src={url}
-          alt=""
-          role="presentation"
-          className="h-full w-full object-cover"
-        />
-      ))}
+      {urls.slice(0, FAVOURITE_COVER_TILES).map((url, index) =>
+        // The index too, not the url alone: two listings saved to the same
+        // list can share a photograph — a provider's own picture standing in
+        // for two of its services — and a duplicate key is a React warning
+        // over a mosaic that then drops a tile. The order is the server's
+        // and this list is never reordered on the client, which is the
+        // condition an index key asks for.
+        failedUrls.includes(url) ? (
+          // Still a cell, not nothing: removing the element would let grid
+          // auto-placement pull the tiles after it forward, so one broken
+          // photograph would rearrange the other three.
+          <span key={`${index}-${url}`} aria-hidden="true" />
+        ) : (
+          <img
+            key={`${index}-${url}`}
+            src={url}
+            alt=""
+            role="presentation"
+            className="h-full w-full object-cover"
+            onError={() =>
+              setFailedUrls((held) => (held.includes(url) ? held : [...held, url]))
+            }
+          />
+        ),
+      )}
     </span>
   );
 }
