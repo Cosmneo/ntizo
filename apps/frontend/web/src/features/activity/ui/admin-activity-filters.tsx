@@ -3,6 +3,7 @@ import { ACTIVITY_TYPES, type ActivityType } from "@ntizo/shared";
 import { Select } from "@ntizo/frontend-ui";
 import { FilterField, FilterSheet } from "@/shared/components/filter-sheet";
 import { activityTypeKey } from "../domain/types";
+import { activityIcon } from "./activity-icon";
 
 /**
  * The activity list's one filter, in the panel every list shares: which kind
@@ -39,10 +40,16 @@ export function AdminActivityFilterSheet({
           ariaLabel={t("activityTypeLabel")}
           options={[
             { value: "", label: t("activityAllTypes") },
-            ...ACTIVITY_TYPES.map((value) => ({
-              value,
-              label: t(`activityKind.${activityTypeKey(value)}`),
-            })),
+            ...ACTIVITY_TYPES.map((value) => {
+              // The same glyph the row leads with, so the picker reads as
+              // the list it narrows.
+              const Icon = activityIcon(value);
+              return {
+                value,
+                label: t(`activityKind.${activityTypeKey(value)}`),
+                adornment: <Icon className="h-4 w-4 text-[var(--color-muted-foreground)]" />,
+              };
+            }),
           ]}
         />
       </FilterField>

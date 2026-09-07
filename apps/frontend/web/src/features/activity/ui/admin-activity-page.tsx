@@ -3,14 +3,14 @@ import { useTranslation } from "react-i18next";
 import { Activity } from "lucide-react";
 import type { ActivityType } from "@ntizo/shared";
 import type { PlatformActivityEntryDTO } from "@ntizo/shared/read-models";
-import { Avatar, AvatarFallback, Badge, Button } from "@ntizo/frontend-ui";
+import { Badge, Button } from "@ntizo/frontend-ui";
 import { CollectionCard } from "@/shared/components/collection-card";
-import { initialsFrom } from "@/shared/lib/initials";
 import { usePageHeader } from "@/shared/lib/page-header";
 import { activityTypeKey } from "../domain/types";
 import { describeActivity } from "../viewmodel/describe-activity";
 import { usePlatformActivity } from "../viewmodel/use-activity";
 import { AdminActivityFilterSheet } from "./admin-activity-filters";
+import { ActivityKindIcon } from "./activity-icon";
 
 /**
  * What has happened on the platform: everybody's activity, newest first,
@@ -19,11 +19,15 @@ import { AdminActivityFilterSheet } from "./admin-activity-filters";
  * The same card, search box and filter panel as every other admin list —
  * not the `ActivityList` the customer's and the workspace's feeds draw,
  * because those are one person's or one workspace's own history and this is
- * an audit trail across accounts, which is a table with a "who" column
- * rather than a feed. Read through `activityAll`, the admin-only field this
- * page used to be waiting on (follow-up #55); the sentence for each row comes
- * from `describeActivity` against this namespace's own `activityType.*`
- * keys, the same renderer the customer's feed uses.
+ * an audit trail across accounts, which is a table that names who did each
+ * thing rather than a feed. Read through `activityAll`, the admin-only field
+ * this page used to be waiting on (follow-up #55); the sentence for each row
+ * comes from `describeActivity` against this namespace's own
+ * `activityType.*` keys, the same renderer the customer's feed uses. Each
+ * row leads with the kind's glyph in the box the category list draws its
+ * image in, the way the old feed led with one, rather than with the actor's
+ * monogram: an event is not a person, and the person is named in words under
+ * the sentence.
  */
 export function AdminActivityPage() {
   const { t, i18n } = useTranslation("admin");
@@ -71,8 +75,7 @@ export function AdminActivityPage() {
         onOpenFilters={() => setFiltersOpen(true)}
         activeFilterCount={type ? 1 : 0}
         columns={[
-          { key: "who", label: t("activityWho"), className: "pl-5" },
-          { key: "what", label: t("activityWhat"), skeletonWidth: "w-48" },
+          { key: "what", label: t("activityWhat"), className: "pl-5" },
           { key: "kind", label: t("activityTypeLabel"), skeletonWidth: "w-28", skeletonShape: "badge" },
           { key: "when", label: t("activityWhen"), align: "right", className: "pr-5", skeletonWidth: "w-32" },
         ]}
@@ -84,9 +87,8 @@ export function AdminActivityPage() {
         filtered={type !== undefined || search.trim() !== ""}
         rows={entries.map((entry) => ({
           key: entry.id,
-          primary: <Actor entry={entry} />,
+          primary: <Event entry={entry} sentence={describeActivity(t, entry)} />,
           cells: {
-            what: <span className="block max-w-[40ch] truncate">{describeActivity(t, entry)}</span>,
             kind: <Badge tone="info">{t(`activityKind.${activityTypeKey(entry.type)}`)}</Badge>,
             when: (
               <span className="tabular-nums text-[var(--color-muted-foreground)]">
@@ -109,23 +111,19 @@ export function AdminActivityPage() {
 }
 
 /**
- * Who did it: the monogram, the name, and the email under it — the email
+ * What happened, and who did it under it — the email beside the name,
  * because an audit trail names people by something that does not change
  * when they edit their profile. An account that is gone has neither, and
  * says so with a dash rather than an empty line.
  */
-function Actor({ entry }: { entry: PlatformActivityEntryDTO }) {
-  const name = entry.actorName || entry.actorEmail || "—";
+function Event({ entry, sentence }: { entry: PlatformActivityEntryDTO; sentence: string }) {
+  const who = [entry.actorName, entry.actorEmail].filter(Boolean).join(" · ") || "—";
   return (
     <div className="flex items-center gap-3">
-      <Avatar className="h-9 w-9 shrink-0">
-        <AvatarFallback className="text-xs">{initialsFrom(name)}</AvatarFallback>
-      </Avatar>
+      <ActivityKindIcon type={entry.type} />
       <div className="min-w-0">
-        <p className="type-body-medium truncate font-semibold">{name}</p>
-        <p className="type-caption truncate text-[var(--color-muted-foreground)]">
-          {name === entry.actorEmail ? "" : (entry.actorEmail ?? "")}
-        </p>
+        <p className="type-body-medium truncate font-semibold">{sentence}</p>
+        <p className="type-caption truncate text-[var(--color-muted-foreground)]">{who}</p>
       </div>
     </div>
   );

@@ -25,11 +25,10 @@ function renderPage(items: PlatformActivityEntryDTO[], nextCursor: string | null
 }
 
 describe("AdminActivityPage", () => {
-  it("lists who did what, as a sentence, with the kind and the time", () => {
+  it("lists what happened, as a sentence, with who did it under it, the kind and the time", () => {
     renderPage([entry()]);
     const t = within(screen.getByRole("table"));
-    expect(t.getByText("Ana Silva")).toBeInTheDocument();
-    expect(t.getByText("ana@ntizo.co.mz")).toBeInTheDocument();
+    expect(t.getByText("Ana Silva · ana@ntizo.co.mz")).toBeInTheDocument();
     // The outcome, not the bare "reviewed": `to` picks the context key.
     expect(t.getByText("Approved Salão Polana")).toBeInTheDocument();
     expect(t.getByText("Provider decided")).toBeInTheDocument();
