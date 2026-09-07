@@ -3053,9 +3053,12 @@ button. The phone is saved before the acceptance, in that order, because a booki
   `toAddressInput` (Task 2); `PhoneInput` from `@ntizo/frontend-ui`; `isValidPhoneNumber` and
   `toMpesaMsisdn` exactly as `details-page.tsx` imports them.
 - Produces: `<AcceptQuotePage quoteId />`; on success
-  `navigate({ to: "/booking/$bookingId/confirm" })` — **check that route's real path first** against
-  `src/routes/booking.$bookingId.*.tsx`; land the customer wherever a freshly created
-  `PENDING_PAYMENT` booking is normally shown, which is the same place checkout's submit lands them.
+  `navigate({ to: "/bookings/$bookingId", params: { bookingId } })` — the customer's booking detail,
+  **not** checkout's `/booking/$bookingId/confirm`. Both render a `PENDING_PAYMENT` booking, but the
+  checkout page wears the three-step checkout header, and a quote acceptance is not checkout step 3.
+  The booking detail already offers "Pagar" on a `PENDING_PAYMENT` row (`canPay` in
+  `features/bookings/domain/status.ts`), which is exactly what the mockup's own copy points at:
+  "pode voltar a pedi-lo a partir da reserva com «Pagar agora»".
 
 - [ ] **Step 1: Write the failing test**
 
@@ -3139,7 +3142,7 @@ async function submit() {
     const { bookingId } = await accept.mutateAsync({
       quoteId, ...(chosen ? { address: toAddressInput(chosen) } : {}),
     });
-    await navigate({ to: "/booking/$bookingId/confirm", params: { bookingId } });
+    await navigate({ to: "/bookings/$bookingId", params: { bookingId } });
   } catch (error) {
     const code = error instanceof GraphqlError ? error.code : undefined;
     // A taken slot is not a refusal to retry: the backend has already put the
