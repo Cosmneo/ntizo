@@ -295,6 +295,15 @@ export function ServiceFilters({ current }: { current: BrowseSearch }) {
         active={languageChip ? t(languageChip.label.key, languageChip.label.values ?? {}) : undefined}
         clear={languageChip && <PillClear search={languageChip.next} label={languageLabel} />}
       >
+        {/* "Listing language" is a phrase a reader can only read one of two
+            ways, and the wrong one — the language the provider speaks — is the
+            one they actually want. The sheet has said which it is since it was
+            built; the pill said nothing, so the same filter meant two
+            different things at two widths. Same placement as the city hint:
+            first line of the popover, above the options it is about. */}
+        <p className="type-caption pb-2 text-[var(--color-muted-foreground)]">
+          {t("filterLanguageHint")}
+        </p>
         <LanguageOptions current={current} />
       </FilterPill>
 

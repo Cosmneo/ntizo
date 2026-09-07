@@ -118,7 +118,7 @@
     "organization": "Um estabelecimento"
   },
   "filterLanguage": "Idioma do anúncio",
-  "filterLanguageHint": "Em que línguas o anúncio está escrito — não o que o prestador fala.",
+  "filterLanguageHint": "Em que idiomas o anúncio está redigido — não o que o prestador fala.",
   "filterPrice": "Intervalo de preço",
   "filterPriceMin": "Mín",
   "filterPriceMax": "Máx",

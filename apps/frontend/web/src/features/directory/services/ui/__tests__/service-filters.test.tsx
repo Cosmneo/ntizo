@@ -82,6 +82,20 @@ describe("ServiceFilters", () => {
     expect(screen.queryByRole("link", { name: "Clear all" })).toBeNull();
   });
 
+  it("says which language the language pill means, as the sheet already did", async () => {
+    // "Listing language" reads two ways and the wrong one — the language the
+    // provider speaks — is the one a reader actually wants. The sheet has
+    // said which since it was built; the pill said nothing, so one filter
+    // meant two things at two widths.
+    const { container } = await renderFilters({});
+    const hint = screen.getAllByText(
+      "Which languages this listing is written in — not what the provider speaks.",
+    )[0]!;
+    expect(container.contains(hint)).toBe(true);
+    const group = hint.closest("details");
+    expect(group).toHaveTextContent("Listing language");
+  });
+
   it("wears navy on the price form's OK, not the kit's default blue", async () => {
     // `--color-primary` is spent on the header's search button and nothing
     // else on this page; the kit's default `Button` variant is that blue, and
