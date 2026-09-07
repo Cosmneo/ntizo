@@ -240,6 +240,20 @@ describe("BookingPage", () => {
     expect(screen.queryByText("+258")).not.toBeInTheDocument();
   });
 
+  it("a booking born from a quote has no option, and prints nothing where one would go", async () => {
+    // `optionName` is null on a quote-born booking — there was no catalogue
+    // option to snapshot. A template literal would happily print the string
+    // "null" here, and TypeScript would not say a word about it.
+    renderBooking(
+      "/provider/estudio/bookings/bk-1",
+      detailFixture({ serviceOptionId: null, optionName: null }),
+    );
+    await screen.findByRole("heading", { name: "Ana" });
+
+    expect(screen.getByText("Corte de cabelo · Célia")).toBeInTheDocument();
+    expect(screen.queryByText(/null/)).not.toBeInTheDocument();
+  });
+
   it("does the provider's arithmetic", async () => {
     renderBooking("/provider/estudio/bookings/bk-1");
     await screen.findByRole("heading", { name: "Ana" });

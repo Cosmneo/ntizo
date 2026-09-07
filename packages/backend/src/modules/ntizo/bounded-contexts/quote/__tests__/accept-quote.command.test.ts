@@ -1,9 +1,9 @@
-import { describe, expect, it } from "bun:test";
+import { describe, expect, it, spyOn } from "bun:test";
 import { NotificationType } from "@ntizo/shared";
 import { AcceptQuoteCommand, type AcceptQuoteInput } from "../app/use-cases/accept-quote.command";
 import { MarkProposalStaleInternalCommand } from "../app/use-cases/mark-proposal-stale.internal.command";
 import {
-  QuoteAddressRequiredError, QuoteMemberCannotPerformError, QuoteNoCustomerPhoneError,
+  QuoteAddressRequiredError, QuoteConcurrentlyChangedError, QuoteMemberCannotPerformError, QuoteNoCustomerPhoneError,
   QuoteNotYoursError, QuoteProposalLapsedError, QuoteServiceNotQuotableError, QuoteSlotTakenError, QuoteTransitionError,
 } from "../domain/exceptions";
 import {
@@ -109,5 +109,28 @@ describe("AcceptQuoteCommand", () => {
     expect(busy.repo.state?.proposals[0]?.supersededCause).toBe("slot_taken");
     expect(busy.repo.state?.expiresAt).not.toBeNull();
     expect(busy.raiser.raised[0]).toMatchObject({ type: NotificationType.ProviderQuoteSlotTaken, audience: "provider" });
+  });
+
+  it("a lost compare-and-swap is reported as such, and never as a taken slot", async () => {
+    // The quote moved between the load and the swap — revised, declined,
+    // withdrawn, expired; the repository refuses the write and hands back
+    // null. That is not the calendar's doing, and the customer must not be
+    // told their time is gone when it never was.
+    const moved = setup(withId(proposedQuote(), "q-1"));
+    moved.repo.currentStatusOverride = "REQUESTED";
+    const recovery = spyOn(moved.stale, "execute");
+
+    await expect(moved.command.execute(INPUT)).rejects.toThrow(QuoteConcurrentlyChangedError);
+
+    // The slot-taken recovery stays reachable only from the real slot
+    // conflict: running it here would supersede whatever proposal is live
+    // now — a colleague's fresh one — with `slot_taken`, and send a quote
+    // back to a provider who did nothing wrong.
+    expect(recovery).not.toHaveBeenCalled();
+    expect(moved.repo.state?.status).toBe("PROPOSED");
+    expect(moved.repo.state?.proposals[0]?.supersededCause).toBeNull();
+    expect(moved.repo.state?.liveProposal?.priceMinor).toBe(9_800);
+    expect(moved.raiser.raised).toHaveLength(0);
+    recovery.mockRestore();
   });
 });

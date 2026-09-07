@@ -105,6 +105,47 @@ describe("RequestQuoteCommand", () => {
     await expect(foreign.command.execute({ ...INPUT, attachments: [{ storageKey: "attachment/other-user/1-a.jpg" }] })).rejects.toThrow(QuoteAttachmentNotAvailableError);
   });
 
+  it("refuses a key under the caller's own prefix that fails any of the other three checks", async () => {
+    // `resolveQuoteAttachments` makes four checks and every one of them
+    // fails with the identical error, so a caller probing keys learns
+    // nothing about which it tripped. The foreign-prefix branch is covered
+    // above; these are the other three, each with a key that *is* under
+    // `attachment/cust-1/` so the prefix check passes and the branch under
+    // test is the one that fires. This is the guard that stops a signed-in
+    // user attaching a file another user uploaded.
+    const KEY = "attachment/cust-1/1-a.jpg";
+    const attachments = [{ storageKey: KEY }];
+
+    // Nothing at that key: a plausible name under the caller's own prefix
+    // is not an object.
+    const missing = setup({ storage: new FakeStorage({}) });
+    await expect(missing.command.execute({ ...INPUT, attachments })).rejects.toThrow(QuoteAttachmentNotAvailableError);
+    expect(missing.repo.inserted).toHaveLength(0);
+
+    // The object exists under the caller's prefix but the upload was
+    // recorded against someone else — the prefix alone is not proof of
+    // ownership, and this is the check that says so.
+    const notTheirs = setup({ storage: new FakeStorage({ [KEY]: storedPhoto("other-user") }) });
+    await expect(notTheirs.command.execute({ ...INPUT, attachments })).rejects.toThrow(QuoteAttachmentNotAvailableError);
+    expect(notTheirs.repo.inserted).toHaveLength(0);
+
+    // A type the server never sniffed and accepted. SVG is the pointed one:
+    // it is excluded on purpose because it can carry script.
+    const wrongType = setup({
+      storage: new FakeStorage({ [KEY]: { ...storedPhoto("cust-1"), contentType: "image/svg+xml" } }),
+    });
+    await expect(wrongType.command.execute({ ...INPUT, attachments })).rejects.toThrow(QuoteAttachmentNotAvailableError);
+    expect(wrongType.repo.inserted).toHaveLength(0);
+
+    // No original name: the download route serves the file under that name,
+    // and an object without one was never completed by the upload route.
+    const nameless = setup({
+      storage: new FakeStorage({ [KEY]: { ...storedPhoto("cust-1"), originalName: null } }),
+    });
+    await expect(nameless.command.execute({ ...INPUT, attachments })).rejects.toThrow(QuoteAttachmentNotAvailableError);
+    expect(nameless.repo.inserted).toHaveLength(0);
+  });
+
   it("a failing notification leaves the quote written", async () => {
     const { command, repo } = setup({ raiser: new FakeRaiser(new Error("resend down")) });
     await command.execute(INPUT);

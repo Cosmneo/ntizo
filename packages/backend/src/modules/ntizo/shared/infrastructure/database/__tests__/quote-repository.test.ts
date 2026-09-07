@@ -16,7 +16,8 @@
  * Tests below run in declaration order and share module-level state on
  * purpose — the second test reads the quote the first one inserted, and the
  * third uses `ownerUserId` as its customer precisely so it does not collide
- * with the first test's still-open quote on `quote_open_per_customer_service_uq`.
+ * with the first test's still-open quote on `quote_open_per_customer_service_uq`,
+ * and the fourth closes that first quote, which is why it comes last.
  */
 import { afterAll, beforeAll, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { eq } from "drizzle-orm";
@@ -29,7 +30,7 @@ import { provider } from "../provider/schemas/provider.schema";
 import { providerMember } from "../provider/schemas/provider-member.schema";
 import { user } from "../user/schemas/user.schema";
 import { thread } from "../communication/schemas/thread.schema";
-import { quote } from "../quote/schemas";
+import { quote, quoteProposal } from "../quote/schemas";
 import { Quote } from "../../../../bounded-contexts/quote/domain/aggregates/quote.aggregate";
 import { QuoteAlreadyOpenError } from "../../../../bounded-contexts/quote/domain/exceptions";
 import { DrizzleQuoteRepository } from "../../../../bounded-contexts/quote/infrastructure/repositories/drizzle/quote.repository";
@@ -205,5 +206,68 @@ describe("DrizzleQuoteRepository", () => {
     const due = await run(() => repo.findDueForSweep(new Date(), 50));
     expect(due.map((d) => d.id)).toContain(saved.id);
     expect(due.map((d) => d.id)).not.toContain(quoteIds[0]);
+  });
+
+  /**
+   * The race the quote's own compare-and-swap cannot see. A revision is
+   * `PROPOSED → PROPOSED`, so `eq(quote.status, expectedStatus)` still
+   * matches for a command that loaded the quote *before* that revision: it
+   * wins its swap and then walks its stale proposal list, where the retired
+   * proposal is still live. Unguarded, the proposal UPDATE writes
+   * `superseded_at = null` back over the row the revision had just retired,
+   * and two live proposals collide on `quote_proposal_live_uq` as a raw
+   * 23505 that nothing maps — reaching the client as `INTERNAL_ERROR`,
+   * which the spec forbids outright.
+   *
+   * Runs last on purpose: it accepts `quoteIds[0]`, and the tests above read
+   * that quote while it is still open.
+   */
+  test("a save from a stale snapshot cannot resurrect a proposal a revision retired", async () => {
+    const quoteId = quoteIds[0]!;
+    // The snapshot the losing command loaded, before anything else happened.
+    const stale = (await run(() => repo.findById(quoteId)))!;
+    const staleLiveId = stale.liveProposal!.id!;
+    expect(staleLiveId).toBeString();
+
+    // The revision lands first, superseding that proposal and inserting its
+    // own. The quote's status does not move.
+    const revisedAt = new Date();
+    const revised = await run(() =>
+      repo.save(
+        stale.propose({
+          priceMinor: 8_700,
+          currency: "MZN",
+          startsAt: new Date(Date.now() + 8 * 24 * 3_600_000),
+          durationMinutes: 240,
+          providerMemberId: memberId,
+          validUntil: new Date(revisedAt.getTime() + 72 * 3_600_000),
+          createdByUserId: ownerUserId,
+          at: revisedAt,
+          minPriceMinor: 5_000,
+        }),
+        "PROPOSED",
+      ),
+    );
+    expect(revised?.liveProposal?.priceMinor).toBe(8_700);
+
+    // The losing command, still holding the pre-revision aggregate, saves.
+    // Its swap succeeds — the status really is still `PROPOSED` — so the
+    // proposal loop runs with the retired proposal marked live in its own
+    // snapshot. Nothing may throw here: before the guard this line raised
+    // the unmapped 23505.
+    const persisted = await run(() => repo.save(stale.accept(new Date(), crypto.randomUUID()), "PROPOSED"));
+    expect(persisted).not.toBeNull();
+
+    const rows = await db.select().from(quoteProposal).where(eq(quoteProposal.quoteId, quoteId));
+    const older = rows.find((r) => r.id === staleLiveId)!;
+    expect(older.supersededAt).not.toBeNull();
+    expect(older.supersededCause).toBe("revised");
+
+    const live = rows.filter((r) => r.supersededAt === null);
+    expect(live).toHaveLength(1);
+    expect(live[0]?.priceMinor).toBe(8_700);
+    // And the aggregate handed back reports the database, not the caller's
+    // snapshot of it.
+    expect(persisted?.liveProposal?.priceMinor).toBe(8_700);
   });
 });

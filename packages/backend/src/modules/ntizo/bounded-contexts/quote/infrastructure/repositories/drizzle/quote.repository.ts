@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, isNotNull, lte } from "drizzle-orm";
+import { and, asc, eq, inArray, isNotNull, isNull, lte } from "drizzle-orm";
 import { getDb } from "../../../../../../better-auth/infrastructure/client/drizzle";
 import {
   quote,
@@ -177,20 +177,41 @@ export class DrizzleQuoteRepository implements QuoteRepositoryPort {
       .returning();
     if (!updated) return null;
 
-    const persisted: QuoteProposalRow[] = [];
     for (const p of entity.proposals) {
       if (p.id === null) {
-        const [row] = await db.insert(quoteProposal).values(toProposalRow(id, p)).returning();
-        persisted.push(row!);
+        await db.insert(quoteProposal).values(toProposalRow(id, p));
       } else {
-        const [row] = await db
+        // `isNull(supersededAt)` is the guard that keeps a superseded
+        // proposal superseded, and it is not decoration.
+        //
+        // The quote's own compare-and-swap above cannot see a revision: a
+        // revision is `PROPOSED → PROPOSED`, so `eq(quote.status,
+        // expectedStatus)` still matches and a command that loaded the quote
+        // *before* that revision wins its swap anyway. It then arrives here
+        // holding a stale snapshot in which the retired proposal is still
+        // live, and an unguarded UPDATE would write `superseded_at = null`
+        // straight back over the row the revision had just retired —
+        // resurrecting it beside the revision's own live row. Two live
+        // proposals, caught only by `quote_proposal_live_uq` as a raw 23505
+        // that nothing maps and the client reads as `INTERNAL_ERROR`.
+        //
+        // With the predicate the row is simply left alone: already
+        // superseded by someone else means not this caller's to rewrite.
+        // BR-Q4 says a superseded row is never edited, and this is where
+        // that holds.
+        await db
           .update(quoteProposal)
           .set({ supersededAt: p.supersededAt, supersededCause: p.supersededCause })
-          .where(eq(quoteProposal.id, p.id))
-          .returning();
-        persisted.push(row!);
+          .where(and(eq(quoteProposal.id, p.id), isNull(quoteProposal.supersededAt)));
       }
     }
+    // Read the proposals back rather than assembling them from what each
+    // write returned. The guarded UPDATE deliberately matches nothing for a
+    // row that is already superseded — every earlier proposal of a quote
+    // with a history, as well as the racing case above — so the rows those
+    // statements return do not, on their own, describe the quote. One
+    // SELECT does, and it is the same one `findById` uses.
+    const persisted = (await this.proposalsFor([id])).get(id) ?? [];
     return toAggregate(updated, persisted);
   }
 

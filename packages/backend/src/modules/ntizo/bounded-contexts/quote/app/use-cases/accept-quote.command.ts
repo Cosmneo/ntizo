@@ -4,6 +4,7 @@ import type { Quote, QuoteAddress } from "../../domain/aggregates/quote.aggregat
 import { QuoteAccepted } from "../../domain/events";
 import {
   QuoteAddressRequiredError,
+  QuoteConcurrentlyChangedError,
   QuoteMemberCannotPerformError,
   QuoteNoCustomerPhoneError,
   QuoteNoLiveProposalError,
@@ -127,8 +128,17 @@ export class AcceptQuoteCommand {
           acceptedByUserId: input.requesterUserId,
         });
 
+        // A lost compare-and-swap is not a taken slot. The genuine slot
+        // conflict never arrives here: it comes out of the booking opener as
+        // `SlotAlreadyTakenError`, translated to `QuoteSlotTakenError` by
+        // `bookingOpenerOver`. Reaching this line means the quote itself
+        // moved — revised, declined, withdrawn, expired — between the load
+        // and the swap, and the only truthful answer is to say so and let
+        // the caller reload. Saying "taken slot" here would also run the
+        // recovery below, superseding whatever proposal is live now with
+        // `slot_taken` on the strength of a race the calendar had no part in.
         const persisted = await this.repo.save(quote.accept(at, opened.bookingId), loaded.status);
-        if (!persisted) throw new QuoteSlotTakenError();
+        if (!persisted) throw new QuoteConcurrentlyChangedError();
 
         await this.outboxPort.publish(
           [

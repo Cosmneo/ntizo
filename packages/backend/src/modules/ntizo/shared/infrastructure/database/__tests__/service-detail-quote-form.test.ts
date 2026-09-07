@@ -6,14 +6,19 @@
  * database, a unique suffix so nothing here can collide with another
  * worktree's fixtures, and cleanup by id in `afterAll`.
  *
- * Two services under one category prove the two outcomes `getPublishedById`
- * has to tell apart: a `quote` service whose provider filled in the form
- * carries it through exactly, and a `priced` service that never had a
- * `service_quote_form` row publishes `null` rather than a form of default
- * values. Nothing in `serviceQuoteForm`'s own schema is nullable — every
- * column carries a `.default()` — so a projection that fell back to `{}` or
- * to those defaults instead of `null` would look identical to a hand-typed
- * fixture and only a real "no row at all" case catches it.
+ * Three services under one category prove the three outcomes
+ * `getPublishedById` has to tell apart: a `quote` service whose provider
+ * filled in the form carries it through exactly; a `priced` service that
+ * never had a `service_quote_form` row publishes `null` rather than a form
+ * of default values; and a `priced` service that still carries the row it
+ * was given while it was in `quote` mode publishes `null` too, because the
+ * row outlives the mode and the read is gated on the mode.
+ *
+ * `responseHours`, `askDeadline`, `askPhotos` and `askLocation` each carry a
+ * `.default()` — `intro` carries neither a default nor `.notNull()` — so a
+ * projection that fell back to `{}` or to those four defaults instead of
+ * `null` would look identical to a hand-typed fixture, and only a real "no
+ * row at all" case catches it.
  */
 import { afterAll, beforeAll, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { eq } from "drizzle-orm";
@@ -51,6 +56,7 @@ let providerId: string;
 let categoryId: string;
 let quoteServiceId: string;
 let pricedServiceId: string;
+let switchedServiceId: string;
 
 beforeAll(async () => {
   userId = crypto.randomUUID();
@@ -121,6 +127,38 @@ beforeAll(async () => {
   });
   // Deliberately no `service_quote_form` row — this service has never asked
   // for one, which is the case under test.
+
+  // The third case, and the one only the mode gate catches: a service
+  // configured in `quote` mode, given a form, and later switched to
+  // `priced`. Nothing deletes `service_quote_form` on that switch, so the
+  // row is still here — exactly the fixture a projection keyed on "a row
+  // exists" would publish a quote form from.
+  const [switched] = await db
+    .insert(service)
+    .values({
+      providerId,
+      categoryId,
+      sourceLocale: "pt-MZ",
+      locationType: "at_provider",
+      bookingMode: "priced",
+      status: "published",
+    })
+    .returning({ id: service.id });
+  switchedServiceId = switched!.id;
+  await db.insert(serviceTranslation).values({
+    serviceId: switchedServiceId,
+    locale: "pt-MZ",
+    name: "Manicure",
+    description: null,
+  });
+  await db.insert(serviceQuoteForm).values({
+    serviceId: switchedServiceId,
+    responseHours: 12,
+    askDeadline: false,
+    askPhotos: false,
+    askLocation: true,
+    intro: "Antes vendia por orçamento.",
+  });
 });
 
 afterAll(async () => {
@@ -146,5 +184,19 @@ describe("the public service page's quoteForm", () => {
 
     const priced = await run(() => projection.execute({ id: pricedServiceId, locale: "pt-MZ" }));
     expect(priced?.quoteForm).toBeNull();
+  });
+
+  test("a priced service that still carries a quote-form row publishes null", async () => {
+    // The row is really there — assert that first, or the test would also
+    // pass against a projection that simply found nothing to publish.
+    const rows = await db
+      .select()
+      .from(serviceQuoteForm)
+      .where(eq(serviceQuoteForm.serviceId, switchedServiceId));
+    expect(rows).toHaveLength(1);
+
+    const switched = await run(() => projection.execute({ id: switchedServiceId, locale: "pt-MZ" }));
+    expect(switched?.bookingMode).toBe("priced");
+    expect(switched?.quoteForm).toBeNull();
   });
 });

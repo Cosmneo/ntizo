@@ -35,6 +35,15 @@ export class SweepQuoteCommand {
     const moved = quote.expire(at);
     if (moved === quote) return "noop";
 
+    // Read before the write, as every other command in this context does.
+    // Afterwards would be too late: the expiry has already committed and
+    // `findDueForSweep` will never select the quote again, so a service read
+    // that throws would leave the quote `EXPIRED` with the party owed the
+    // news never told and nothing to retry it. Failing here costs only a
+    // batch entry, and the next minute's sweep picks the quote up untouched.
+    const service = await this.services.findForQuote(quote.serviceId, quote.locale);
+    const serviceName = service?.serviceName ?? "";
+
     const settled = await this.unitOfWork.atomicExecute(async () => {
       const persisted = await this.repo.save(moved, quote.status);
       if (!persisted) return null;
@@ -54,9 +63,6 @@ export class SweepQuoteCommand {
     });
 
     if (!settled) return "noop";
-
-    const service = await this.services.findForQuote(settled.serviceId, settled.locale);
-    const serviceName = service?.serviceName ?? "";
 
     if (settled.expiredCause === "provider_did_not_respond") {
       await raiseQuietly(

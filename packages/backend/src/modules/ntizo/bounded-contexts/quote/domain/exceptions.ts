@@ -119,6 +119,28 @@ export class QuoteSlotTakenError extends ConflictError {
   }
 }
 
+/**
+ * The quote moved under the command: its compare-and-swap found the row at a
+ * status other than the one the command had loaded.
+ *
+ * Distinct from `QuoteSlotTakenError` on purpose. A lost swap says the quote
+ * changed — revised, declined, withdrawn, expired — and the honest answer is
+ * "reload and look again"; a taken slot says the calendar filled up, and is
+ * the only thing that may put the quote back in front of the provider with
+ * `superseded_cause = 'slot_taken'`. Reporting one as the other would tell a
+ * customer their time was gone when it never was, and would retire a
+ * colleague's freshly sent proposal to say it.
+ */
+export class QuoteConcurrentlyChangedError extends ConflictError {
+  constructor() {
+    super({
+      message: "This quote changed while your acceptance was in flight; reload it and try again",
+      code: "QUOTE_CONCURRENTLY_CHANGED",
+    });
+    this.name = "QuoteConcurrentlyChangedError";
+  }
+}
+
 /** The provider proposed a time they have already sold. */
 export class QuoteSlotOverlapError extends ConflictError {
   constructor() {
