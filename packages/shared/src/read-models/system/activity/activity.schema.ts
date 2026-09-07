@@ -55,3 +55,27 @@ export const activityPageReadModel = z.object({
 
 export type ActivityEntryDTO = z.infer<typeof activityEntryReadModel>;
 export type ActivityPageDTO = z.infer<typeof activityPageReadModel>;
+
+/**
+ * One entry as the platform's own feed carries it: the entry, plus who did
+ * it. The customer's feed has no actor column because every row is the
+ * reader's own; the admin's spans everybody, and a row that does not say
+ * whose it is answers nothing.
+ *
+ * `actorName` is `""` and `actorEmail` `null` for an actor the user table no
+ * longer has — the row outlives the account, as its payload's names outlive
+ * what they named.
+ */
+export const platformActivityEntryReadModel = activityEntryReadModel.extend({
+  actorUserId: z.string(),
+  actorName: z.string(),
+  actorEmail: z.string().nullable(),
+});
+
+export const platformActivityPageReadModel = z.object({
+  items: z.array(platformActivityEntryReadModel),
+  nextCursor: z.string().nullable(),
+});
+
+export type PlatformActivityEntryDTO = z.infer<typeof platformActivityEntryReadModel>;
+export type PlatformActivityPageDTO = z.infer<typeof platformActivityPageReadModel>;

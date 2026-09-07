@@ -6,7 +6,7 @@ import {
 import { currentUserReadModel } from "../system/user";
 import { availabilityConfigReadModel } from "../system/availability";
 import { inboxPageReadModel, notificationReadModel } from "../system/notification";
-import { activityEntryReadModel, activityPageReadModel } from "../system/activity";
+import { activityEntryReadModel, activityPageReadModel, platformActivityEntryReadModel } from "../system/activity";
 import {
   threadSummaryReadModel,
   threadPageReadModel,
@@ -831,5 +831,20 @@ describe("providerStatusCountsReadModel", () => {
     expect(parsed.pending).toBe(2);
     expect(() => providerStatusCountsReadModel.parse({ pending: 2, active: 40, rejected: 1, suspended: 0 })).toThrow();
     expect(() => providerStatusCountsReadModel.parse({ pending: -1, active: 0, rejected: 0, suspended: 0, archived: 0 })).toThrow();
+  });
+});
+
+describe("platformActivityEntryReadModel", () => {
+  const entry = {
+    id: "a1", type: "provider.status.decided", payload: { providerName: "Salão X", to: "active" },
+    occurredAt: "2026-09-01T10:00:00.000Z", actorUserId: "u-admin", actorName: "Ana", actorEmail: "ana@ntizo.co.mz",
+  };
+  it("carries who did it, and lets a departed actor degrade to an empty name and no email", () => {
+    expect(platformActivityEntryReadModel.parse(entry).actorName).toBe("Ana");
+    expect(platformActivityEntryReadModel.parse({ ...entry, actorName: "", actorEmail: null }).actorEmail).toBeNull();
+  });
+  it("refuses an entry with no actor at all", () => {
+    const { actorUserId: _dropped, ...noActor } = entry;
+    expect(() => platformActivityEntryReadModel.parse(noActor)).toThrow();
   });
 });

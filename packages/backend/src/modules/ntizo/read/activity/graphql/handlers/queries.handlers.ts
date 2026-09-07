@@ -25,6 +25,22 @@ function requireUser(ctx: GraphQLHandlerContext): string {
   return requesterUserId;
 }
 
+/**
+ * Both the id and the role: the context defaults a caller with no session
+ * to `customer`, so a role check alone would read a value chosen for the
+ * absence of a user rather than asserted about one. Copied, not shared —
+ * the same six lines `read/support` and `read/booking` carry.
+ */
+function requireAdmin(ctx: GraphQLHandlerContext): void {
+  const { requesterUserId, role } = asNtizoGraphqlContext(ctx);
+  if (!requesterUserId || role !== "admin") {
+    throw new ForbiddenError({
+      message: "Only administrators may read the platform's activity",
+      code: "ADMIN_ONLY",
+    });
+  }
+}
+
 export function createActivityReadHandlers(mod: ActivityReadModule) {
   const uc = mod.activityRead.useCases;
 
@@ -36,5 +52,16 @@ export function createActivityReadHandlers(mod: ActivityReadModule) {
         cursor: args.input.cursor,
       }),
     )
+    .handle("activity.all", async (args, ctx) => {
+      // First line, deliberately: the read below spans every account, so
+      // nothing may run before the caller is known to be an administrator.
+      requireAdmin(ctx);
+      return uc.listAll.execute({
+        limit: args.input.limit,
+        cursor: args.input.cursor,
+        type: args.input.type,
+        search: args.input.search,
+      });
+    })
     .build();
 }

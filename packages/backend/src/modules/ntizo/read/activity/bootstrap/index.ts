@@ -1,5 +1,7 @@
 import { DrizzleActivityRepository } from "../../../bounded-contexts/activity/infrastructure/repositories/drizzle/activity.repository";
 import { ListActivityProjection } from "../app/use-cases/list-activity.projection";
+import { ListPlatformActivityProjection } from "../app/use-cases/list-platform-activity.projection";
+import { DrizzleActorReader } from "../infra/repositories/drizzle/actor-reader.adapter";
 
 /**
  * The read tier imports the write tier's repository rather than owning a
@@ -10,11 +12,13 @@ import { ListActivityProjection } from "../app/use-cases/list-activity.projectio
  */
 export function bootstrapActivityRead() {
   const repo = new DrizzleActivityRepository();
+  const actors = new DrizzleActorReader();
 
   return {
-    adapters: { repo },
+    adapters: { repo, actors },
     useCases: {
       listMine: new ListActivityProjection(repo),
+      listAll: new ListPlatformActivityProjection(repo, actors),
     },
   };
 }

@@ -5,13 +5,16 @@ import type {
   ActivityRepositoryPort,
 } from "../../../bounded-contexts/activity/app/ports/outbound/activity.repository.port";
 import type { Activity } from "../../../bounded-contexts/activity/domain/aggregates/activity.aggregate";
+import type { ActivityType } from "../../../bounded-contexts/activity/domain/activity-type";
 import { ListActivityProjection } from "../app/use-cases/list-activity.projection";
+import { ListPlatformActivityProjection } from "../app/use-cases/list-platform-activity.projection";
+import type { ActorReaderPort, ActorSummary } from "../app/ports/outbound/actor-reader.port";
 import {
   createActivityReadHandlers,
   type ActivityReadModule,
 } from "../graphql/handlers/queries.handlers";
 import type { ActivityReadBootstrap } from "../bootstrap";
-import { activityReadSchema, listMyActivity } from "../graphql/schema/queries";
+import { activityReadSchema, listMyActivity, listPlatformActivity } from "../graphql/schema/queries";
 
 function ctx(overrides: Partial<NtizoGraphqlContext> = {}): NtizoGraphqlContext {
   return {
@@ -47,18 +50,40 @@ class FakeActivityRepository implements ActivityRepositoryPort {
     this.calls.push(`listForActor:${params.actorUserId}:${params.limit}:${params.cursor ?? "none"}`);
     return this.page;
   }
+
+  async listAll(params: {
+    limit: number;
+    cursor?: string | null;
+    type?: ActivityType | undefined;
+    search?: string | undefined;
+  }): Promise<ActivityPage> {
+    this.calls.push(`listAll:${params.limit}:${params.cursor ?? "none"}:${params.type ?? "any"}:${params.search ?? "none"}`);
+    return this.page;
+  }
+}
+
+class FakeActorReader implements ActorReaderPort {
+  async findActorsByIds(): Promise<Map<string, ActorSummary>> {
+    return new Map();
+  }
 }
 
 describe("the activity read schema", () => {
-  it("exposes exactly one field, and it flattens to `activityMine` on the wire", () => {
+  it("exposes exactly two fields, which flatten to `activityMine` and `activityAll` on the wire", () => {
     // The field kit flattens a nested schema key: `{ activity: { mine } }`
     // emits on the wire as `activityMine`, not `activity.mine`. An earlier
     // phase of this project (notifications) lost a round to exactly this
-    // — Task 8's frontend must call `activityMine`.
+    // — the frontend must call `activityMine` and `activityAll`.
     const fields = Object.keys(
       (activityReadSchema as unknown as { fields: { activity: object } }).fields.activity,
     ).sort();
-    expect(fields).toEqual(["mine"]);
+    expect(fields).toEqual(["all", "mine"]);
+  });
+
+  it("the platform feed takes a type, a search and the paging — and no user id of any kind", () => {
+    const adapter = listPlatformActivity.input as { _schema?: { shape?: Record<string, unknown> } };
+    const shapeKeys = Object.keys(adapter._schema?.shape ?? {}).sort();
+    expect(shapeKeys).toEqual(["cursor", "limit", "search", "type"]);
   });
 
   /**
@@ -79,15 +104,16 @@ function makeModule(repo: FakeActivityRepository): ActivityReadModule {
       adapters: { repo } as never,
       useCases: {
         listMine: new ListActivityProjection(repo),
+        listAll: new ListPlatformActivityProjection(repo, new FakeActorReader()),
       },
     } as ActivityReadBootstrap,
   };
 }
 
 describe("createActivityReadHandlers", () => {
-  it("builds exactly one field", () => {
+  it("builds exactly two fields", () => {
     const handlers = createActivityReadHandlers(makeModule(new FakeActivityRepository()));
-    expect(handlers.map((h) => h.key)).toEqual(["activity.mine"]);
+    expect(handlers.map((h) => h.key)).toEqual(["activity.mine", "activity.all"]);
   });
 
   it("refuses an anonymous caller on activity.mine before anything else runs", async () => {
@@ -154,5 +180,60 @@ describe("createActivityReadHandlers", () => {
     );
 
     expect(repo.calls).toEqual(["listForActor:u1:3:2026-08-20T09:00:00.000Z|a1"]);
+  });
+});
+
+/**
+ * The platform feed spans every account, so it is the one field here whose
+ * refusal has to be identical for everybody it refuses — the same reasoning
+ * `booking.needsAttentionForAdmin`'s tests give: a refusal that varied by
+ * message, by code, or by running the read first would be an oracle.
+ */
+describe("activity.all", () => {
+  const handlerFor = (repo: FakeActivityRepository) =>
+    createActivityReadHandlers(makeModule(repo)).find((h) => h.key === "activity.all")!;
+
+  const refused = [
+    { name: "a customer", over: { requesterUserId: "u-cust", role: "customer" } as const },
+    { name: "a provider", over: { requesterUserId: "u-member", role: "individual_provider" } as const },
+    { name: "an anonymous caller", over: { requesterUserId: null, role: "customer" } as const },
+    // The half a role check alone would not have: the context schema admits
+    // `role: "admin"` with a null `requesterUserId`, because an anonymous
+    // request is given a role rather than none.
+    { name: "an admin role with nobody behind it", over: { requesterUserId: null, role: "admin" } as const },
+  ];
+
+  for (const who of refused) {
+    it(`refuses ${who.name} with ADMIN_ONLY, before the repository runs`, async () => {
+      const repo = new FakeActivityRepository();
+      await expect(handlerFor(repo).handler({}, ctx(who.over))).rejects.toMatchObject({ code: "ADMIN_ONLY" });
+      expect(repo.calls).toEqual([]);
+    });
+  }
+
+  it("refuses all four with the same message and the same code", async () => {
+    const seen = new Set<string>();
+    for (const who of refused) {
+      const error = await handlerFor(new FakeActivityRepository())
+        .handler({}, ctx(who.over))
+        .then(() => null, (e: unknown) => e as { message: string; code: string });
+      seen.add(`${error?.code}:${error?.message}`);
+    }
+    expect(seen.size).toBe(1);
+  });
+
+  it("passes the type, the search, the limit and the cursor through to the repository, for an admin", async () => {
+    const repo = new FakeActivityRepository();
+    await handlerFor(repo).handler(
+      { type: "provider.status.decided", search: "Salão", limit: 5, cursor: "2026-08-20T09:00:00.000Z|a1" },
+      ctx({ requesterUserId: "u-admin", role: "admin" }),
+    );
+    expect(repo.calls).toEqual(["listAll:5:2026-08-20T09:00:00.000Z|a1:provider.status.decided:Salão"]);
+  });
+
+  it("reads everybody's rows, never the caller's alone — there is no actor in the call", async () => {
+    const repo = new FakeActivityRepository();
+    await handlerFor(repo).handler({}, ctx({ requesterUserId: "u-admin", role: "admin" }));
+    expect(repo.calls).toEqual(["listAll:20:none:any:none"]);
   });
 });
