@@ -371,9 +371,15 @@ export class DrizzleProviderPublicRepository implements ProviderPublicRepository
 
     const db = getDb();
 
-    // The page's own services, so the name aggregate below never has to look
-    // past them — see the doc comment above for why this has to happen
-    // *before* the `GROUP BY`, not as a join condition on the grouped result.
+    // Every service belonging to the page's providers — drafts and
+    // quote-only ones included, because this is not the set that becomes
+    // chips, it is only the set the name aggregate below is allowed to look
+    // at. Narrowing it further here would cost a second pass over the same
+    // rows for nothing: the price join downstream drops everything that is
+    // not published, priced and actively optioned anyway.
+    //
+    // See the doc comment above for why the narrowing has to happen *before*
+    // the `GROUP BY`, not as a join condition on the grouped result.
     const pageServiceIds = db
       .select({ id: service.id })
       .from(service)

@@ -160,6 +160,12 @@ describe("public provider repository source", () => {
     expect(body).toContain('eq(service.status, "published")');
     expect(body).toContain('eq(service.bookingMode, "priced")');
     expect(body).toContain("eq(serviceOption.isActive, true)");
+    // And the name aggregate is narrowed to this page's services before it
+    // groups. The comment beside it calls the narrowing "not optional" — it
+    // is what stops one service's translations multiplying its price rows —
+    // and Postgres cannot push the filter in after the `GROUP BY`, so
+    // dropping it would not fail loudly anywhere else.
+    expect(body).toContain("inArray(serviceTranslation.serviceId, pageServiceIds)");
   });
 });
 
