@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
+import { cn } from "@ntizo/frontend-ui";
 import { HeaderActions } from "@/shared/components/header-actions";
 import { PUBLIC_NAV } from "@/shared/lib/public-nav";
 
@@ -23,6 +24,11 @@ import { PUBLIC_NAV } from "@/shared/lib/public-nav";
  * plain text links ahead of the account cluster — the pill's own width made
  * no room for a 600px search beside it. Left absent, every one of the eight
  * pages that already import this component gets exactly what they get today.
+ *
+ * That variant is two rows on a phone: the logo and the account cluster on
+ * one, the search across the full width of the next. Three things in one row
+ * at 390px left the search column 0px wide, and the search is the only way a
+ * phone reader can ask the browse pages anything.
  */
 export function SiteHeader({
   overlay = false,
@@ -61,7 +67,7 @@ export function SiteHeader({
       <div
         className={
           search
-            ? "page-shell grid h-[84px] grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 sm:gap-4"
+            ? "page-shell grid h-auto grid-cols-[auto_minmax(0,1fr)_auto] grid-rows-[auto_auto] items-center gap-2 py-2 sm:gap-4 md:h-[84px] md:grid-rows-none md:py-0"
             : "page-shell grid h-[84px] grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 sm:gap-4"
         }
       >
@@ -74,7 +80,14 @@ export function SiteHeader({
         </Link>
 
         {search ? (
-          <div className="flex min-w-0 items-center justify-center">{search}</div>
+          /* Below `md` the search is its own full-width row under the logo bar,
+             not the middle column: sharing the row with the logo and the
+             account cluster left it 0px wide on a 390px screen and the reader
+             had no way to search at all. From `md` it goes back into column
+             two, where the 600px pill has room. */
+          <div className="col-span-3 row-start-2 flex min-w-0 items-center justify-center md:col-span-1 md:row-start-auto">
+            {search}
+          </div>
         ) : (
           <nav
             className={
@@ -113,7 +126,12 @@ export function SiteHeader({
         >
           {/* The pill's destinations minus "Explore": the logo already goes
               home, and a text link repeating that would be a second one right
-              beside it. */}
+              beside it.
+
+              `hidden lg:inline` is the breakpoint the nav pill these replace
+              already used (`hidden … lg:flex`), and `MobileNav` carries the
+              same destinations at the bottom of every narrow screen. Left
+              visible they took the whole header row from the search. */}
           {search &&
             PUBLIC_NAV.slice(1).map((item) => {
               const active = item.key.endsWith(current);
@@ -123,8 +141,8 @@ export function SiteHeader({
                   to={item.to}
                   className={
                     active
-                      ? "text-sm font-bold text-[var(--color-headline)]"
-                      : "text-sm font-medium text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]"
+                      ? "hidden text-sm font-bold text-[var(--color-headline)] lg:inline"
+                      : "hidden text-sm font-medium text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)] lg:inline"
                   }
                 >
                   {t(item.key)}
@@ -137,11 +155,15 @@ export function SiteHeader({
             signedOutAction={
               <Link
                 to="/sign-in"
-                className={
+                className={cn(
                   overlay
                     ? "font-rounded rounded-full bg-white/95 px-5 py-2.5 text-sm font-bold text-[#0e1f37]"
-                    : "font-rounded rounded-full bg-[var(--color-primary)] px-5 py-2.5 text-sm font-bold text-white"
-                }
+                    : "font-rounded rounded-full bg-[var(--color-primary)] px-5 py-2.5 text-sm font-bold text-white",
+                  // Only the search variant crowds this column, and only there
+                  // did "Sign in" break across two lines. The other eight
+                  // callers keep the class list they had.
+                  search && "whitespace-nowrap",
+                )}
               >
                 {t("signIn")}
               </Link>

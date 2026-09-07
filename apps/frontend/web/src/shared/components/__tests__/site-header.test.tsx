@@ -45,6 +45,50 @@ describe("SiteHeader", () => {
     expect(screen.getByRole("search")).toHaveTextContent("search goes here");
   });
 
+  /**
+   * jsdom has no layout, so the phone header is asserted through the classes
+   * that produce it: the destinations only appear from `lg`, and the search
+   * takes the whole of a second grid row until `md`. Measured in a browser
+   * before this, the three-in-a-row header left the search column 0px wide.
+   */
+  it("gives the phone its own search row and hides the destinations until lg", async () => {
+    await renderHeader({ search: <div role="search">search goes here</div> });
+
+    for (const name of [/^services$/i, /^providers$/i]) {
+      const link = screen.getByRole("link", { name });
+      expect(link.className).toContain("hidden");
+      expect(link.className).toContain("lg:inline");
+    }
+
+    const slot = screen.getByRole("search").parentElement;
+    expect(slot?.className).toContain("col-span-3");
+    expect(slot?.className).toContain("row-start-2");
+    expect(slot?.className).toContain("md:col-span-1");
+  });
+
+  /**
+   * The active destination is the one case the search variant's right column
+   * never rendered in a test: `current` reaches those links too, and the
+   * responsive class has to survive the active branch as much as the resting
+   * one.
+   */
+  it("lights the active destination in the search variant and keeps it responsive", async () => {
+    await renderHeader({
+      current: "providers",
+      search: <div role="search">search goes here</div>,
+    });
+
+    const active = screen.getByRole("link", { name: /^providers$/i });
+    expect(active.className).toContain("font-bold");
+    expect(active.className).toContain("text-[var(--color-headline)]");
+    expect(active.className).toContain("hidden");
+    expect(active.className).toContain("lg:inline");
+
+    const resting = screen.getByRole("link", { name: /^services$/i });
+    expect(resting.className).not.toContain("font-bold");
+    expect(resting.className).toContain("text-[var(--color-muted-foreground)]");
+  });
+
   it("keeps the three-destination nav pill when no search is given", async () => {
     await renderHeader();
 
