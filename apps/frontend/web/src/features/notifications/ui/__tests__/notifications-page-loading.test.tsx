@@ -2,13 +2,12 @@ import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { NotificationsPage } from "@/features/notifications/ui/notifications-page";
 
-// A separate file rather than a second `describe` in the sibling test:
-// `vi.mock` is hoisted to the top of its own module, so two different mocks
-// of the same viewmodel cannot coexist in one file.
+// A separate file for the same reason as its siblings: one mock of the
+// viewmodel per module.
 vi.mock("@/features/notifications/viewmodel/use-inbox", () => ({
   useInbox: () => ({
     page: { total: 0, items: [] },
-    isPending: false,
+    isPending: true,
     isError: false,
     hasMore: false,
     isLoadingMore: false,
@@ -22,16 +21,16 @@ vi.mock("@/features/notifications/viewmodel/use-mark-read", () => ({
   useMarkRead: () => ({ markOne: vi.fn(), markAll: vi.fn(), isMarkingAll: false }),
 }));
 
-describe("NotificationsPage (empty inbox)", () => {
-  it("renders the empty state", () => {
+describe("NotificationsPage (first page still loading)", () => {
+  it("holds the list's place rather than rendering nothing", () => {
+    // The page used to render an empty column until the first page landed,
+    // then jump. A placeholder that announces itself is what stands there now.
     render(<NotificationsPage scope={{ kind: "mine" }} zone={{ kind: "customer" }} />);
-    expect(screen.getByText(/nothing yet/i)).toBeInTheDocument();
+    expect(screen.getByRole("status", { name: /loading notifications/i })).toBeInTheDocument();
   });
 
-  it("renders no mark-all-as-read button", () => {
-    // An action over a list it cannot change is a button that lies: there is
-    // nothing unread in an empty inbox, so the control must not appear.
+  it("does not claim the inbox is empty while it has not been read yet", () => {
     render(<NotificationsPage scope={{ kind: "mine" }} zone={{ kind: "customer" }} />);
-    expect(screen.queryByRole("button", { name: /mark all/i })).not.toBeInTheDocument();
+    expect(screen.queryByText(/nothing yet/i)).not.toBeInTheDocument();
   });
 });

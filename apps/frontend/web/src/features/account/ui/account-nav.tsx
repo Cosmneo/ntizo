@@ -16,10 +16,16 @@ export function AccountNav() {
        No bleed to the screen edge: `page-shell` sizes itself with
        `width: min(1320px, 100% - 3rem)` and centres with margin, not padding,
        so a negative inline margin here does not escape a padding box — it
-       escapes the viewport, and the whole page gains a horizontal scrollbar. */
+       escapes the viewport, and the whole page gains a horizontal scrollbar.
+
+       No card around it from `lg` either, since 2026-09-07: the settings
+       pages it sits beside are losing their boxes (the inbox first), and a
+       bordered menu next to a borderless page was the one box left. The
+       current entry is the headline colour in bold on the soft ground, which
+       is enough to say where you are. */
     <nav
       aria-label={t("navLabel")}
-      className="border-b border-[var(--color-border)] lg:rounded-[var(--radius-card)] lg:border lg:bg-[var(--color-background)] lg:p-2"
+      className="border-b border-[var(--color-border)] lg:border-0 lg:pt-1.5"
     >
       <ul className="flex list-none gap-1 overflow-x-auto p-0 pb-2 lg:grid lg:gap-0.5 lg:overflow-visible lg:pb-0">
         {sections.map((section) => (
@@ -30,7 +36,7 @@ export function AccountNav() {
               className="type-body-medium block whitespace-nowrap rounded-[var(--radius-field)] px-3.5 py-2.5 text-[var(--color-foreground)] hover:bg-[var(--color-muted)]"
               activeProps={{
                 className:
-                  "block whitespace-nowrap rounded-[var(--radius-field)] px-3.5 py-2.5 type-body-medium bg-[var(--color-muted)] text-[var(--color-primary)] font-semibold",
+                  "block whitespace-nowrap rounded-[var(--radius-field)] px-3.5 py-2.5 type-body-medium bg-[var(--color-muted)] text-[var(--color-headline,var(--color-foreground))] font-bold",
               }}
             >
               {t(section.key)}
