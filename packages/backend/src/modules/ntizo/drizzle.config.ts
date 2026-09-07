@@ -20,6 +20,7 @@ const base: Config = {
     "ntizo_notification",
     "ntizo_activity",
     "ntizo_favourite",
+    "ntizo_quote",
     "ntizo_outbox",
     "ntizo_reference",
     "ntizo_platform",

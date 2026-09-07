@@ -139,6 +139,9 @@ export const platformSettings = platformSchema.table("platform_settings", {
    */
   paymentWindowMinutes: integer("payment_window_minutes").notNull().default(15),
 
+  /** Hours a proposal stays acceptable after it is sent, capped at the proposed start. LIVE. */
+  quoteProposalValidityHours: integer("quote_proposal_validity_hours").notNull().default(72),
+
   // ── Approval and verification ────────────────────────────────────────────
 
   /** LIVE. Whether a new workspace goes straight to active or waits in review. */
@@ -202,6 +205,10 @@ export const platformSettings = platformSchema.table("platform_settings", {
   check(
     "platform_settings_payment_window_minutes_positive",
     sql`${t.paymentWindowMinutes} >= 1`,
+  ),
+  check(
+    "platform_settings_quote_proposal_validity_hours_positive",
+    sql`${t.quoteProposalValidityHours} >= 1`,
   ),
 ]);
 

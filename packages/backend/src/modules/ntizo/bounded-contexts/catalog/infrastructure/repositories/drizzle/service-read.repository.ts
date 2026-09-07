@@ -677,7 +677,7 @@ export class DrizzleServiceReadRepository implements ServiceReadRepositoryPort {
 
     if (!row) return null;
 
-    const [translations, categoryTranslations, options, members] = await Promise.all([
+    const [translations, categoryTranslations, options, members, quoteFormRows] = await Promise.all([
       db.select().from(serviceTranslation).where(eq(serviceTranslation.serviceId, id)),
       db.select().from(categoryTranslation).where(eq(categoryTranslation.categoryId, row.categoryId)),
       db
@@ -686,6 +686,7 @@ export class DrizzleServiceReadRepository implements ServiceReadRepositoryPort {
         .where(and(eq(serviceOption.serviceId, id), eq(serviceOption.isActive, true)))
         .orderBy(asc(serviceOption.amountMinor)),
       db.select().from(serviceMember).where(eq(serviceMember.serviceId, id)),
+      db.select().from(serviceQuoteForm).where(eq(serviceQuoteForm.serviceId, id)).limit(1),
     ]);
 
     const optionIds = options.map((o) => o.id);
@@ -734,6 +735,24 @@ export class DrizzleServiceReadRepository implements ServiceReadRepositoryPort {
           .map((t) => ({ locale: t.locale, name: t.name })),
       })),
       memberIds: members.map((m) => m.memberId),
+      // Gated on the service's own mode, not merely on the row existing.
+      // `service_quote_form` is never deleted when a provider switches a
+      // service back to `priced`, so a row outlives the mode that created
+      // it — and publishing it would put a "peça um orçamento" form on a
+      // service that now sells a fixed price. The spec says the form is
+      // carried "for quote services, `null` otherwise", and the port's own
+      // doc comment says "Null for a priced service, which has no form at
+      // all"; this is the line that makes all three agree.
+      quoteForm:
+        row.bookingMode === "quote" && quoteFormRows[0]
+          ? {
+              responseHours: quoteFormRows[0].responseHours,
+              askDeadline: quoteFormRows[0].askDeadline,
+              askPhotos: quoteFormRows[0].askPhotos,
+              askLocation: quoteFormRows[0].askLocation,
+              intro: quoteFormRows[0].intro,
+            }
+          : null,
       categoryTranslations: categoryTranslations.map((t) => ({
         locale: t.locale,
         name: t.name,

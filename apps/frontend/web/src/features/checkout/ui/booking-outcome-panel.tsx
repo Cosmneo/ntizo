@@ -48,7 +48,7 @@ function PickAnotherTimeLink({ booking }: { booking: CheckoutBooking }) {
     <Link
       to="/book/$serviceId"
       params={{ serviceId: booking.serviceId }}
-      search={{ optionId: booking.serviceOptionId }}
+      search={{ optionId: booking.serviceOptionId ?? undefined }}
       className="rounded-full bg-[var(--color-primary)] px-5 py-2 text-sm font-semibold text-white hover:opacity-90"
     >
       {t("unansweredAction")}

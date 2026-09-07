@@ -85,9 +85,11 @@ export function BookingPage() {
   const [notice, setNotice] = useState<Notice | null>(null);
   const b = query.data;
 
+  // `optionName` is null on a booking born from a quote, which has no
+  // catalogue option — the same guard the customer's pages make.
   usePageHeader(
     b ? b.customerFirstName : t("bookings.title"),
-    b ? `${b.serviceName} · ${b.optionName}` : undefined,
+    b ? `${b.serviceName}${b.optionName ? ` · ${b.optionName}` : ""}` : undefined,
   );
   // The countdown is measured from the moment the booking was answered for,
   // not from whenever React last re-rendered: a re-render for an unrelated
@@ -257,7 +259,8 @@ export function BookingPage() {
             </span>
           </div>
           <p className="type-body mt-1 text-[var(--color-muted-foreground)]">
-            {b.serviceName} · {b.optionName} ·{" "}
+            {b.serviceName}
+            {b.optionName ? ` · ${b.optionName}` : ""} ·{" "}
             {b.memberFirstName ?? t("bookings.memberAnyone")}
           </p>
           {waiting && left && (

@@ -12,6 +12,7 @@ import { user } from "../../user/schemas/user.schema";
 import { provider } from "../../provider/schemas/provider.schema";
 import { providerMember } from "../../provider/schemas/provider-member.schema";
 import { service, serviceOption } from "../../catalog/schemas/service.schema";
+import { quote } from "../../quote/schemas/quote.schema";
 import { BOOKING_STATUSES, BookingStatus, DEADLINE_BEARING_STATUSES } from "../enums";
 
 export const bookingSchema = pgSchema("ntizo_booking");
@@ -99,13 +100,13 @@ export const booking = bookingSchema.table(
     serviceId: uuid("service_id")
       .notNull()
       .references(() => service.id),
-    serviceOptionId: uuid("service_option_id")
-      .notNull()
-      .references(() => serviceOption.id),
+    serviceOptionId: uuid("service_option_id").references(() => serviceOption.id),
     /** Which member's calendar this booking occupies. See the index below. */
     providerMemberId: uuid("provider_member_id")
       .notNull()
       .references(() => providerMember.id),
+    /** Set on a booking born from an accepted quote; exactly one of it and service_option_id is present. */
+    quoteId: uuid("quote_id").references(() => quote.id),
 
     // The slot.
     startsAt: timestamp("starts_at", { withTimezone: true }).notNull(),
@@ -154,7 +155,7 @@ export const booking = bookingSchema.table(
     serviceName: text("service_name").notNull(),
     providerName: text("provider_name").notNull(),
     providerSlug: text("provider_slug").notNull(),
-    optionName: text("option_name").notNull(),
+    optionName: text("option_name"),
     durationMinutes: integer("duration_minutes").notNull(),
     addressLabel: text("address_label"),
     addressLine: text("address_line"),
@@ -350,6 +351,10 @@ export const booking = bookingSchema.table(
     check(
       "booking_commission_minor_non_negative",
       sql`${t.commissionMinor} >= 0`,
+    ),
+    check(
+      "booking_origin_exactly_one",
+      sql`(${t.serviceOptionId} IS NOT NULL) <> (${t.quoteId} IS NOT NULL)`,
     ),
   ],
 );

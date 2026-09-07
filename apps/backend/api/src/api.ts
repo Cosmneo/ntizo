@@ -4,6 +4,7 @@ import { bootstrapUser } from "@ntizo/backend/modules/ntizo/bounded-contexts/use
 import { bootstrapNotification } from "@ntizo/backend/modules/ntizo/bounded-contexts/notification";
 import { bootstrapActivity } from "@ntizo/backend/modules/ntizo/bounded-contexts/activity";
 import { bootstrapCommunication } from "@ntizo/backend/modules/ntizo/bounded-contexts/communication";
+import { DrizzleQuoteAttachmentRepository } from "@ntizo/backend/modules/ntizo/bounded-contexts/quote";
 import {
   registerProviderNotificationHandlers,
   registerUserNotificationHandlers,
@@ -20,6 +21,7 @@ import { mountPublicGraphql } from "./graphql/public";
 import { mountDocuments } from "./documents";
 import { mountMedia } from "./media";
 import { mountAttachments } from "./attachments";
+import { mountQuoteAttachments } from "./quote-attachments";
 import { AttachmentStorageAdapter } from "./attachment-storage.adapter";
 import { mountWebhooks } from "./webhooks";
 import { configureMediaUrlBase } from "@ntizo/backend/modules/ntizo/media";
@@ -183,6 +185,16 @@ mountMedia(app);
 // file here always arrived from a stranger.
 mountAttachments(app, {
   attachmentRepository: communicationBootstrap.adapters.attachmentRepository,
+});
+
+// Quote attachments — photos of the job, a proposal's PDF, a refusal's
+// explanation. Same posture as message attachments, for the same reason: a
+// straight `new` rather than a full `bootstrapQuote()`, because this route
+// only ever reads through `QuoteAttachmentRepositoryPort` and the context's
+// other use cases and their dependencies (booking opener, notifications,
+// thread starter) have nothing to do with serving a file back.
+mountQuoteAttachments(app, {
+  quoteAttachmentRepository: new DrizzleQuoteAttachmentRepository(),
 });
 
 // Health check

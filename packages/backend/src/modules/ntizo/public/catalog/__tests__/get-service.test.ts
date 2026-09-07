@@ -35,6 +35,9 @@ const row = (over = {}) => ({
   fromAmountMinor: 35000,
   optionCount: 3,
   memberIds: ["m1", "m2"],
+  // Null by default, matching this fixture's own `bookingMode: "priced"` —
+  // a priced service has no quote form row at all.
+  quoteForm: null,
   options: [
     { id: "o1", amountMinor: 35000, currency: "MZN", durationMinutes: 60, minMinutes: null, stepMinutes: null, pricingMode: "fixed", isDefault: false, sortOrder: 0, translations: [{ locale: "pt-MZ", name: "Cerimónia" }] },
     { id: "o2", amountMinor: 50000, currency: "MZN", durationMinutes: 120, minMinutes: null, stepMinutes: null, pricingMode: "fixed", isDefault: true, sortOrder: 1, translations: [{ locale: "pt-MZ", name: "Cerimónia + Copo d'água" }] },
@@ -166,6 +169,27 @@ describe("GetServiceProjection", () => {
       .execute({ id: "svc-1", locale: "pt-MZ" });
     expect(out?.options).toEqual([]);
     expect(out?.bookingMode).toBe("quote");
+  });
+
+  it("passes a quote service's own form through untouched", async () => {
+    const quoteForm = {
+      responseHours: 24,
+      askDeadline: true,
+      askPhotos: false,
+      askLocation: true,
+      intro: "Respondo com um orçamento em 24 horas.",
+    };
+    const out = await make(row({ bookingMode: "quote", options: [], quoteForm }))
+      .execute({ id: "svc-1", locale: "pt-MZ" });
+    expect(out?.quoteForm).toEqual(quoteForm);
+  });
+
+  it("publishes null, never a default form, for a service with no quote form row", async () => {
+    // The one behaviour that matters: a priced service has no form at all,
+    // and inventing default values here would tell a customer their provider
+    // promises something they never configured.
+    const out = await make(row({ quoteForm: null })).execute({ id: "svc-1", locale: "pt-MZ" });
+    expect(out?.quoteForm).toBeNull();
   });
 });
 
