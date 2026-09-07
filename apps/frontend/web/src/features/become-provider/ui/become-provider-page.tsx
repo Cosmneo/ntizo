@@ -20,9 +20,20 @@ import { CONTACT } from "@/shared/lib/contact";
  * oversized `01`, a faint square grid, tracked-out uppercase eyebrows, and two
  * dark bands. The home shed all of that on 2026-09-07 and this page did not,
  * so the two read as two products. What replaced it is what the home already
- * does: white ground, `--color-headline` navy, hairlines instead of frames,
- * one dark band at the end, and no blue of its own — the page's only
- * `--color-primary` is the search button the header brings with it.
+ * does: white ground, `--color-headline` navy, one dark band at the end, and
+ * no blue of its own — the page's only `--color-primary` is the search button
+ * the header brings with it.
+ *
+ * **The repeated groups are cards, on the home page's own shape.** The first
+ * pass drew them as items on a hairline, which is what the home page looked
+ * like at the time. The home has since become bordered cards end to end —
+ * services, businesses, and now the reviews — so a hairline pitch made the
+ * reader cross from a page of cards into what looked like a different
+ * product. `Paths`, `Steps` and `Requirements` all take the card
+ * `CustomerReviews` draws, down to the token, and the wide column gaps that
+ * separated bare columns come down to the `gap-6` a row of cards uses.
+ * `Pricing` keeps its hairline-free paragraph: it is one sentence, and a card
+ * around one sentence is a box.
  *
  * Nothing here paints with inline styles any more, which is what
  * `LANDING_VARS` and `PAGE_TOP` existed to supply — every colour is a token,
@@ -179,9 +190,12 @@ function Paths({ t }: { t: T }) {
   return (
     <section className="page-shell pt-4 pb-16">
       <SectionHead title={t("pathsTitle")} blurb={t("pathsBlurb")} />
-      <div className="grid gap-x-14 gap-y-9 md:grid-cols-2">
+      <div className="grid gap-6 md:grid-cols-2">
         {paths.map((key) => (
-          <article key={key} className="border-t border-[var(--color-border)] pt-5">
+          <article
+            key={key}
+            className="rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-card)] p-5 text-[var(--color-card-foreground)]"
+          >
             <h3 className="font-display text-[20px] font-bold tracking-[-0.01em] text-[var(--color-headline)]">
               {t(`path.${key}.title`)}
             </h3>
@@ -246,9 +260,12 @@ function Steps({ t }: { t: T }) {
           your first booking" — so it becomes the section's line now that the
           tracked-out uppercase eyebrows are gone. */}
       <SectionHead title={t("stepsTitle")} blurb={t("stepsEyebrow")} />
-      <ol className="grid list-none gap-x-10 gap-y-9 p-0 sm:grid-cols-2 lg:grid-cols-4">
+      <ol className="grid list-none gap-6 p-0 sm:grid-cols-2 lg:grid-cols-4">
         {steps.map((key, i) => (
-          <li key={key} className="border-t border-[var(--color-border)] pt-5">
+          <li
+            key={key}
+            className="rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-card)] p-5 text-[var(--color-card-foreground)]"
+          >
             <span
               aria-hidden="true"
               className="mb-3.5 grid h-[26px] w-[26px] place-items-center rounded-full bg-[var(--color-navy-surface)] text-[12.5px] font-bold text-[var(--color-navy-on)] tabular-nums"
@@ -274,10 +291,9 @@ function Steps({ t }: { t: T }) {
 /**
  * What you need before starting.
  *
- * Three conditions to check against yourself, so three columns on hairlines —
- * not a bordered box divided into cells, and no tinted disc with a tick in it
- * beside each one. A tick says "done"; these are things the reader has yet to
- * bring.
+ * Three conditions to check against yourself, so three cards — and still no
+ * tinted disc with a tick in it beside each one. A tick says "done"; these
+ * are things the reader has yet to bring.
  */
 function Requirements({ t }: { t: T }) {
   const items = ["identity", "payout", "terms"] as const;
@@ -285,9 +301,12 @@ function Requirements({ t }: { t: T }) {
   return (
     <section className="page-shell pb-16">
       <SectionHead title={t("requirementsTitle")} blurb={t("requirementsBlurb")} />
-      <div className="grid gap-x-12 gap-y-9 md:grid-cols-3">
+      <div className="grid gap-6 md:grid-cols-3">
         {items.map((key) => (
-          <article key={key} className="border-t border-[var(--color-border)] pt-5">
+          <article
+            key={key}
+            className="rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-card)] p-5 text-[var(--color-card-foreground)]"
+          >
             <h3 className="font-display text-[16.5px] font-bold text-[var(--color-headline)]">
               {t(`requirement.${key}.title`)}
             </h3>

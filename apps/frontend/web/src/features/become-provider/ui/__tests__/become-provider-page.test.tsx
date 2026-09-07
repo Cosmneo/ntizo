@@ -138,4 +138,41 @@ describe("BecomeProviderPage", () => {
       expect(link).toHaveAttribute("href", "/sign-up?next=%2Fonboarding");
     }
   });
+
+  /**
+   * The three repeated groups are cards, on the home page's own shape.
+   *
+   * They were items on a hairline — a rule above each, then type. That was
+   * the right call on a page of hairlines, and the wrong one once the home
+   * page became bordered cards end to end: the reader crosses from a page of
+   * cards to a pitch that looks like a different product. The card is the
+   * same one `CustomerReviews` draws, down to the token.
+   *
+   * `Pricing` is deliberately not in this list. It is one paragraph, and a
+   * card around a single sentence is a box, not a card.
+   *
+   * jsdom does no layout, so the class that produces the box is the
+   * assertion — and the hairline is asserted gone, because a `border-t` left
+   * behind draws a second rule inside the card's own top edge.
+   */
+  it("draws the paths, the steps and the requirements as the home page's cards", async () => {
+    await render();
+
+    for (const [heading, count] of [
+      ["Two ways to provide", 2],
+      ["How it works", 4],
+      ["What you need", 3],
+    ] as const) {
+      const section = screen.getByRole("heading", { name: heading }).closest("section")!;
+      const cards = section.querySelectorAll("article, li");
+      expect(cards).toHaveLength(count);
+
+      for (const card of cards) {
+        expect(card.className).toContain("rounded-[var(--radius-card)]");
+        expect(card.className).toContain("border-[var(--color-border)]");
+        expect(card.className).toContain("bg-[var(--color-card)]");
+        expect(card.className.split(/\s+/)).not.toContain("border-t");
+      }
+    }
+  });
 });
