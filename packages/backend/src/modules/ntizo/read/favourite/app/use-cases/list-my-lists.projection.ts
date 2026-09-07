@@ -26,6 +26,37 @@ function defaultFirst(lists: readonly FavouriteList[]): FavouriteList[] {
 }
 
 /**
+ * How many lists get a cover mosaic, however many the caller has made.
+ *
+ * **What this protects against: a signed-in caller scaling this field's
+ * database fan-out by creating lists.** Nothing anywhere caps how many lists a
+ * person may have — not the aggregate, not the repository, not
+ * `CreateListCommand` — so without a bound here `lists × 4` cover targets flow
+ * into the card readers, which chunk and `Promise.all` over every run. Two
+ * hundred lists would be eight hundred ids, and because each run of the
+ * delegated projections is itself several round trips (`ListServicesProjection`
+ * fires `listPublished` *and* `countPublished`; `listActive` runs page, count
+ * and `categoriesFor`), that is dozens of concurrent queries from one request.
+ * One person could exhaust the connection pool for everybody by making lists,
+ * which is self-service amplification rather than a theoretical cost.
+ *
+ * Twelve, and the number is chosen rather than picked: `12 × FAVOURITE_COVER_TILES`
+ * is 48, which is exactly `MAX_SERVICE_PAGE`, the largest batch either card
+ * reader resolves in a single run. So the worst case this field can produce is
+ * **one call per kind**, whatever the caller does.
+ *
+ * A list past the bound is still returned, still named, and still counted —
+ * only its mosaic is absent, and `favouriteListReadModel.coverUrls` already
+ * says fewer than four tiles (often zero) is normal and the client draws the
+ * gaps. Degrading the decoration on the thirteenth list is a far smaller cost
+ * than the alternatives: capping `listForUser` itself would hide lists a person
+ * owns from the very dialog they save into, and merely throttling the
+ * concurrency would keep the total work unbounded and make the request slow
+ * instead of making it cheap.
+ */
+export const MAX_LISTS_WITH_COVERS = 12;
+
+/**
  * Everybody's own lists, with a count and a cover mosaic on each.
  *
  * Takes no reader-supplied user id. `requesterUserId` is stamped by the
@@ -71,18 +102,26 @@ export class ListMyListsProjection {
     // has an id — the optional `id` on the aggregate is for one that has not
     // been saved yet, which cannot reach a read.
     const ids = ordered.map((l) => l.id!);
+    // Covers are asked for only up to the bound; counts are asked for every
+    // list. The asymmetry is the point: a count is one more row in a single
+    // `GROUP BY`, while a cover is an id that has to be resolved into a card
+    // through another projection. One of those scales with the caller's list
+    // count harmlessly and the other does not — see MAX_LISTS_WITH_COVERS.
+    const coveredIds = ids.slice(0, MAX_LISTS_WITH_COVERS);
 
     // One query for the counts and one for the covers, for **every** list —
     // twelve lists must not be twenty-four queries. Concurrent because they
     // are independent.
     const [counts, covers] = await Promise.all([
       this.favourites.countsFor(ids),
-      this.favourites.coverTargetsFor({ listIds: ids, perList: FAVOURITE_COVER_TILES }),
+      this.favourites.coverTargetsFor({ listIds: coveredIds, perList: FAVOURITE_COVER_TILES }),
     ]);
 
-    // The same rule one level down: every list's cover targets are resolved
+    // The same rule one level down: every covered list's targets are resolved
     // together, one call per kind for the whole page, never one call per list.
-    const refs: FavouriteTargetRef[] = ids.flatMap((id) => covers.get(id) ?? []);
+    // Bounded above by `MAX_LISTS_WITH_COVERS * FAVOURITE_COVER_TILES`, so this
+    // array cannot grow past a single run of either reader.
+    const refs: FavouriteTargetRef[] = coveredIds.flatMap((id) => covers.get(id) ?? []);
     const resolved = await resolveTargets(
       refs,
       { services: this.services, providers: this.providers },

@@ -40,6 +40,18 @@ const MAX_LIMIT = 50;
  * needs the list's name and `isDefault` for its header anyway, and one scoped
  * read answers both questions. A list id that is not in the caller's own rows
  * is refused before a single entry is read.
+ *
+ * **Known cost, deliberately left.** That read returns *every* one of the
+ * caller's lists on every page request of a single list, so deep paging
+ * re-fetches all of them each time. It is one query returning N small rows, not
+ * a fan-out — unlike `ListMyListsProjection`'s covers, nothing here multiplies
+ * into concurrent queries, so a caller cannot amplify it into a pool problem by
+ * making lists. Collapsing it to O(1) needs a `findOwned({ id, userId })` on
+ * `FavouriteListRepositoryPort` that returns the one row or null, which would
+ * answer the ownership question and the header question in a single targeted
+ * read — a better shape than either `ownedBy` plus a second lookup or this. It
+ * is left because that method, its Drizzle implementation and its DB-backed
+ * test belong to the repositories rather than to this slice.
  */
 export class ListListEntriesProjection {
   constructor(

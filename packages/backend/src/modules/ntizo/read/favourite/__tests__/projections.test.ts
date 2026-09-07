@@ -1,5 +1,9 @@
 import { beforeEach, describe, expect, it } from "bun:test";
-import type { ProviderPublicDTO, ServiceDTO } from "@ntizo/shared/read-models";
+import {
+  FAVOURITE_COVER_TILES,
+  type ProviderPublicDTO,
+  type ServiceDTO,
+} from "@ntizo/shared/read-models";
 import { Favourite } from "../../../bounded-contexts/favourite/domain/aggregates/favourite.aggregate";
 import { FavouriteList } from "../../../bounded-contexts/favourite/domain/aggregates/favourite-list.aggregate";
 import type { FavouriteTarget } from "../../../bounded-contexts/favourite/domain/favourite-target";
@@ -7,7 +11,10 @@ import type { FavouriteListRepositoryPort } from "../../../bounded-contexts/favo
 import type { FavouriteRepositoryPort } from "../../../bounded-contexts/favourite/app/ports/outbound/favourite.repository.port";
 import type { ServiceCardReaderPort } from "../app/ports/outbound/service-card-reader.port";
 import type { ProviderCardReaderPort } from "../app/ports/outbound/provider-card-reader.port";
-import { ListMyListsProjection } from "../app/use-cases/list-my-lists.projection";
+import {
+  ListMyListsProjection,
+  MAX_LISTS_WITH_COVERS,
+} from "../app/use-cases/list-my-lists.projection";
 import { ListListEntriesProjection } from "../app/use-cases/list-list-entries.projection";
 import { MarkFavouritesProjection } from "../app/use-cases/mark-favourites.projection";
 import { ListsForTargetProjection } from "../app/use-cases/lists-for-target.projection";
@@ -135,6 +142,8 @@ class FakeFavouriteListRepository implements FavouriteListRepositoryPort {
 class FakeFavouriteRepository implements FavouriteRepositoryPort {
   public countCalls = 0;
   public coverCalls = 0;
+  /** Which lists `coverTargetsFor` was actually asked about — the bound is applied before the query, not after it. */
+  public coveredListIds: string[] = [];
   /** The limit `entriesIn` was actually handed. `undefined` means it was never called. */
   public limit: number | undefined;
   public cursor: string | null | undefined;
@@ -194,6 +203,7 @@ class FakeFavouriteRepository implements FavouriteRepositoryPort {
     perList: number;
   }): Promise<Map<string, { targetType: FavouriteTarget; targetId: string }[]>> {
     this.coverCalls += 1;
+    this.coveredListIds = p.listIds;
     const covers = new Map<string, { targetType: FavouriteTarget; targetId: string }[]>();
     for (const listId of p.listIds) {
       const targets = this.rows
@@ -401,6 +411,108 @@ describe("ListMyListsProjection", () => {
     // language into an answer keyed on nothing else.
     const out = await projection.execute({ requesterUserId: "u1" });
     expect(out[0]!.name).toBeNull();
+  });
+
+  /**
+   * The fan-out this field would otherwise let a caller scale by hand.
+   *
+   * Nothing caps how many lists a person may create, so without
+   * `MAX_LISTS_WITH_COVERS` the ids handed to the card readers grow with the
+   * caller's own list count — and the readers chunk and run those
+   * concurrently, each run being several round trips inside the delegated
+   * projection. One person making lists could exhaust the connection pool for
+   * everybody.
+   *
+   * These assert on how many ids are *asked for*, because that is what decides
+   * how many runs `DelegatedServiceCardReader` fires: at or below
+   * `MAX_SERVICE_PAGE` (48) it is exactly one, which `card-readers.test.ts`
+   * pins separately.
+   */
+  describe("when somebody has made a great many lists", () => {
+    const listsFor = (count: number): ListRow[] =>
+      Array.from({ length: count }, (_, i) => ({
+        id: `l${i}`,
+        userId: "u1",
+        // The oldest is the default, exactly as a real row set is.
+        name: i === 0 ? null : `List ${i}`,
+        isDefault: i === 0,
+        // Strictly increasing, so list 0 is unambiguously the oldest and the
+        // repository's newest-first order hands it back last.
+        createdAt: new Date(Date.UTC(2026, 0, 1) + i * 86_400_000),
+      }));
+
+    const rowsFor = (count: number): FavouriteRow[] =>
+      listsFor(count).flatMap((list, i) =>
+        Array.from({ length: FAVOURITE_COVER_TILES }, (_, j) => ({
+          listId: list.id,
+          userId: "u1",
+          targetType: "service" as const,
+          targetId: `s${i}-${j}`,
+          createdAt: at(`2026-03-01T00:00:0${j}.000Z`),
+        })),
+      );
+
+    function run(count: number) {
+      const services = new FakeServiceCards(
+        rowsFor(count).map((r) => serviceCard(r.targetId, [`https://cdn/${r.targetId}.jpg`])),
+      );
+      const entries = new FakeFavouriteRepository(rowsFor(count));
+      const projection = new ListMyListsProjection(
+        new FakeFavouriteListRepository(listsFor(count)),
+        entries,
+        services,
+        new FakeProviderCards(),
+      );
+      return { projection, services, entries };
+    }
+
+    it("never asks for more cover targets than the bound allows", async () => {
+      const { projection, services } = run(40);
+      await projection.execute({ requesterUserId: "u1" });
+      expect(services.askedIds.length).toBeLessThanOrEqual(
+        MAX_LISTS_WITH_COVERS * FAVOURITE_COVER_TILES,
+      );
+      // 48 is `MAX_SERVICE_PAGE`, so the bound also guarantees a single run.
+      expect(services.askedIds.length).toBeLessThanOrEqual(48);
+    });
+
+    it("stops growing: two hundred lists cost exactly what forty do", async () => {
+      // The property, stated directly. Unbounded, these are 160 and 800.
+      const forty = run(40);
+      const twoHundred = run(200);
+      await forty.projection.execute({ requesterUserId: "u1" });
+      await twoHundred.projection.execute({ requesterUserId: "u1" });
+      expect(twoHundred.services.askedIds.length).toBe(forty.services.askedIds.length);
+      expect(twoHundred.services.calls).toBe(1);
+    });
+
+    it("asks the repository to cover only the lists it will draw", async () => {
+      // The bound is applied before `coverTargetsFor`, not after it — asking
+      // for two hundred lists' tiles and throwing most away would still be the
+      // expensive query.
+      const { projection, entries } = run(200);
+      await projection.execute({ requesterUserId: "u1" });
+      expect(entries.coveredListIds.length).toBe(MAX_LISTS_WITH_COVERS);
+    });
+
+    it("still returns every list, named and counted, past the bound", async () => {
+      // Only the mosaic is dropped. A list that vanished from this answer would
+      // be a list the dialog cannot save into.
+      const { projection } = run(40);
+      const out = await projection.execute({ requesterUserId: "u1" });
+      expect(out).toHaveLength(40);
+      expect(out.every((l) => l.itemCount === FAVOURITE_COVER_TILES)).toBe(true);
+      expect(out[39]!.coverUrls).toEqual([]);
+    });
+
+    it("keeps the covers on the lists a reader meets first, starting with the default", async () => {
+      const { projection } = run(40);
+      const out = await projection.execute({ requesterUserId: "u1" });
+      expect(out[0]!.isDefault).toBe(true);
+      expect(out[0]!.coverUrls).toHaveLength(FAVOURITE_COVER_TILES);
+      expect(out[MAX_LISTS_WITH_COVERS - 1]!.coverUrls).toHaveLength(FAVOURITE_COVER_TILES);
+      expect(out[MAX_LISTS_WITH_COVERS]!.coverUrls).toEqual([]);
+    });
   });
 });
 
