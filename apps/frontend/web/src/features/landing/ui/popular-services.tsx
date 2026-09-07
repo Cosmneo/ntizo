@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { Skeleton } from "@ntizo/frontend-ui";
 import { ServiceCard } from "@/shared/components/browse/service-card";
+import { ScrollRail } from "@/shared/components/browse/scroll-rail";
 import { usePopularServices } from "@/features/landing/viewmodel/use-popular-services";
 import { useLocale } from "@/features/landing/viewmodel/use-locale";
 import { SectionHead } from "@/features/landing/ui/section-head";
@@ -19,6 +20,10 @@ export const LANDING_SERVICES = 8;
  * client asked for here first and then asked to see everywhere: `/services`'
  * own grid now draws the same component rather than its old borderless
  * `ServiceTile`.
+ *
+ * Below `sm` the grid becomes `ScrollRail`'s sideways row, at the rail's own
+ * default `cardWidth` (72%): one card plus a generous quarter-card peek of
+ * the next, wide enough to keep the title and price legible.
  */
 export function PopularServices() {
   const { t } = useTranslation("landing"); // t:PopularServices
@@ -37,7 +42,7 @@ export function PopularServices() {
         blurb={t("home.servicesBlurb")}
         more={{ label: t("home.servicesAll"), to: "/services" }}
       />
-      <ul className="grid list-none grid-cols-1 gap-6 p-0 sm:grid-cols-2 lg:grid-cols-4">
+      <ScrollRail as="ul" columns={2} className="lg:grid-cols-4">
         {isLoading
           ? Array.from({ length: LANDING_SERVICES }, (_, i) => (
               <li key={i}>
@@ -60,7 +65,7 @@ export function PopularServices() {
                 <ServiceCard service={s} locale={locale} />
               </li>
             ))}
-      </ul>
+      </ScrollRail>
     </section>
   );
 }

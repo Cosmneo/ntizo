@@ -98,4 +98,26 @@ describe("CategoryGrid", () => {
     expect(screen.queryByTestId("media-fallback")).toBeNull();
     expect(screen.queryByRole("presentation")).toBeNull();
   });
+
+  // jsdom does no layout, so this cannot prove a phone actually scrolls
+  // sideways or that a wide screen actually shows a grid — only that the
+  // list carries the classes `ScrollRail` needs for each: the phone-only
+  // flex/scroll/snap/bleed declarations (unprefixed, so they apply below
+  // `sm`) and the `sm:` grid declarations that replace them from `sm` up.
+  it("declares a phone-width scrolling row that hands off to a grid at `sm`", async () => {
+    await renderGrid([category()]);
+    const list = await screen.findByRole("list");
+    expect(list.className).toContain("flex");
+    expect(list.className).toContain("snap-x");
+    expect(list.className).toContain("snap-mandatory");
+    expect(list.className).toContain("overflow-x-auto");
+    expect(list.className).toContain("-mx-6");
+    expect(list.className).toContain("px-6");
+    expect(list.className).toContain("[&>*]:snap-start");
+    expect(list.className).toContain("sm:grid");
+    expect(list.className).toContain("sm:grid-cols-4");
+    expect(list.className).toContain("xl:grid-cols-8");
+    expect(list.className).toContain("sm:overflow-visible");
+    expect(list.style.getPropertyValue("--rail-card")).toBe("38%");
+  });
 });

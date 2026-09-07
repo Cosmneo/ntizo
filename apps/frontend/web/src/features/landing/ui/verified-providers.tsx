@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { Skeleton } from "@ntizo/frontend-ui";
 import { ProviderCard } from "@/shared/components/browse/provider-card";
+import { ScrollRail } from "@/shared/components/browse/scroll-rail";
 import { usePopularProviders } from "@/features/landing/viewmodel/use-popular-providers";
 import { useLocale } from "@/features/landing/viewmodel/use-locale";
 import { SectionHead } from "@/features/landing/ui/section-head";
@@ -25,6 +26,12 @@ export const LANDING_PROVIDERS = 3;
  * names its trade and place in the eyebrow and the business itself in the
  * title, with the verification seal riding beside the name instead of beside
  * a provider byline that no longer exists here.
+ *
+ * Below `sm` the grid becomes `ScrollRail`'s sideways row. `cardWidth="78%"`
+ * — wider than `PopularServices`' own 72% — because this card's photo is
+ * 16:10 rather than 4:3: the same width would leave it visibly shorter than
+ * a service card, and the extra width keeps the two rails in the same
+ * rhythm while still leaving a clear peek of the next business.
  */
 export function VerifiedProviders() {
   const { t } = useTranslation("landing"); // t:VerifiedProviders
@@ -41,7 +48,12 @@ export function VerifiedProviders() {
         blurb={t("home.providersBlurb")}
         more={{ label: t("home.providersAll"), to: "/providers" }}
       />
-      <ul className="grid gap-x-6 gap-y-7 sm:grid-cols-2 lg:grid-cols-3">
+      <ScrollRail
+        as="ul"
+        columns={2}
+        cardWidth="78%"
+        className="sm:gap-y-7 lg:grid-cols-3"
+      >
         {isLoading
           ? Array.from({ length: LANDING_PROVIDERS }, (_, i) => (
               <li key={i}>
@@ -64,7 +76,7 @@ export function VerifiedProviders() {
                 <ProviderCard provider={p} locale={locale} />
               </li>
             ))}
-      </ul>
+      </ScrollRail>
     </section>
   );
 }
