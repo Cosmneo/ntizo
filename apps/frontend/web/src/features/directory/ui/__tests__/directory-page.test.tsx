@@ -339,6 +339,14 @@ describe("DirectoryPage", () => {
     });
   });
 
+  it("the search bar says it searches businesses, not services", async () => {
+    // Its own accessible name, not the services one it inherits by default:
+    // the placeholder tells the eye what to type and says nothing at all to a
+    // screen reader, which announced "Search services" over this list.
+    renderPage("/providers", { items: [provider()], total: 1 });
+    expect(await screen.findByRole("searchbox")).toHaveAccessibleName("Search providers");
+  });
+
   it("the search bar shows the current term", async () => {
     // A results page whose search box is empty tells the reader they searched
     // for nothing, and a second search from it starts from scratch.

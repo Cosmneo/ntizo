@@ -149,6 +149,7 @@ export function DirectoryPage() {
         <ServiceSearch
           to="/providers"
           placeholder={t("searchFieldProviderEmpty")}
+          label={t("searchLabelProviders")}
           initialValue={current.q ?? ""}
           className="mx-auto mt-5 max-w-[760px]"
         />

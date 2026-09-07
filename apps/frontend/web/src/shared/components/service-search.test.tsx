@@ -121,6 +121,19 @@ describe("ServiceSearch", () => {
     expect(screen.getByRole("searchbox")).toHaveAttribute("placeholder", "Nome do negócio");
   });
 
+  it("uses the label it is given", async () => {
+    // The placeholder is not the accessible name — a screen reader on
+    // `/providers` heard "Search services" over a list of businesses, which
+    // is the one thing about the field that never reached the eye.
+    await renderSearch({ to: "/providers", label: "Search providers" });
+    expect(screen.getByRole("searchbox")).toHaveAccessibleName("Search providers");
+  });
+
+  it("falls back to the services label when given none", async () => {
+    await renderSearch();
+    expect(screen.getByRole("searchbox")).toHaveAccessibleName("Search services");
+  });
+
   it("shows the current term when rendered on the results page", async () => {
     await renderSearch({ initialValue: "jardinagem" });
     expect(screen.getByLabelText("Search services")).toHaveValue("jardinagem");

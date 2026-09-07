@@ -16,6 +16,7 @@
   "noDescription": "Este prestador ainda não adicionou uma descrição.",
   "searchPlaceholder": "Procurar serviços…",
   "searchLabel": "Pesquisar serviços",
+  "searchLabelProviders": "Pesquisar prestadores",
   "searchAction": "Pesquisar",
   "noResultsFor": "Nada corresponde a \"{{query}}\". Tente outra palavra.",
   "resultsFor": "{{count}} resultado(s) para \"{{query}}\"",

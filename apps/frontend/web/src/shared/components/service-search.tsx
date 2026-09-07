@@ -16,6 +16,14 @@ interface ServiceSearchProps {
   to?: "/services" | "/providers";
   /** What the empty field asks for. Defaults to the services wording. */
   placeholder?: string;
+  /**
+   * The field's accessible name. A placeholder is not one — it is a hint the
+   * eye reads and a screen reader may skip — so a bar pointed at `/providers`
+   * with only its placeholder changed still announced itself as the services
+   * search. Defaults to the services wording, which is what the home page and
+   * `/services` mean.
+   */
+  label?: string;
 }
 
 /**
@@ -50,6 +58,7 @@ export function ServiceSearch({
   autoFocus,
   to = "/services",
   placeholder,
+  label,
 }: ServiceSearchProps) {
   const { t } = useTranslation("directory");
   const navigate = useNavigate();
@@ -90,7 +99,7 @@ export function ServiceSearch({
         autoFocus={autoFocus}
         onChange={(e) => setValue(e.target.value)}
         placeholder={placeholder ?? t("searchPlaceholder")}
-        aria-label={t("searchLabel")}
+        aria-label={label ?? t("searchLabel")}
         className="min-w-0 flex-1 bg-transparent text-sm text-[var(--color-foreground)] outline-none placeholder:text-[var(--color-muted-foreground)]"
       />
       <button

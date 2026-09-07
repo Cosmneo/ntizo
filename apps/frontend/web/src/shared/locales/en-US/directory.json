@@ -16,6 +16,7 @@
   "noDescription": "This provider hasn't added a description yet.",
   "searchPlaceholder": "Search services…",
   "searchLabel": "Search services",
+  "searchLabelProviders": "Search providers",
   "searchAction": "Search",
   "noResultsFor": "Nothing matched \"{{query}}\". Try another word.",
   "resultsFor": "{{count}} result(s) for \"{{query}}\"",

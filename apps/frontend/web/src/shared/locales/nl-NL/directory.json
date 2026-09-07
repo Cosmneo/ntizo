@@ -16,6 +16,7 @@
   "noDescription": "Deze aanbieder heeft nog geen beschrijving toegevoegd.",
   "searchPlaceholder": "Diensten zoeken…",
   "searchLabel": "Diensten zoeken",
+  "searchLabelProviders": "Aanbieders zoeken",
   "searchAction": "Zoeken",
   "noResultsFor": "Niets komt overeen met \"{{query}}\". Probeer een ander woord.",
   "resultsFor": "{{count}} resulta(a)t(en) voor \"{{query}}\"",
