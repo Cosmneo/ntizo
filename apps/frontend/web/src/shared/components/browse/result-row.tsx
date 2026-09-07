@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { cn } from "@ntizo/frontend-ui";
 
 /**
  * A business, as a row.
@@ -19,6 +20,7 @@ export function ResultRow({
   description,
   services,
   side,
+  first = false,
 }: {
   media: ReactNode;
   /** An `h3` holding the route-typed title link and, when earned, the seal. */
@@ -29,9 +31,28 @@ export function ResultRow({
   services: ReactNode;
   /** Rating, price, and the chevron. */
   side: ReactNode;
+  /**
+   * Whether this is the first row of its list, which is the one row with
+   * nothing above it to be separated from.
+   *
+   * **Told, never guessed.** This was a `first:` variant, which reads the
+   * *DOM* parent — and a list of rows is `<ul><li><article>`, so every
+   * article is the first child of its own `<li>` and the variant stripped the
+   * hairline from every row in the list. The page is the only thing that
+   * knows which row is actually first, so the page says so.
+   */
+  first?: boolean;
 }) {
   return (
-    <article className="group relative grid gap-7 border-t border-[var(--color-border)] py-6 first:border-t-0 first:pt-1 md:grid-cols-[284px_minmax(0,1fr)_190px]">
+    <article
+      className={cn(
+        "group relative grid gap-7 border-t border-[var(--color-border)] py-6 md:grid-cols-[284px_minmax(0,1fr)_190px]",
+        // `cn` is `twMerge`, so this genuinely replaces `border-t` rather than
+        // racing it in the stylesheet: a first row's class list ends up with
+        // `border-t-0` and no `border-t` at all.
+        first && "border-t-0 pt-1",
+      )}
+    >
       {media}
       <div className="grid min-w-0 content-start gap-1.5 pt-0.5">
         {title}

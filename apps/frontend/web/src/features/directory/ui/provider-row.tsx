@@ -21,9 +21,17 @@ import { formatHeadlinePrice } from "@/features/directory/services/domain/servic
 export function ProviderRow({
   provider,
   locale,
+  first = false,
 }: {
   provider: ProviderPublicDTO;
   locale: string;
+  /**
+   * Whether this is the first row of the list — forwarded straight to
+   * `ResultRow`, which draws the hairline every other row is separated by.
+   * The list is `<ul><li><article>`, so no CSS the row could carry would know
+   * the answer; only the page's own index does. See `ResultRow`.
+   */
+  first?: boolean;
 }) {
   const { t } = useTranslation("directory");
   const photo = provider.photoUrls[0] ?? null;
@@ -39,6 +47,7 @@ export function ProviderRow({
 
   return (
     <ResultRow
+      first={first}
       media={
         <div className="relative aspect-[4/3] overflow-hidden rounded-[var(--radius-card)] bg-[var(--color-navy-surface)]">
           {/* `BrandImage` swaps in the navy `BrandTile` both when there is no
