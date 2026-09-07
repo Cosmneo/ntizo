@@ -84,7 +84,7 @@ describe("ProviderFilters", () => {
   });
 
   it("wears navy on the price form's OK, not the kit's default blue", async () => {
-    // `--color-primary` is the site's own blue — the header's nav pill and
+    // `--color-primary` is the site's own blue — the header's sign-in and
     // sign-in, and the search bar's button — and nothing in the results wears
     // it; the kit's default `Button` variant is that blue, and this submit is
     // drawn twice, in the price pill's popover and in the sheet.

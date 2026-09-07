@@ -54,8 +54,10 @@ import { resultsScope, scopeValues } from "@/features/directory/domain/results-s
  * peers.
  *
  * **Nothing in the results is blue.** The site's one blue goes where the site
- * always puts it — the header's nav pill, the header's sign-in, the search
- * bar's button — and no further down the page than that.
+ * always puts it — the header's sign-in and the search bar's button — and no
+ * further down the page than that. The header's three destinations used to be
+ * a third place and are not any more: they are bare text, and the lit one is
+ * navy.
  * Everything below is headline navy, ink, grey and the amber star, which is
  * why the tiles carry no border, no shadow and no button of their own: what
  * the eye should land on down a column of results is the photographs and the

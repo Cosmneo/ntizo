@@ -6,6 +6,35 @@ import { ServiceSearch } from "@/shared/components/service-search";
 import { PUBLIC_NAV } from "@/shared/lib/public-nav";
 
 /**
+ * A destination in the header: text, and nothing else.
+ *
+ * It was a pill group until 7 September 2026 — a muted capsule, an icon per
+ * item, and the lit one filled with the site's blue. Beside the search bar
+ * that is two enclosed shapes competing at the same size, and the blue read
+ * as the page's primary action when the primary action is the search's own
+ * button. Weight and colour carry the current page instead, which is all the
+ * pill was ever saying.
+ *
+ * The icons went with the capsule. They were legible at pill size and are
+ * noise beside bare words; the phone's bottom bar still draws them, where a
+ * tab target wants a glyph and the labels are 10px.
+ *
+ * Navy rather than the blue for the lit one: `--color-headline` is what this
+ * site makes things important with, and it leaves the blue meaning "this is
+ * the button you press".
+ */
+function navLinkClassName(active: boolean, overlay: boolean): string {
+  if (overlay) {
+    return active
+      ? "text-sm font-semibold text-white"
+      : "text-sm font-medium text-white/70 hover:text-white";
+  }
+  return active
+    ? "text-sm font-semibold text-[var(--color-headline)]"
+    : "text-sm font-medium text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]";
+}
+
+/**
  * The header every public page wears.
  *
  * Two grounds, one structure. `overlay` puts it on top of the landing hero's
@@ -21,16 +50,17 @@ import { PUBLIC_NAV } from "@/shared/lib/public-nav";
  * the one place that is on every screen, and the pages below it are free to
  * begin with their own content.
  *
- * The nav pill moved to the right in the same change, because the centre is
- * the search's now. It sits beside the account controls rather than in a
- * column of its own: two clusters and a field reads as a bar, where three
- * separated groups read as three.
+ * The three destinations moved to the right in the same change, because the
+ * centre is the search's now. They sit beside the account controls rather
+ * than in a column of their own: two clusters and a field reads as a bar,
+ * where three separated groups read as three. They are bare text — see
+ * `navLinkClassName` for why the capsule and the icons went.
  *
  * The search is centred in the space left between the logo and that cluster
  * — not in the window. Window-centring is what the old three-column grid
- * bought, and it is no longer purchasable: the right-hand cluster is ~540px
- * wide with the pill in it, and the equal outer columns it would take leave
- * under 300px in the middle at any width this site is read at.
+ * bought, and it is no longer purchasable: the right-hand cluster is ~420px
+ * wide with the destinations in it, and the equal outer columns it would
+ * take leave under 400px in the middle at any width this site is read at.
  */
 export function SiteHeader({
   overlay = false,
@@ -39,8 +69,8 @@ export function SiteHeader({
 }: {
   overlay?: boolean;
   /**
-   * Which pill is lit. `"none"` for pages outside the three destinations —
-   * the company pages — so the header does not claim they are "Explore".
+   * Which destination is lit. `"none"` for pages outside the three — the
+   * company pages — so the header does not claim they are "Explore".
    * `endsWith("none")` matches no nav key, which is the whole mechanism.
    */
   current?: "explore" | "categories" | "services" | "providers" | "none";
@@ -92,34 +122,19 @@ export function SiteHeader({
         </div>
 
         <div className="ml-auto flex items-center gap-2 md:ml-0 lg:gap-3.5">
-          <nav
-            className={
-              overlay
-                ? "hidden gap-0.5 rounded-full bg-white/95 p-1 shadow-sm lg:flex"
-                : "hidden gap-0.5 rounded-full bg-[var(--color-muted)] p-1 lg:flex"
-            }
-          >
-            {PUBLIC_NAV.map((item) => {
-              const Icon = item.icon;
-              const active = item.key.endsWith(current);
-              return (
-                <Link
-                  key={item.key}
-                  to={item.to}
-                  className={
-                    active
-                      ? "flex items-center gap-1.5 rounded-full bg-[var(--color-primary)] px-4 py-2.5 text-sm font-semibold text-white"
-                      : "flex items-center gap-1.5 rounded-full px-4 py-2.5 text-sm font-semibold text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]"
-                  }
-                >
-                  <Icon className="h-4 w-4" />
-                  {t(item.key)}
-                </Link>
-              );
-            })}
+          <nav className="hidden items-center gap-6 lg:flex">
+            {PUBLIC_NAV.map((item) => (
+              <Link
+                key={item.key}
+                to={item.to}
+                className={navLinkClassName(item.key.endsWith(current), overlay)}
+              >
+                {t(item.key)}
+              </Link>
+            ))}
           </nav>
 
-          {/* Only where the pill is. Below `lg` the cluster is the account
+          {/* Only where the nav is. Below `lg` the cluster is the account
               controls alone, and a rule with nothing on one side of it. */}
           <span
             aria-hidden="true"
