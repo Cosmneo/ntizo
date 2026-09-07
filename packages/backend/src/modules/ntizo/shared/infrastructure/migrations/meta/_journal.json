@@ -274,6 +274,13 @@
       "when": 1788476230596,
       "tag": "0038_clean_klaw",
       "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1788768406493,
+      "tag": "0039_fancy_sister_grimm",
+      "breakpoints": true
     }
   ]
 }
