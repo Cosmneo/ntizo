@@ -45,16 +45,26 @@ describe("Hero", () => {
     expect(screen.getByText("Pay with M-Pesa")).toBeInTheDocument();
   });
 
-  it("carries the search that reaches the catalogue", async () => {
+  /**
+   * The search reaches the catalogue from the header, not from the hero.
+   * It used to be both: a field in the bar and a wider one under the
+   * subtitle, which is two boxes asking the same question in one screenful.
+   * The hero kept the big one only while the header had none.
+   */
+  it("leaves the search to the header rather than repeating it", async () => {
     await renderHero();
-    expect(screen.getByLabelText("Search services")).toBeInTheDocument();
+
+    const box = screen.getByRole("searchbox");
+    expect(box).toHaveAccessibleName("Search services");
+    expect(screen.getByRole("banner")).toContainElement(box);
   });
 
-  it("offers the provider their own door", async () => {
+  // The provider's door is the footer's — `footer.test.tsx` holds it to that.
+  // It was in the header, in the same block as the account controls, where it
+  // stacked above them instead of sitting beside them.
+  it("leaves the provider's door to the footer", async () => {
     await renderHero();
-    expect(
-      screen.getByRole("link", { name: "Become a Provider" }).getAttribute("href"),
-    ).toBe("/become-provider");
+    expect(screen.queryByRole("link", { name: "Become a Provider" })).toBeNull();
   });
 
   // The collage stands in for photographs nobody has uploaded. A grey box

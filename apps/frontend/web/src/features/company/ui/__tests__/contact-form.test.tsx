@@ -115,7 +115,15 @@ describe("ContactRequestPage — contact", () => {
     await renderCompanyPage(ContactPage, "/contact");
     // Scoped to the form: the site header also carries a "Sign in" link
     // (see task-11 amendment #2), so an unscoped query is ambiguous.
-    const form = document.querySelector("form")!;
+    //
+    // `:not([role="search"])` and not simply the first `form` on the page:
+    // the header's search bar is a form too, and it is the earlier of the two
+    // in the document, so "the first form" stopped being this one when the
+    // search moved into the header.
+    //
+    // The type argument is needed because the selector is no longer a bare
+    // tag name: `querySelector` only infers `HTMLFormElement` from `"form"`.
+    const form = document.querySelector<HTMLFormElement>('form:not([role="search"])')!;
     expect(within(form).getByRole("link", { name: /sign in/i })).toHaveAttribute("href", "/sign-in?next=%2Fcontact");
   });
 

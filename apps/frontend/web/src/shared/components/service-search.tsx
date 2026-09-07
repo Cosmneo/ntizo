@@ -13,11 +13,12 @@ interface FieldProps {
 }
 
 /**
- * The home page's hero: the services wording, and a submit that starts a
- * fresh search.
+ * The bar on a page with no list under it: the services wording, and a submit
+ * that starts a fresh search.
  *
- * Nothing to keep — there is no list under the hero whose narrowing a submit
- * could preserve — so all four of the list page's props are absent together.
+ * Nothing to keep — the home page, a detail page and the company pages have
+ * no narrowing a submit could preserve — so all four of the list page's props
+ * are absent together.
  */
 interface HeroProps {
   to?: undefined;
@@ -71,8 +72,10 @@ interface ListProps {
 type ServiceSearchProps = FieldProps & (HeroProps | ListProps);
 
 /**
- * The one search field: the home page's hero, and again under the header on
- * each of the two browse pages.
+ * The one search field, drawn once by `SiteHeader` and therefore on every
+ * public page. It used to be drawn three times — the landing hero, and a band
+ * under the header on each of the two browse pages — which is why it takes
+ * its wording and its submit from the caller rather than knowing them.
  *
  * A single input, not the four-part what/where/when/who bar it replaces: the
  * other three had nothing behind them, and a form that asks for a date before
@@ -89,8 +92,9 @@ type ServiceSearchProps = FieldProps & (HeroProps | ListProps);
  * is exactly how the two browse pages each ended up with a private copy
  * before this.
  *
- * What a submit *keeps* is the caller's to decide, through `search`. From the
- * hero there is nothing to keep and the term is the whole URL. From a list
+ * What a submit *keeps* is the caller's to decide, through `search`. From a
+ * page with no list there is nothing to keep and the term is the whole URL.
+ * From a list
  * page the bar is one control among many, and every other one of them changes
  * a single part of the URL and keeps the rest — so the page hands over its own
  * builder and a submit keeps the category, the filters, the city and the sort,
