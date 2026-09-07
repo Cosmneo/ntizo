@@ -450,7 +450,11 @@ approved drawing is the artifact "Listagens no estilo do site".
   under the header inside the page shell (max 760px, centred). It gains a
   destination: `/services` searches services, `/providers` searches
   businesses by name, each with its own placeholder. The city stays in the
-  "Cidade" filter pill.
+  "Cidade" filter pill. Submitting from a list keeps the category, the
+  filters, the city and the sort, and returns to the first page — the same
+  rule every other control on these pages follows, changing one part of the
+  URL and leaving the rest alone. Only the home page's hero starts a fresh
+  search, because there is no list under it whose narrowing it could keep.
 - **Categories.** One row of chips in the filter pills' own style: 36px
   tall, hairline border, small icon and label, "Todas" first, the chosen one
   filled navy. The row keeps the strip's scroller, edge fades and round
