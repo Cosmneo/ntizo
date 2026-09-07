@@ -65,12 +65,6 @@ describe("LandingPage", () => {
     expect(screen.getByLabelText("Search services")).toBeInTheDocument();
   });
 
-  it("explains itself with the product, whatever the queries return", async () => {
-    await renderPage();
-    expect(await screen.findByRole("heading", { name: "How it works" })).toBeInTheDocument();
-    expect(screen.getByText("Booking confirmed")).toBeInTheDocument();
-  });
-
   it("makes the offer to the other reader", async () => {
     await renderPage();
     expect(
@@ -87,27 +81,26 @@ describe("LandingPage", () => {
   // The four data-fed sections each hide themselves rather than render a
   // heading over nothing. With no data seeded, none of them should be here.
   //
-  // "How it works" has no query behind it, so it is on screen from the very
-  // first render. The other four start out `isLoading` (also on screen,
-  // with skeletons) and only unmount once their query settles to an error —
-  // which for an unseeded query against no server happens fast, but still
-  // after at least one macrotask, never within the same microtask turn that
-  // renders "How it works". Asserting their absence needs the same kind of
-  // wait `findByRole` gives the heading, or the check runs a tick too early
-  // and catches them mid-flight.
+  // The provider band's call to action has no query behind it, so it is on
+  // screen from the very first render. The other four start out `isLoading`
+  // (also on screen, with skeletons) and only unmount once their query
+  // settles to an error — which for an unseeded query against no server
+  // happens fast, but still after at least one macrotask, never within the
+  // same microtask turn that renders the band. Asserting their absence needs
+  // the same kind of wait `findByRole` gives the link, or the check runs a
+  // tick too early and catches them mid-flight.
   it("shows no empty section headings when there is nothing to put in them", async () => {
     await renderPage();
-    await screen.findByRole("heading", { name: "How it works" });
+    await screen.findByRole("link", { name: "Create a provider account" });
     // Four assertions that something is absent all pass — vacuously — on a
     // completely blank document, and this tree has no Error Boundary
     // anywhere: if any section threw while rendering, React would unmount
     // the whole page, not just that section, and the four `toBeNull` checks
     // below would then pass against nothing on screen at all. So this block
-    // also asserts the page is still actually there: "How it works" again,
-    // plus the provider band's CTA (not data-driven, and further down the
-    // tree), alongside the four negatives.
+    // also asserts the page is still actually there: the provider band's
+    // call to action again — not data-driven, and further down the tree than
+    // anything being asserted absent — alongside the four negatives.
     await waitFor(() => {
-      expect(screen.getByRole("heading", { name: "How it works" })).toBeInTheDocument();
       expect(screen.getByRole("link", { name: "Create a provider account" })).toBeInTheDocument();
       expect(screen.queryByRole("heading", { name: "Browse by category" })).toBeNull();
       expect(screen.queryByRole("heading", { name: "Popular services" })).toBeNull();
@@ -116,7 +109,8 @@ describe("LandingPage", () => {
     });
   });
 
-  // The slogan is gone from the hero; its three words title the steps now.
+  // The slogan is gone from the hero, and not moved: the section it used to
+  // title, "How it works", was removed from the page outright.
   it("no longer opens with a slogan", async () => {
     await renderPage();
     await screen.findByRole("heading", { level: 1 });

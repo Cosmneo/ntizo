@@ -83,13 +83,13 @@ async function renderServices(items?: ServiceDTO[]) {
 }
 
 describe("PopularServices", () => {
-  it("puts a price on the home page, which is the whole point", async () => {
+  it("puts a price on the home page's own card, which is the whole point", async () => {
     await renderServices([service()]);
     expect(await screen.findByText("Corte de cabelo")).toBeInTheDocument();
     expect(screen.getByText(/800/)).toBeInTheDocument();
   });
 
-  it("sends a tile to that service, not to a directory", async () => {
+  it("sends the card to that service, not to a directory", async () => {
     await renderServices([service()]);
     expect(
       (await screen.findByRole("link", { name: "Corte de cabelo" })).getAttribute("href"),
@@ -109,5 +109,26 @@ describe("PopularServices", () => {
     expect(
       (await screen.findByRole("link", { name: "See all services" })).getAttribute("href"),
     ).toBe("/services");
+  });
+
+  // The reference card shows a price in its bottom row; a quote service has
+  // never had one. `servicePriceLine` answers with words instead, and the
+  // card must print those words rather than a price it does not have — never
+  // a bare "0" where the amount would sit.
+  it("answers a quote-mode service with words, not a price", async () => {
+    await renderServices([service({ bookingMode: "quote", defaultOption: null })]);
+    expect(await screen.findByText("Corte de cabelo")).toBeInTheDocument();
+    expect(screen.getByText("Price to agree")).toBeInTheDocument();
+    expect(screen.queryByText(/0 MZN/)).toBeNull();
+  });
+
+  // The bottom row's left side is the rating or, for a provider nobody has
+  // reviewed yet, the word "New" — never a zero standing in for a score that
+  // does not exist.
+  it("says New where the rating would be, for a provider nobody has reviewed", async () => {
+    await renderServices([service({ providerRatingAverage: null, providerReviewCount: 0 })]);
+    expect(await screen.findByText("Corte de cabelo")).toBeInTheDocument();
+    expect(screen.getByText("New")).toBeInTheDocument();
+    expect(screen.queryByText("0")).toBeNull();
   });
 });

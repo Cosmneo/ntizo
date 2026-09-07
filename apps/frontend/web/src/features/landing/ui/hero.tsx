@@ -15,8 +15,9 @@ import { HeroCollage } from "@/features/landing/ui/hero-collage";
  * `become-provider-page.tsx` imports five times.
  *
  * The headline is the offer in a customer's words. "Encontre. Reserve.
- * Feito." was a slogan that said nothing about what is being sold; it now
- * titles the three steps under "Como funciona", where it does a job.
+ * Feito." was a slogan that said nothing about what is being sold, and is
+ * gone rather than moved — the section it used to title, "Como funciona",
+ * was removed from the page outright.
  */
 export function Hero() {
   const { t } = useTranslation("landing"); // t:Hero

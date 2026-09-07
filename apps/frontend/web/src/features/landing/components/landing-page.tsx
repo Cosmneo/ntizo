@@ -1,7 +1,6 @@
 import { Hero } from "@/features/landing/ui/hero";
 import { CategoryGrid } from "@/features/landing/ui/category-grid";
 import { PopularServices } from "@/features/landing/ui/popular-services";
-import { HowItWorks } from "@/features/landing/ui/how-it-works";
 import { VerifiedProviders } from "@/features/landing/ui/verified-providers";
 import { CustomerReviews } from "@/features/landing/ui/customer-reviews";
 import { ProviderBand } from "@/features/landing/ui/provider-band";
@@ -16,8 +15,10 @@ import { Footer } from "@/features/landing/ui/footer";
  * page shares, so there is nothing to carry.
  *
  * The order is an argument: what we sell, what you can browse, what it costs,
- * how it works, who does it, what they were like, and then — once — the offer
- * to the person who might do the work.
+ * who does it, what they were like, and then — once — the offer to the person
+ * who might do the work. "How it works" was here, between the price and the
+ * providers; the client asked for it gone outright, not just reworked, once
+ * the page went live.
  */
 export function LandingPage() {
   return (
@@ -25,7 +26,6 @@ export function LandingPage() {
       <Hero />
       <CategoryGrid />
       <PopularServices />
-      <HowItWorks />
       <VerifiedProviders />
       <CustomerReviews />
       <ProviderBand />
