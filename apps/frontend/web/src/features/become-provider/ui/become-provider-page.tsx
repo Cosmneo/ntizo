@@ -1,8 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import { ArrowRight, Check } from "lucide-react";
-import { LANDING_VARS } from "@/features/landing/ui/sections";
-import { ACCENT, CARD, NAVY, PAGE_TOP } from "@/features/landing/ui/palette";
+import { ACCENT, CARD, LANDING_VARS, NAVY, PAGE_TOP } from "@/features/landing/ui/palette";
 import { SurfaceArt } from "@/features/landing/ui/surface-art";
 import { useCurrentUser } from "@/features/user/viewmodel/use-current-user";
 import { SiteHeader } from "@/shared/components/site-header";

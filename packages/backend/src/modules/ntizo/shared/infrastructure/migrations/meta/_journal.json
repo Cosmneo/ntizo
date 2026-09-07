@@ -281,6 +281,13 @@
       "when": 1788768406493,
       "tag": "0039_fancy_sister_grimm",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1788804137829,
+      "tag": "0040_unique_mandarin",
+      "breakpoints": true
     }
   ]
 }

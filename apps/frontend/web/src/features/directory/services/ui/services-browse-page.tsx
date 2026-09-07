@@ -5,7 +5,6 @@ import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { LayoutGrid, SearchX } from "lucide-react";
 import { EmptyCard } from "@/shared/components/empty-card";
 import { SiteHeader } from "@/shared/components/site-header";
-import { ServiceSearch } from "@/shared/components/service-search";
 import {
   CATEGORY_STRIP_LIMIT,
   CategoryStrip,
@@ -57,29 +56,33 @@ import { resultsScope, scopeValues } from "@/features/directory/domain/results-s
  * particular barber — the commoner arrival, and why Services sits before
  * Providers in the nav.
  *
- * Four levels of narrowing, deliberately not the same shape. The search bar
- * under the header asks the opening question — the landing hero's own
- * `ServiceSearch`, so the question is asked in the same words and the same
- * shape here as on the home page. What differs is what a submit keeps: the
- * hero starts a fresh search, and here the bar is handed this page's own
- * `browseSearch`, so a typed term keeps the narrowing under it. The category
- * strip is full-width navigation between whole result sets. The pills under
- * the heading narrow one of those sets. The sort reorders what is left.
- * Making all four a row of chips would say they were peers.
+ * Four levels of narrowing, deliberately not the same shape. The header's own
+ * search bar asks the opening question — the same bar in the same place as on
+ * every other page, so the question is asked in the same words and the same
+ * shape wherever it is asked. What differs is what a submit keeps: from a
+ * page with no list under it the term is the whole URL, and here the bar is
+ * handed this page's own `browseSearch`, so a typed term keeps the narrowing
+ * under it. The category strip is full-width navigation between whole result
+ * sets. The pills under the heading narrow one of those sets. The sort
+ * reorders what is left. Making all four a row of chips would say they were
+ * peers.
  *
  * **Nothing in the results is blue.** The site's one blue goes where the site
- * always puts it — the header's nav pill, the header's sign-in, the search
- * bar's button — and no further down the page than that.
+ * always puts it — the header's sign-in and the search bar's button — and no
+ * further down the page than that. The header's three destinations used to be
+ * a third place and are not any more: they are bare text, and the lit one is
+ * navy.
  * Everything below is headline navy, ink, grey and the amber star, which is
  * why the tiles carry no border, no shadow and no button of their own: what
  * the eye should land on down a column of results is the photographs and the
  * prices, not twenty-four identical calls to action.
  *
- * **Nothing straddles the strip.** Header, then search bar, then strip, then
- * `main`: four bands stacked, none of them overlapping the next. The card
- * that once sat in a well across the strip's top edge is gone, so the strip
- * is a single positioned layer with no paint-order split — anything
- * reintroduced there on a negative margin would be painted over by it.
+ * **Nothing straddles the strip.** Header, then strip, then `main`: three
+ * bands stacked, none of them overlapping the next — the search band that
+ * used to sit between the first two is inside the header now. The card that
+ * once sat in a well across the strip's top edge is gone, so the strip is a
+ * single positioned layer with no paint-order split — anything reintroduced
+ * there on a negative margin would be painted over by it.
  *
  * **The phone is not this page shrunk.** The pills give way to three one-tap
  * chips above the results and one navy capsule at the thumb holding the
@@ -176,28 +179,25 @@ export function ServicesBrowsePage() {
 
   return (
     <>
-      <SiteHeader current="services" />
-
-      {/* The site's search, not a search this page invented: the landing
-          hero's own bar, in the page's own column under the header rather
-          than inside it. 760px and centred so it reads as a field over the
-          results it filters and not as a banner across the window. The city
-          is not one of its fields — that is the "City" filter pill below,
-          where a narrowing belongs.
-
-          It builds its URL through `browseSearch` like every other control
-          here, which is what keeps the category, the filters, the city and
-          the sort when a term is typed, and resets the page. */}
-      <div className="page-shell">
-        <ServiceSearch
-          to="/services"
-          placeholder={t("searchPlaceholder")}
-          label={t("searchLabel")}
-          search={(q) => browseSearch(current, { q, offset: undefined })}
-          initialValue={current.q ?? ""}
-          className="mx-auto mt-5 max-w-[760px]"
-        />
-      </div>
+      {/* The site's search, not a search this page invented, and inside the
+          header rather than in a band of its own beneath it: it is the same
+          bar on every page, so it belongs to the chrome. What this page hands
+          it is what the bar should ask for and what a submit should keep —
+          `browseSearch`, like every other control here, which is what holds
+          on to the category, the filters, the city and the sort when a term
+          is typed, and resets the page. The city is not one of the bar's own
+          fields: that is the "City" filter pill below, where a narrowing
+          belongs. */}
+      <SiteHeader
+        current="services"
+        search={{
+          to: "/services",
+          placeholder: t("searchPlaceholder"),
+          label: t("searchLabel"),
+          search: (q) => browseSearch(current, { q, offset: undefined }),
+          initialValue: current.q ?? "",
+        }}
+      />
 
       <CategoryStrip label={t("categoryStripLabel")}>
         <StripItem

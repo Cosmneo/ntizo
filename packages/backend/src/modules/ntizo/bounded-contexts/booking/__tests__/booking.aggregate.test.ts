@@ -76,6 +76,7 @@ function validProps(over: Partial<BookingProps> = {}): BookingProps {
     serviceId: "s1",
     serviceOptionId: "o1",
     providerMemberId: "m1",
+    quoteId: null,
     startsAt,
     endsAt: new Date(startsAt.getTime() + durationMinutes * 60_000),
     durationMinutes,

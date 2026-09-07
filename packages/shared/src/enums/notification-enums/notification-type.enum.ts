@@ -51,10 +51,15 @@ export enum NotificationType {
 
   // --- quotes ------------------------------------------------------------
   QuoteReceived = "QUOTE_RECEIVED",
+  QuoteAccepted = "QUOTE_ACCEPTED",
+  QuoteDeclined = "QUOTE_DECLINED",
   QuoteExpired = "QUOTE_EXPIRED",
   ProviderQuoteRequested = "PROVIDER_QUOTE_REQUESTED",
   ProviderQuoteAccepted = "PROVIDER_QUOTE_ACCEPTED",
   ProviderQuoteDeclined = "PROVIDER_QUOTE_DECLINED",
+  ProviderQuoteWithdrawn = "PROVIDER_QUOTE_WITHDRAWN",
+  ProviderQuoteExpired = "PROVIDER_QUOTE_EXPIRED",
+  ProviderQuoteSlotTaken = "PROVIDER_QUOTE_SLOT_TAKEN",
 
   // --- money -------------------------------------------------------------
   PaymentHeld = "PAYMENT_HELD",
@@ -165,10 +170,15 @@ export function bucketForNotificationType(
     case NotificationType.ProviderBookingCancelledByCustomer:
     case NotificationType.ProviderReviewReceived:
     case NotificationType.QuoteReceived:
+    case NotificationType.QuoteAccepted:
+    case NotificationType.QuoteDeclined:
     case NotificationType.QuoteExpired:
     case NotificationType.ProviderQuoteRequested:
     case NotificationType.ProviderQuoteAccepted:
     case NotificationType.ProviderQuoteDeclined:
+    case NotificationType.ProviderQuoteWithdrawn:
+    case NotificationType.ProviderQuoteExpired:
+    case NotificationType.ProviderQuoteSlotTaken:
     case NotificationType.PaymentHeld:
     case NotificationType.PaymentFailed:
     case NotificationType.RefundIssued:

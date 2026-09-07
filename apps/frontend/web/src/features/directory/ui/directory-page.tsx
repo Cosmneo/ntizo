@@ -6,7 +6,6 @@ import { SearchX, Store } from "lucide-react";
 import type { ProviderPublicDTO } from "@ntizo/shared";
 import { EmptyCard } from "@/shared/components/empty-card";
 import { SiteHeader } from "@/shared/components/site-header";
-import { ServiceSearch } from "@/shared/components/service-search";
 import {
   CATEGORY_STRIP_LIMIT,
   CategoryStrip,
@@ -69,30 +68,32 @@ import { resultsScope, scopeValues } from "@/features/directory/domain/results-s
  * a business gets a row with its services and their prices in it rather than
  * the tile a service gets. See `ProviderRow`.
  *
- * Four levels of narrowing, deliberately not the same shape. The search bar
- * under the header asks the opening question — the landing hero's own
- * `ServiceSearch`, pointed here and asking for a business by name, so the
- * question is asked in the same shape as on the home page. What differs is
- * what a submit keeps: the hero starts a fresh search, and here the bar is
- * handed this page's own `directorySearch`, so a typed name keeps the
- * narrowing under it. The category strip is full-width navigation between
- * whole result sets. The pills under the heading narrow one of those sets.
- * The sort reorders what is left. Making all four a row of chips would say
- * they were peers.
+ * Four levels of narrowing, deliberately not the same shape. The header's own
+ * search bar asks the opening question, pointed here and asking for a
+ * business by name, so the question is asked in the same shape as everywhere
+ * else. What differs is what a submit keeps: from a page with no list under
+ * it the name is the whole URL, and here the bar is handed this page's own
+ * `directorySearch`, so a typed name keeps the narrowing under it. The
+ * category strip is full-width navigation between whole result sets. The
+ * pills under the heading narrow one of those sets. The sort reorders what is
+ * left. Making all four a row of chips would say they were peers.
  *
  * **Nothing in the results is blue.** The site's one blue goes where the site
- * always puts it — the header's nav pill, the header's sign-in, the search
- * bar's button — and no further down the page than that.
+ * always puts it — the header's sign-in and the search bar's button — and no
+ * further down the page than that. The header's three destinations used to be
+ * a third place and are not any more: they are bare text, and the lit one is
+ * navy.
  * Everything below is headline navy, ink, grey and the amber star, which is
  * why the rows carry no border, no shadow and no button of their own: what
  * the eye should land on down a column of results is the photographs, the
  * ratings and the prices, not twenty identical calls to action.
  *
- * **Nothing straddles the strip.** Header, then search bar, then strip, then
- * `main`: four bands stacked, none of them overlapping the next. The card
- * that once sat in a well across the strip's top edge is gone, so the strip
- * is a single positioned layer with no paint-order split — anything
- * reintroduced there on a negative margin would be painted over by it.
+ * **Nothing straddles the strip.** Header, then strip, then `main`: three
+ * bands stacked, none of them overlapping the next — the search band that
+ * used to sit between the first two is inside the header now. The card that
+ * once sat in a well across the strip's top edge is gone, so the strip is a
+ * single positioned layer with no paint-order split — anything reintroduced
+ * there on a negative margin would be painted over by it.
  *
  * **The phone is not this page shrunk.** The pills give way to four one-tap
  * chips above the results and one navy capsule at the thumb holding the
@@ -176,30 +177,26 @@ export function DirectoryPage() {
 
   return (
     <>
-      <SiteHeader current="providers" />
-
-      {/* The site's search, not a search this page invented: the landing
-          hero's own bar, in the page's own column under the header rather
-          than inside it. 760px and centred so it reads as a field over the
-          results it filters and not as a banner across the window. Pointed at
-          this list and asking for a name, because that is what a reader has
-          in hand when they come looking for a business rather than a job. The
-          city is not one of its fields — that is the "City" filter pill
-          below, where a narrowing belongs.
-
-          It builds its URL through `directorySearch` like every other control
-          here, which is what keeps the category, the filters, the city and
-          the sort when a name is typed, and resets the page. */}
-      <div className="page-shell">
-        <ServiceSearch
-          to="/providers"
-          placeholder={t("searchFieldProviderEmpty")}
-          label={t("searchLabelProviders")}
-          search={(q) => directorySearch(current, { q, offset: undefined })}
-          initialValue={current.q ?? ""}
-          className="mx-auto mt-5 max-w-[760px]"
-        />
-      </div>
+      {/* The site's search, not a search this page invented, and inside the
+          header rather than in a band of its own beneath it: it is the same
+          bar on every page, so it belongs to the chrome. Pointed at this list
+          and asking for a name, because that is what a reader has in hand
+          when they come looking for a business rather than a job. A submit
+          builds its URL through `directorySearch` like every other control
+          here, which is what holds on to the category, the filters, the city
+          and the sort when a name is typed, and resets the page. The city is
+          not one of the bar's own fields: that is the "City" filter pill
+          below, where a narrowing belongs. */}
+      <SiteHeader
+        current="providers"
+        search={{
+          to: "/providers",
+          placeholder: t("searchFieldProviderEmpty"),
+          label: t("searchLabelProviders"),
+          search: (q) => directorySearch(current, { q, offset: undefined }),
+          initialValue: current.q ?? "",
+        }}
+      />
 
       <CategoryStrip label={t("categoryStripLabel")}>
         <StripItem

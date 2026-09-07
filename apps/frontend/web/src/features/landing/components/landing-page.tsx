@@ -1,36 +1,35 @@
 import { Hero } from "@/features/landing/ui/hero";
-import {
-  Categories,
-  LANDING_VARS,
-  PopularProviders,
-  ProviderCall,
-  Stories,
-} from "@/features/landing/ui/sections";
-
-import { NAVY, PAGE_TOP } from "@/features/landing/ui/palette";
+import { CategoryGrid } from "@/features/landing/ui/category-grid";
+import { PopularServices } from "@/features/landing/ui/popular-services";
+import { VerifiedProviders } from "@/features/landing/ui/verified-providers";
+import { CustomerReviews } from "@/features/landing/ui/customer-reviews";
+import { ProviderBand } from "@/features/landing/ui/provider-band";
 import { Footer } from "@/features/landing/ui/footer";
 
+/**
+ * The customer home page.
+ *
+ * White, on the design system's own tokens. It carried its palette to its
+ * sections as local custom properties because it painted itself a tinted blue
+ * nothing else on the site used; every colour here is now a token every other
+ * page shares, so there is nothing to carry.
+ *
+ * The order is an argument: what we sell, what you can browse, what it costs,
+ * who does it, what they were like, and then — once — the offer to the person
+ * who might do the work. "How it works" was here, between the price and the
+ * providers; the client asked for it gone outright, not just reworked, once
+ * the page went live.
+ */
 export function LandingPage() {
   return (
-    // The palette travels to the sections as local custom properties, so the
-    // page keeps its own colours instead of each block re-deciding them.
-    <main style={{ ...page, ...LANDING_VARS }}>
+    <main className="min-h-screen bg-[var(--color-background)] text-[var(--color-foreground)]">
       <Hero />
-      <Categories />
-      <PopularProviders />
-      <Stories />
-      <ProviderCall />
+      <CategoryGrid />
+      <PopularServices />
+      <VerifiedProviders />
+      <CustomerReviews />
+      <ProviderBand />
       <Footer />
     </main>
   );
 }
-
-const page: React.CSSProperties = {
-  minHeight: "100vh",
-  // Tint Blue BG, flat. The old three-stop radial gradient predates the design
-  // system, which has one soft background rather than a ramp.
-  background: PAGE_TOP,
-  // No fontFamily here. It used to pin a system stack, which overrode Inter
-  // on the whole page — the design system's body face never reached it.
-  color: NAVY,
-};

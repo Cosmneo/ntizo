@@ -10,6 +10,7 @@ import { BookingRowSlotHold } from "../infrastructure/adapters/booking-row-slot-
 import { BookingRowDelayedJobs } from "../infrastructure/adapters/booking-row-delayed-jobs.adapter";
 import { MpesaPaymentCharge } from "../infrastructure/adapters/mpesa-payment-charge.adapter";
 import { CreateBookingCommand } from "../app/use-cases/create-booking.command";
+import { CreateBookingFromQuoteCommand } from "../app/use-cases/create-booking-from-quote.command";
 import { SubmitBookingCommand } from "../app/use-cases/submit-booking.command";
 import { AcceptBookingCommand } from "../app/use-cases/accept-booking.command";
 import { DeclineBookingCommand } from "../app/use-cases/decline-booking.command";
@@ -212,6 +213,20 @@ export function bootstrapBooking(deps: BookingBootstrapDeps) {
         slotValidityReader,
         slotHold,
         delayedJobs,
+        unitOfWork,
+        outboxPort,
+      ),
+      // The quote context's one entrance into this one — see that command's
+      // own doc comment. Shares `providerReader`, `platformSettingsReader`,
+      // `unitOfWork` and `outboxPort` with `createBooking` above; it needs
+      // no `pricingReader`, `slotValidityReader`, `slotHold` or
+      // `delayedJobs` because a quote-born booking carries its own price and
+      // duration, its slot was already chosen by hand, and there is no
+      // checkout hold to release.
+      createBookingFromQuote: new CreateBookingFromQuoteCommand(
+        bookingRepository,
+        providerReader,
+        platformSettingsReader,
         unitOfWork,
         outboxPort,
       ),

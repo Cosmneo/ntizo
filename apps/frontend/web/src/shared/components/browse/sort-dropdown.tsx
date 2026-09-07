@@ -129,7 +129,7 @@ export function SortDropdown<Sort extends string>({
               role="menuitemradio"
               aria-checked={isActive}
               // Headline navy on the chosen row rather than the brand blue:
-              // blue belongs to the header's nav pill and sign-in and to the
+              // blue belongs to the header's sign-in and to the
               // search bar's button, never to anything in the results, and
               // navy is what everything else that is "on" wears — the filled
               // pill, the current page number, the tick box.
