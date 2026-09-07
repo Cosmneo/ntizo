@@ -152,6 +152,19 @@ describe("ServicesBrowsePage", () => {
     expect(state.narrowing?.city).toBe("Maputo");
   });
 
+  /**
+   * The heading gives a typed term priority over the category, but the
+   * category is still filtering — so the clause under it must say so. Reusing
+   * the heading's own values printed "in all categories" over a search inside
+   * a category whose chip was lit two lines above.
+   */
+  it("names the category in the summary even when the term owns the heading", async () => {
+    renderPage("/services?category=hair&q=barba", { items: [service()], nextOffset: null, total: 1 });
+    expect(await screen.findByRole("heading", { level: 1 })).toHaveTextContent("barba");
+    expect(screen.getByText("1 service found").closest("p")).toHaveTextContent("in Hair & beauty");
+    expect(screen.queryByText("in all categories")).not.toBeInTheDocument();
+  });
+
   it("names the place in the heading and in the summary's scope", async () => {
     renderPage("/services?city=Maputo", { items: [service()], nextOffset: null, total: 1 });
     expect(await screen.findByRole("heading", { level: 1 })).toHaveTextContent(

@@ -34,7 +34,7 @@ import {
   type BrowseSearch,
 } from "@/features/directory/services/domain/browse-search";
 import { browseTitle } from "@/features/directory/services/domain/browse-title";
-import { resultsScope } from "@/features/directory/domain/results-scope";
+import { resultsScope, scopeValues } from "@/features/directory/domain/results-scope";
 
 /**
  * Every published service on the platform.
@@ -107,6 +107,7 @@ export function ServicesBrowsePage() {
   const categoryName = categories.find((c) => c.code === category)?.name ?? null;
 
   const title = browseTitle(current, categoryName);
+  const scope = scopeValues(current, categoryName);
 
   /**
    * Whether the reader narrowed the list at all — which is what "nothing here"
@@ -186,14 +187,17 @@ export function ServicesBrowsePage() {
                 scope — never "in" plus a name. That is what lets a language
                 order, inflect or case the category and the city as its own
                 grammar needs, instead of receiving them in the order English
-                happened to put them. The values are `browseTitle`'s own, so
-                the heading and this line agree about whether the category name
-                has resolved yet. */}
+                happened to put them.
+
+                `scopeValues`, not the heading's: a typed term outranks the
+                category above, so reusing `title.values` printed "0 services
+                found in all categories" over a search inside a category whose
+                chip was lit two lines up. The clause names what is filtering. */}
             <p className="mt-1 text-[14.5px] text-[var(--color-muted-foreground)]">
               <b className="font-semibold text-[var(--color-foreground)]">
                 {t("servicesFound", { count: page.total })}
               </b>{" "}
-              {t(`resultsScope.${resultsScope(title.values)}`, title.values)}
+              {t(`resultsScope.${resultsScope(scope)}`, scope)}
             </p>
           </div>
 
