@@ -109,7 +109,17 @@ export const quoteReceivedTemplate: TemplateModule = {
     const revision = payload["revision"] === true;
     const priceMinor = typeof payload["priceMinor"] === "number" ? payload["priceMinor"] : 0;
     const currency = typeof payload["currency"] === "string" ? payload["currency"] : "MZN";
-    const amount = `${(priceMinor / 100).toLocaleString(locale)} ${currency}`;
+    // `useGrouping` is explicit, not redundant: ICU's default suppresses the
+    // group separator below five digits for pt-MZ, pt-PT, es-ES and it-IT,
+    // so `(9800).toLocaleString("pt-MZ")` is "9800", not "9 800" — wrong for
+    // the platform's own default locale, in the one template that states an
+    // amount. Two fraction digits at most so a round price still reads
+    // "9 800 MZN", matching the mockup, rather than "9 800,00 MZN".
+    const amount = `${new Intl.NumberFormat(locale, {
+      useGrouping: true,
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
+    }).format(priceMinor / 100)} ${currency}`;
     const quoteId = typeof payload["quoteId"] === "string" ? payload["quoteId"] : "";
     const url = `${appBaseUrl()}/quotes/${quoteId}`;
     const body = c.body(service, amount);
