@@ -7,6 +7,7 @@ import {
 } from "../../../../../shared/infrastructure/database/favourite/schemas";
 import type { FavouriteListRepositoryPort } from "../../../app/ports/outbound/favourite-list.repository.port";
 import { FavouriteList } from "../../../domain/aggregates/favourite-list.aggregate";
+import { ListNameTakenError } from "../../../domain/exceptions";
 
 /**
  * A stored row as the aggregate.
@@ -59,6 +60,42 @@ export function buildEnsureDefaultInsert(db: ReturnType<typeof getDb>, userId: s
   );
 }
 
+/**
+ * The unique index Task 1 built, on `(user_id, lower(name))`. See
+ * `favourite-list.schema.ts`.
+ */
+const LIST_NAME_UNIQUE_CONSTRAINT = "favourite_list_user_name_uq";
+
+/**
+ * postgres.js surfaces a unique-index violation as SQLSTATE `23505`, and the
+ * `constraint_name` on that error is the index's own name — Postgres does
+ * not send a rendered message an application should ever parse. Matching on
+ * both together, not the name alone, is what `DrizzleBookingRepository`'s
+ * `isSlotCollision` does for the same reason: `code` establishes this is a
+ * uniqueness violation at all, and `constraint_name` establishes it is
+ * *this* one — `save` and `rename` are the only writers of this table, and
+ * `favourite_list_user_name_uq` is the only one of its four unique
+ * constraints either can plausibly hit (`id` and `(id, user_id)` are on a
+ * fresh random uuid, and the one-default partial index is `ensureDefault`'s
+ * problem, not this one's).
+ *
+ * Two callers, not a `try`/`catch` inlined into each: `CreateListCommand`
+ * and `RenameListCommand` already run the same case-insensitive check
+ * against `listForUser` before ever reaching here, so this only ever fires
+ * on the race that check cannot close by itself — two tabs naming a list
+ * "Casa nova" at the same instant. Without this, that race would surface a
+ * raw `23505` as a 500 instead of the same `ListNameTakenError` the
+ * read-first check already gives everybody else. See `ListNameTakenError`'s
+ * own doc comment: the check is for the message, this translation is what
+ * makes the index the truth without ever leaking as itself.
+ */
+function isNameCollision(error: unknown): boolean {
+  if (typeof error !== "object" || error === null) return false;
+  const code = (error as { code?: unknown }).code;
+  const constraintName = (error as { constraint_name?: unknown }).constraint_name;
+  return code === "23505" && constraintName === LIST_NAME_UNIQUE_CONSTRAINT;
+}
+
 export class DrizzleFavouriteListRepository implements FavouriteListRepositoryPort {
   /**
    * The default list, created on first use.
@@ -93,6 +130,13 @@ export class DrizzleFavouriteListRepository implements FavouriteListRepositoryPo
     return toAggregate(row);
   }
 
+  /**
+   * Insert-only — see the port's own doc comment. Only ever reached with a
+   * named list (`CreateListCommand` is the one caller, and it always builds
+   * through `FavouriteList.create`, which refuses a blank name), so a
+   * `favourite_list_user_name_uq` violation here can only mean the name
+   * really is taken — see {@link isNameCollision}.
+   */
   async save(entity: FavouriteList): Promise<string> {
     const values: NewFavouriteListRow = {
       // `undefined` when the aggregate was made without one, which drizzle
@@ -103,11 +147,20 @@ export class DrizzleFavouriteListRepository implements FavouriteListRepositoryPo
       isDefault: entity.isDefault,
       createdAt: entity.createdAt,
     };
-    const [row] = await getDb().insert(favouriteList).values(values).returning({ id: favouriteList.id });
-    if (!row) {
-      throw new Error("[favourite] saving a list returned no row");
+    try {
+      const [row] = await getDb().insert(favouriteList).values(values).returning({ id: favouriteList.id });
+      if (!row) {
+        throw new Error("[favourite] saving a list returned no row");
+      }
+      return row.id;
+    } catch (error) {
+      if (isNameCollision(error)) {
+        // `entity.name` is never null here — see this method's own doc
+        // comment on why `save` is only ever reached with a named list.
+        throw new ListNameTakenError(entity.name ?? "");
+      }
+      throw error;
     }
-    return row.id;
   }
 
   /**
@@ -116,12 +169,24 @@ export class DrizzleFavouriteListRepository implements FavouriteListRepositoryPo
    * The command has already checked ownership; this is the second lock on the
    * same door. An id that slipped through updates zero rows rather than
    * renaming a stranger's list.
+   *
+   * `RenameListCommand` already checked the new name against this person's
+   * other lists before calling this, so a `favourite_list_user_name_uq`
+   * violation reaching here can only be the race that check cannot close on
+   * its own — see {@link isNameCollision}.
    */
   async rename(p: { id: string; userId: string; name: string }): Promise<void> {
-    await getDb()
-      .update(favouriteList)
-      .set({ name: p.name })
-      .where(and(eq(favouriteList.id, p.id), eq(favouriteList.userId, p.userId)));
+    try {
+      await getDb()
+        .update(favouriteList)
+        .set({ name: p.name })
+        .where(and(eq(favouriteList.id, p.id), eq(favouriteList.userId, p.userId)));
+    } catch (error) {
+      if (isNameCollision(error)) {
+        throw new ListNameTakenError(p.name);
+      }
+      throw error;
+    }
   }
 
   /**

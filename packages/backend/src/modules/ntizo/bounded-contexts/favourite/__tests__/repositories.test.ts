@@ -3,7 +3,8 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import type { DrizzleDb } from "../../../../../shared/infrastructure/database/connection";
 import { __runWithTransactionContextForTests } from "../../../../../shared/infrastructure/database/tx-context";
-import { CursorInvalidError } from "../domain/exceptions";
+import { FavouriteList } from "../domain/aggregates/favourite-list.aggregate";
+import { CursorInvalidError, ListNameTakenError } from "../domain/exceptions";
 import {
   DrizzleFavouriteListRepository,
   buildEnsureDefaultInsert,
@@ -122,6 +123,31 @@ function forbiddenDb(): DrizzleDb {
   } as unknown as DrizzleDb;
 }
 
+/**
+ * A handle whose `insert`/`update` chains reject with `error`, however many
+ * steps deep the repository's own chain runs — modelling a driver-level
+ * failure (a constraint violation postgres.js raises) rather than a row of
+ * data. Every intermediate step (`.values()`, `.returning()`, `.set()`,
+ * `.where()`) hands back another such node, and only `await`ing the chain —
+ * exactly what `save` and `rename` do — actually triggers the rejection.
+ */
+function failingDb(error: unknown): DrizzleDb {
+  function chain(): Record<string, unknown> {
+    const node: Record<string, unknown> = {
+      then: (onFulfilled?: (v: unknown) => unknown, onRejected?: (e: unknown) => unknown) =>
+        Promise.reject(error).then(onFulfilled, onRejected),
+    };
+    for (const step of ["values", "returning", "set", "where", "onConflictDoNothing"]) {
+      node[step] = () => chain();
+    }
+    return node;
+  }
+  return {
+    insert: () => chain(),
+    update: () => chain(),
+  } as unknown as DrizzleDb;
+}
+
 describe("ensureDefault", () => {
   it("does not lose a race with the same person in two tabs", () => {
     // INSERT … ON CONFLICT DO NOTHING against the partial unique index, then
@@ -146,6 +172,51 @@ describe("ensureDefault", () => {
     expect(calls).toEqual(["db.insert", "db.insert.values:1", "db.select"]);
     expect(list.isDefault).toBe(true);
     expect(list.name).toBeNull();
+  });
+});
+
+describe("save / rename", () => {
+  // `CreateListCommand` and `RenameListCommand` already check this person's
+  // own lists for a name collision before ever calling `save` or `rename` —
+  // but that is a read-then-write, and two tabs naming a list "Casa nova" at
+  // the same instant can both pass that read. `favourite_list_user_name_uq`
+  // is the actual backstop; these two tests are that the adapter turns a
+  // violation of it into the same `ListNameTakenError` the read-first check
+  // gives everybody else, rather than letting a raw SQLSTATE 23505 reach the
+  // person as a 500. The same shape `better-auth-identity.adapter.test.ts`
+  // uses for `PhoneNumberAlreadyInUseError`.
+  const nameCollision = Object.assign(
+    new Error('duplicate key value violates unique constraint "favourite_list_user_name_uq"'),
+    { code: "23505", constraint_name: "favourite_list_user_name_uq" },
+  );
+
+  it("save() turns the name-uniqueness constraint into ListNameTakenError", async () => {
+    const repo = new DrizzleFavouriteListRepository();
+    const entity = FavouriteList.create({ userId: "u1", name: "Casa nova", createdAt: new Date(0) });
+    await __runWithTransactionContextForTests(failingDb(nameCollision), async () => {
+      await expect(repo.save(entity)).rejects.toBeInstanceOf(ListNameTakenError);
+    });
+  });
+
+  it("rename() turns the name-uniqueness constraint into ListNameTakenError", async () => {
+    const repo = new DrizzleFavouriteListRepository();
+    await __runWithTransactionContextForTests(failingDb(nameCollision), async () => {
+      await expect(repo.rename({ id: "l1", userId: "u1", name: "Casa nova" })).rejects.toBeInstanceOf(
+        ListNameTakenError,
+      );
+    });
+  });
+
+  it("lets any other database error through untouched", async () => {
+    // A `23505` on some other constraint, or an unrelated failure entirely,
+    // must surface as itself — matching only on `code` would relabel a
+    // conflict that is not a name collision as one.
+    const other = Object.assign(new Error("connection terminated"), { code: "57P01" });
+    const repo = new DrizzleFavouriteListRepository();
+    const entity = FavouriteList.create({ userId: "u1", name: "Casa nova", createdAt: new Date(0) });
+    await __runWithTransactionContextForTests(failingDb(other), async () => {
+      await expect(repo.save(entity)).rejects.toThrow("connection terminated");
+    });
   });
 });
 
