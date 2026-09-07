@@ -253,5 +253,8 @@
   "filterPillRemove": "Retirer {{filter}}",
   "filterSheetApply_one": "Voir {{count}} résultat",
   "filterSheetApply_other": "Voir {{count}} résultats",
-  "sortTrigger": "Trier :"
+  "sortTrigger": "Trier :",
+
+  "quickChipMaxPrice": "Jusqu’à {{amount}}",
+  "quickChipsLabel": "Filtres rapides"
 }

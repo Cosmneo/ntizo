@@ -96,6 +96,51 @@ export function clearedBrowseSearch(current: BrowseSearch): BrowseSearch {
 }
 
 /**
+ * Every order this browse offers, default first — `SortDropdown`'s menu.
+ *
+ * Written once because the page draws this control twice: on the heading's
+ * right for a wide screen and inside the phone's floating capsule. Two copies
+ * of the list is how a fourth order gets added to one of them and the phone
+ * quietly goes on offering three, which is the same drift the `*Options`
+ * components and `ClearAll` exist to prevent.
+ *
+ * Takes `t` rather than calling `useTranslation` itself: it is a list, not a
+ * component, and both callers already hold the namespace.
+ */
+export function serviceSortOptions(
+  t: (key: string) => string,
+): ReadonlyArray<SortDropdownOption<BrowseSort>> {
+  return [
+    { value: undefined, label: t("sortOption.default") },
+    { value: "newest", label: t("sortOption.newest") },
+    { value: "price", label: t("sortOption.price") },
+  ];
+}
+
+/**
+ * Writes the chosen order and resets to the first page — page 4 of "cheapest"
+ * is not page 4 of "newest".
+ *
+ * `browseSearch` is what keeps every other filter and writes the default order
+ * as an absent parameter rather than `sort=default`; `/services` and
+ * `/services?sort=default` would otherwise be one page at two URLs.
+ *
+ * Curried on the router and the search so both placements of the control hand
+ * it the same three arguments, for the same reason `serviceSortOptions` is one
+ * list: a second copy is a second thing to forget to fix.
+ */
+export function chooseServiceSort(
+  navigate: ReturnType<typeof useNavigate>,
+  current: BrowseSearch,
+): (value: BrowseSort | undefined) => void {
+  return (value) =>
+    void navigate({
+      to: "/services",
+      search: browseSearch(current, { sort: value, offset: undefined }),
+    });
+}
+
+/**
  * How many narrowings this bar is showing as on.
  *
  * `q` is not one of them, for the same reason `clearedBrowseSearch` keeps it:
@@ -297,10 +342,10 @@ export function ServiceFilters({ current }: { current: BrowseSearch }) {
  * Two halves, because a control with one half is a button: the filters, with
  * how many are on, and the same `SortDropdown` the heading row carries — the
  * heading's copy is `hidden lg:inline-flex`, so a phone shows exactly one
- * sort. The sort's `onChoose` is built here rather than passed in because
- * this component takes the search and nothing else; it is the same three
- * lines `ServicesBrowsePage` writes for its own copy, and both go through
- * `browseSearch`, which is what keeps every other filter on the URL.
+ * sort. Its options and its chooser are `serviceSortOptions` and
+ * `chooseServiceSort`, the same two the page hands its own copy: this
+ * component takes the search and nothing else, and a private list here would
+ * be the phone offering a different set of orders the day a fourth is added.
  *
  * The sheet holds the same option rows the pills hold, stacked into headed
  * groups instead of hidden behind six summaries — a sheet is a screen, not a
@@ -326,12 +371,6 @@ export function MobileServiceFilters({
   const [open, setOpen] = useState(false);
   const count = appliedCount(current);
 
-  const sortOptions: ReadonlyArray<SortDropdownOption<BrowseSort>> = [
-    { value: undefined, label: t("sortOption.default") },
-    { value: "newest", label: t("sortOption.newest") },
-    { value: "price", label: t("sortOption.price") },
-  ];
-
   return (
     <>
       <FloatingControls>
@@ -350,15 +389,10 @@ export function MobileServiceFilters({
 
         <SortDropdown
           active={current.sort}
-          options={sortOptions}
+          options={serviceSortOptions(t)}
           sortLabel={t("sortTrigger")}
           triggerClassName={floatingControlClass()}
-          onChoose={(value) =>
-            void navigate({
-              to: "/services",
-              search: browseSearch(current, { sort: value, offset: undefined }),
-            })
-          }
+          onChoose={chooseServiceSort(navigate, current)}
         />
       </FloatingControls>
 

@@ -253,5 +253,8 @@
   "filterPillRemove": "{{filter}} verwijderen",
   "filterSheetApply_one": "Toon {{count}} resultaat",
   "filterSheetApply_other": "Toon {{count}} resultaten",
-  "sortTrigger": "Sorteren:"
+  "sortTrigger": "Sorteren:",
+
+  "quickChipMaxPrice": "Tot {{amount}}",
+  "quickChipsLabel": "Snelle filters"
 }

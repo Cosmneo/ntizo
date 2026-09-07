@@ -38,7 +38,12 @@ export function FloatingControls({ children }: { children: ReactNode }) {
  * `whitespace-nowrap`, because the capsule sizes to its content rather than
  * to a fixed width — a control that wrapped onto two lines would grow the
  * whole capsule taller than the ones either side of it.
+ *
+ * The hover is white at a tenth rather than any token: this ground is navy,
+ * and every grey a control brings with it from the page — `--color-muted`,
+ * `--color-secondary` — is a pale patch on it. Lightening what is already
+ * there is the only tint that works on a surface the control does not own.
  */
 export function floatingControlClass(): string {
-  return "inline-flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-2.5 text-[14px] font-semibold";
+  return "inline-flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-2.5 text-[14px] font-semibold hover:bg-white/10";
 }

@@ -559,7 +559,7 @@ describe("ServicesBrowsePage", () => {
       total: 1,
     });
     await screen.findByRole("heading", { level: 1 });
-    const chips = within(container).getByRole("list", { name: "Filters" });
+    const chips = within(container).getByRole("list", { name: "Quick filters" });
     const fixed = within(chips).getByRole("link", { name: "Fixed price" });
     expect(fixed).toHaveAttribute("aria-pressed", "true");
     expect(fixed).toHaveAttribute("href", "/services");
@@ -567,10 +567,61 @@ describe("ServicesBrowsePage", () => {
       "href",
       "/services?locationType=at_customer&paymentMode=fixed",
     );
-    expect(within(chips).getByRole("link", { name: "up to 1000" })).toHaveAttribute(
+    // The ceiling is money, so the chip says it as money — the same formatter
+    // and locale the tiles print their prices with, not a bare 1000 the reader
+    // has to guess a currency for. Matched by pattern because `Intl` separates
+    // the currency from the amount with a no-break space, which is correct and
+    // is not the character anybody types into a test.
+    expect(within(chips).getByRole("link", { name: /^Up to MZN\s1,000$/ })).toHaveAttribute(
       "href",
       "/services?paymentMode=fixed&maxPrice=1000",
     );
+  });
+
+  it("does not offer three ways to narrow a platform with nothing on it", async () => {
+    // Chips under "No services published yet" are work that cannot help. They
+    // stay on an empty *search*, where they are one tap out of it.
+    renderPage("/services", { items: [], nextOffset: null, total: 0 });
+    await screen.findByText("No services published yet");
+    expect(screen.queryByRole("list", { name: "Quick filters" })).toBeNull();
+
+    renderPage("/services?city=Maputo", { items: [], nextOffset: null, total: 0 });
+    expect(
+      await screen.findByRole("list", { name: "Quick filters" }),
+    ).toBeInTheDocument();
+  });
+
+  it("offers the same orders at both widths, out of one list", async () => {
+    // Two triggers, one list: adding a fourth order to a copy in the page and
+    // not to the copy in the floating control would leave the phone quietly
+    // offering three.
+    const { router } = renderPage("/services", {
+      items: [service()],
+      nextOffset: null,
+      total: 1,
+    });
+    await screen.findByRole("heading", { level: 1 });
+    const triggers = screen.getAllByRole("button", { name: /^Sort:/ });
+    expect(triggers).toHaveLength(2);
+
+    const ordersIn = (trigger: HTMLElement) => {
+      fireEvent.click(trigger);
+      const names = screen.getAllByRole("menuitemradio").map((row) => row.textContent);
+      // Shut again, so the next menu opened is the only one in the document.
+      fireEvent.click(trigger);
+      return names;
+    };
+    const heading = ordersIn(triggers[0]!);
+    expect(heading).toEqual(["Suggested", "Newest", "Price"]);
+    expect(ordersIn(triggers[1]!)).toEqual(heading);
+
+    // And the phone's copy writes the URL the same way — through
+    // `browseSearch`, so every other filter survives the reorder.
+    fireEvent.click(triggers[1]!);
+    fireEvent.click(screen.getByRole("menuitemradio", { name: "Price" }));
+    await waitFor(() => {
+      expect(router.state.location.search).toEqual({ sort: "price" });
+    });
   });
 
   it("offers no numbered pages when everything matched fits on one", async () => {

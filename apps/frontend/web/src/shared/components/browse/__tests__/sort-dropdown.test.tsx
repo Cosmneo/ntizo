@@ -97,16 +97,22 @@ describe("SortDropdown", () => {
     );
   });
 
-  it("marks the active order in the brand colour, and no other", () => {
+  it("marks the active order in headline navy, and no other", () => {
+    // Navy and not the brand blue: blue appears once per browse page, on the
+    // header's search button, and navy is what everything else that is "on"
+    // wears — the filled pill, the current page number, the tick box.
     render(
       <SortDropdown active="price" options={OPTIONS} sortLabel="Sort:" onChoose={() => undefined} />,
     );
     fireEvent.click(screen.getByRole("button", { name: /^Sort:/ }));
 
     expect(screen.getByRole("menuitemradio", { name: "Price" }).className).toContain(
-      "--color-primary",
+      "--color-headline",
     );
     expect(screen.getByRole("menuitemradio", { name: "Newest" }).className).not.toContain(
+      "--color-headline",
+    );
+    expect(screen.getByRole("menuitemradio", { name: "Price" }).className).not.toContain(
       "--color-primary",
     );
   });

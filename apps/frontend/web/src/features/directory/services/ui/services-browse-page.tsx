@@ -5,7 +5,7 @@ import { EmptyCard } from "@/shared/components/empty-card";
 import { SiteHeader } from "@/shared/components/site-header";
 import { SearchPill } from "@/shared/components/browse/search-pill";
 import { CategoryStrip, categoryItemClass } from "@/shared/components/browse/category-strip";
-import { SortDropdown, type SortDropdownOption } from "@/shared/components/browse/sort-dropdown";
+import { SortDropdown } from "@/shared/components/browse/sort-dropdown";
 import { QuickChips, quickChipClass } from "@/shared/components/browse/quick-chips";
 import { PAGER_EDGE_CLASS, Pager, pagerPageClass } from "@/shared/components/browse/pager";
 import { EXACT_MATCH } from "@/shared/components/browse/active-match";
@@ -22,8 +22,11 @@ import { ServiceTile } from "@/features/directory/services/ui/service-tile";
 import {
   MobileServiceFilters,
   ServiceFilters,
+  chooseServiceSort,
+  serviceSortOptions,
 } from "@/features/directory/services/ui/service-filters";
-import { BROWSE_PAGE_SIZE, type BrowseSort } from "@/features/directory/services/domain/types";
+import { formatHeadlinePrice } from "@/features/directory/services/domain/service-card";
+import { BROWSE_PAGE_SIZE } from "@/features/directory/services/domain/types";
 import {
   browseSearch,
   type BrowseSearch,
@@ -98,25 +101,6 @@ export function ServicesBrowsePage() {
 
   const title = browseTitle(current, categoryName);
 
-  /** Every order this page offers, default first — `SortDropdown`'s menu. */
-  const sortOptions: ReadonlyArray<SortDropdownOption<BrowseSort>> = [
-    { value: undefined, label: t("sortOption.default") },
-    { value: "newest", label: t("sortOption.newest") },
-    { value: "price", label: t("sortOption.price") },
-  ];
-
-  /**
-   * Writes the chosen order and resets to the first page — page 4 of "cheapest"
-   * is not page 4 of "newest". `browseSearch` is what keeps every other filter
-   * and writes the default order as an absent parameter rather than
-   * `sort=default`.
-   */
-  const chooseSort = (value: BrowseSort | undefined) =>
-    void navigate({
-      to: "/services",
-      search: browseSearch(current, { sort: value, offset: undefined }),
-    });
-
   /**
    * Whether the reader narrowed the list at all — which is what "nothing here"
    * means.
@@ -187,13 +171,15 @@ export function ServicesBrowsePage() {
 
           {/* One sort per width: the phone's copy rides in the floating
               capsule (see `MobileServiceFilters`), so this one is drawn only
-              where that capsule is not. */}
+              where that capsule is not. Both read the same list and write
+              through the same chooser, so they can never come to offer
+              different orders. */}
           <SortDropdown
             active={sort}
-            options={sortOptions}
+            options={serviceSortOptions(t)}
             sortLabel={t("sortTrigger")}
             triggerClassName="hidden text-[var(--color-headline)] lg:inline-flex"
-            onChoose={chooseSort}
+            onChoose={chooseServiceSort(navigate, current)}
           />
         </div>
 
@@ -202,33 +188,46 @@ export function ServicesBrowsePage() {
         {/* The phone's two or three narrowings, one tap each, above the results
             they narrow — the pills are a toolbar and a toolbar does not fit a
             thumb. Hidden exactly where the floating capsule is hidden, so a
-            reader is never offered both. */}
-        <div className="pb-5 lg:hidden">
-          <QuickChips label={t("filtersTitle")}>
-            <QuickChip
-              current={current}
-              active={current.paymentMode === "fixed"}
-              change={{ paymentMode: current.paymentMode === "fixed" ? undefined : "fixed" }}
-              label={t("filterPaymentOption.fixed")}
-            />
-            <QuickChip
-              current={current}
-              active={current.locationType === "at_customer"}
-              change={{
-                locationType: current.locationType === "at_customer" ? undefined : "at_customer",
-              }}
-              label={t("filterWhereOption.at_customer")}
-            />
-            <QuickChip
-              current={current}
-              active={current.maxPrice === QUICK_MAX_PRICE}
-              change={{
-                maxPrice: current.maxPrice === QUICK_MAX_PRICE ? undefined : QUICK_MAX_PRICE,
-              }}
-              label={t("chipPriceMax", { max: QUICK_MAX_PRICE })}
-            />
-          </QuickChips>
-        </div>
+            reader is never offered both.
+
+            Not drawn over an empty platform: three ways to narrow nothing,
+            under a sentence saying nothing is published, offers a reader work
+            that cannot help them. They stay on an empty *search*, because
+            there they are one tap out of it. */}
+        {(page.items.length > 0 || isNarrowed) && (
+          <div className="pb-5 lg:hidden">
+            <QuickChips label={t("quickChipsLabel")}>
+              <QuickChip
+                current={current}
+                active={current.paymentMode === "fixed"}
+                change={{ paymentMode: current.paymentMode === "fixed" ? undefined : "fixed" }}
+                label={t("filterPaymentOption.fixed")}
+              />
+              <QuickChip
+                current={current}
+                active={current.locationType === "at_customer"}
+                change={{
+                  locationType: current.locationType === "at_customer" ? undefined : "at_customer",
+                }}
+                label={t("filterWhereOption.at_customer")}
+              />
+              <QuickChip
+                current={current}
+                active={current.maxPrice === QUICK_MAX_PRICE}
+                change={{
+                  maxPrice: current.maxPrice === QUICK_MAX_PRICE ? undefined : QUICK_MAX_PRICE,
+                }}
+                // The amount is money, so it is formatted as money — the same
+                // function and the same locale the tiles print their prices
+                // with, rather than a bare number the reader has to guess a
+                // currency for.
+                label={t("quickChipMaxPrice", {
+                  amount: formatHeadlinePrice(QUICK_MAX_PRICE * 100, "MZN", locale),
+                })}
+              />
+            </QuickChips>
+          </div>
+        )}
 
         {page.items.length === 0 ? (
           // Two different sentences, because they are two different
@@ -333,8 +332,10 @@ const CATEGORY_STRIP_LIMIT = 24;
  * The ceiling the phone's price chip offers, in whole meticais.
  *
  * One number rather than a range, because a quick filter is one tap: the chip
- * says "up to 1000" and taps off again. Whole units, which is what the URL and
- * `PriceRangeFilter`'s own boxes carry.
+ * says "Até 1 000 MZN" and taps off again. Whole units, which is what the URL
+ * and `PriceRangeFilter`'s own boxes carry — the chip's own label multiplies
+ * by 100 for `formatHeadlinePrice`, which speaks minor units like every price
+ * on a tile, rather than the two being written out separately and drifting.
  */
 const QUICK_MAX_PRICE = 1000;
 

@@ -127,9 +127,13 @@ export function SortDropdown<Sort extends string>({
               // menuitem would announce the chosen one exactly like the rest.
               role="menuitemradio"
               aria-checked={isActive}
+              // Headline navy on the chosen row rather than the brand blue:
+              // blue appears once per browse page, on the header's search
+              // button, and navy is what everything else that is "on" wears —
+              // the filled pill, the current page number, the tick box.
               className={cn(
                 "justify-between gap-6",
-                isActive ? "font-semibold text-[var(--color-primary)]" : "",
+                isActive ? "font-semibold text-[var(--color-headline)]" : "",
               )}
             >
               {option.label}

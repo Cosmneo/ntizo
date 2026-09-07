@@ -97,7 +97,11 @@ export function FacetGroup({
 export function facetOptionClass(active: boolean): string {
   const base =
     "type-body-medium flex items-center gap-3 py-1.5 text-[var(--color-foreground)] transition-colors";
-  return active ? `${base} font-semibold` : `${base} hover:text-[var(--color-primary)]`;
+  // Headline navy under the cursor, not the brand blue: "blue once per page"
+  // covers the states a reader reaches as well as the ones they arrive to,
+  // and a row that turns blue on hover is the page's one accent moving down a
+  // list of six groups.
+  return active ? `${base} font-semibold` : `${base} hover:text-[var(--color-headline)]`;
 }
 
 /**
