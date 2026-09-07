@@ -673,7 +673,7 @@ export class DrizzleServiceReadRepository implements ServiceReadRepositoryPort {
 
     if (!row) return null;
 
-    const [translations, categoryTranslations, options, members] = await Promise.all([
+    const [translations, categoryTranslations, options, members, quoteFormRows] = await Promise.all([
       db.select().from(serviceTranslation).where(eq(serviceTranslation.serviceId, id)),
       db.select().from(categoryTranslation).where(eq(categoryTranslation.categoryId, row.categoryId)),
       db
@@ -682,6 +682,7 @@ export class DrizzleServiceReadRepository implements ServiceReadRepositoryPort {
         .where(and(eq(serviceOption.serviceId, id), eq(serviceOption.isActive, true)))
         .orderBy(asc(serviceOption.amountMinor)),
       db.select().from(serviceMember).where(eq(serviceMember.serviceId, id)),
+      db.select().from(serviceQuoteForm).where(eq(serviceQuoteForm.serviceId, id)).limit(1),
     ]);
 
     const optionIds = options.map((o) => o.id);
@@ -730,6 +731,15 @@ export class DrizzleServiceReadRepository implements ServiceReadRepositoryPort {
           .map((t) => ({ locale: t.locale, name: t.name })),
       })),
       memberIds: members.map((m) => m.memberId),
+      quoteForm: quoteFormRows[0]
+        ? {
+            responseHours: quoteFormRows[0].responseHours,
+            askDeadline: quoteFormRows[0].askDeadline,
+            askPhotos: quoteFormRows[0].askPhotos,
+            askLocation: quoteFormRows[0].askLocation,
+            intro: quoteFormRows[0].intro,
+          }
+        : null,
       categoryTranslations: categoryTranslations.map((t) => ({
         locale: t.locale,
         name: t.name,
