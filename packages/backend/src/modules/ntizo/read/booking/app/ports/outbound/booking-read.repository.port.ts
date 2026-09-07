@@ -173,6 +173,16 @@ export interface BookingReadRepositoryPort {
   statsForProvider(providerId: string, now: Date): Promise<ProviderStats>;
 
   /**
+   * The platform's own numbers, as of `now`, across every workspace. Day
+   * boundaries are the platform's (`PLATFORM_TIMEZONE` in the repository),
+   * not any one workspace's: an administrator's thirty days have to be one
+   * span, and `listForAdmin` already compares against the bare instant for
+   * the same reason. Takes no owner id, like `listForAdmin` — the handler's
+   * role check is this read's whole security surface.
+   */
+  statsForAdmin(now: Date): Promise<AdminStats>;
+
+  /**
    * The administrator's queue for one tab, paged — **across every workspace
    * on the platform.**
    *
@@ -377,5 +387,23 @@ export interface ProviderStatsDayRow {
 
 export interface ProviderStats {
   totals: ProviderStatsRow;
+  perDay: ProviderStatsDayRow[];
+}
+
+/** The platform's numbers, before the projection shapes them. Same null-safety split as `ProviderStatsRow`. */
+export interface AdminStatsRow {
+  disputed: number;
+  confirmedLast30: number;
+  completedLast30: number;
+  grossLast30Minor: number;
+  commissionLast30Minor: number;
+  newProvidersLast30: number;
+  currency: string | null;
+  /** The platform's local day for `now`, `YYYY-MM-DD`. */
+  today: string;
+}
+
+export interface AdminStats {
+  totals: AdminStatsRow;
   perDay: ProviderStatsDayRow[];
 }

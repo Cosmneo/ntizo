@@ -2,6 +2,7 @@ import { describe, expect, it } from "bun:test";
 import type {
   AdminBookingFilter,
   AdminBookingRow,
+  AdminStats,
   BookingListRow,
   BookingReadRepositoryPort,
   ProviderBookingRow,
@@ -32,6 +33,21 @@ const ZERO_STATS: ProviderStats = {
     declinedLast30: 0,
     revenueLast30Minor: 0,
     pipelineMinor: 0,
+    currency: null,
+    today: "2026-09-04",
+  },
+  perDay: [],
+};
+
+/** An empty platform — `FakeRepo`'s default `adminStats`. Nothing here exercises `statsForAdmin` yet; that is `get-admin-stats.projection.test.ts`'s job. */
+const ZERO_ADMIN_STATS: AdminStats = {
+  totals: {
+    disputed: 0,
+    confirmedLast30: 0,
+    completedLast30: 0,
+    grossLast30Minor: 0,
+    commissionLast30Minor: 0,
+    newProvidersLast30: 0,
     currency: null,
     today: "2026-09-04",
   },
@@ -114,6 +130,7 @@ function adminRow(over: Partial<AdminBookingRow> = {}): AdminBookingRow {
 class FakeRepo implements BookingReadRepositoryPort {
   public calls: string[] = [];
   public stats: ProviderStats = ZERO_STATS;
+  public adminStats: AdminStats = ZERO_ADMIN_STATS;
   public adminRows: AdminBookingRow[] = [adminRow()];
   constructor(
     private rows: ProviderBookingRow[] = [row()],
@@ -149,6 +166,10 @@ class FakeRepo implements BookingReadRepositoryPort {
   async statsForProvider(providerId: string): Promise<ProviderStats> {
     this.calls.push(`stats:${providerId}`);
     return this.stats;
+  }
+  async statsForAdmin(): Promise<AdminStats> {
+    this.calls.push("statsForAdmin");
+    return this.adminStats;
   }
 }
 

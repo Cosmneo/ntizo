@@ -41,6 +41,8 @@ import {
   ADMIN_TAB_STATUS,
   type AdminBookingFilter,
   type AdminBookingRow,
+  type AdminStats,
+  type AdminStatsRow,
   type BookingListRow,
   type BookingReadRepositoryPort,
   CUSTOMER_TAB_STATUSES,
@@ -382,6 +384,90 @@ export class DrizzleBookingReadRepository implements BookingReadRepositoryPort {
     };
   }
 
+  /**
+   * `statsForProvider` without the workspace: no `provider.timezone` read
+   * (the platform has one zone), no `providerId` in any WHERE, and the money
+   * is the gross and the platform's cut rather than the provider's share.
+   * The window arithmetic is repeated rather than factored out of the method
+   * above — six lines, and the two methods must be free to drift apart.
+   */
+  async statsForAdmin(now: Date): Promise<AdminStats> {
+    const db = getDb();
+    const timezone = PLATFORM_TIMEZONE;
+
+    // ISO text cast by Postgres, never the `Date` — see `statsForProvider`.
+    const at = sql`${now.toISOString()}::timestamptz`;
+    const localMidnight = sql`date_trunc('day', ${at} at time zone ${timezone})`;
+    const windowStart = sql`(${localMidnight} - interval '${sql.raw(String(STATS_WINDOW_DAYS - 1))} days') at time zone ${timezone}`;
+    const localDate = (column: SQL<unknown> | AnyColumn) =>
+      sql<string>`to_char((${column} at time zone ${timezone})::date, 'YYYY-MM-DD')`;
+
+    const totalsQuery = db
+      .select({
+        disputed: sql<number>`count(*) filter (where ${booking.status} = 'DISPUTED')::int`,
+        // Paid inside the window, whatever the row's status is now — the same
+        // column and window the per-day `confirmed` series is bucketed on, so
+        // the tile and the chart's total are one number.
+        confirmedLast30: sql<number>`count(*) filter (where ${booking.paidAt} is not null and ${booking.paidAt} >= ${windowStart})::int`,
+        completedLast30: sql<number>`count(*) filter (where ${booking.status} = 'COMPLETED' and ${booking.completedAt} >= ${windowStart})::int`,
+        // No `::int` on the sums — `statsForProvider` says why.
+        grossLast30Minor: sql<string | number>`coalesce(sum(${booking.priceMinor}) filter (where ${booking.status} = 'COMPLETED' and ${booking.completedAt} >= ${windowStart}), 0)`,
+        commissionLast30Minor: sql<string | number>`coalesce(sum(${booking.commissionMinor}) filter (where ${booking.status} = 'COMPLETED' and ${booking.completedAt} >= ${windowStart}), 0)`,
+        currency: sql<string | null>`max(${booking.currency})`,
+      })
+      .from(booking);
+
+    const providersQuery = db
+      .select({ n: sql<number>`count(*)::int` })
+      .from(provider)
+      .where(gte(provider.createdAt, windowStart));
+
+    const requestsQuery = db
+      .select({ date: localDate(bookingChange.changedAt), n: sql<number>`count(*)::int` })
+      .from(bookingChange)
+      .where(and(eq(bookingChange.reason, SUBMITTED_BY_CUSTOMER), gte(bookingChange.changedAt, windowStart)))
+      .groupBy(sql`1`);
+
+    const confirmedQuery = db
+      .select({ date: localDate(booking.paidAt), n: sql<number>`count(*)::int` })
+      .from(booking)
+      .where(and(isNotNull(booking.paidAt), gte(booking.paidAt, windowStart)))
+      .groupBy(sql`1`);
+
+    const todayQuery = db.select({ today: localDate(at) }).from(sql`(select 1) as one`);
+
+    const [totalsRows, providerRows, requestRows, confirmedRows, todayRows] = await Promise.all([
+      totalsQuery,
+      providersQuery,
+      requestsQuery,
+      confirmedQuery,
+      todayQuery,
+    ]);
+
+    const totals = totalsRows[0];
+    const byDate = new Map<string, ProviderStatsDayRow>();
+    for (const r of requestRows) {
+      byDate.set(r.date, { date: r.date, requests: Number(r.n), confirmed: 0 });
+    }
+    for (const r of confirmedRows) {
+      const hit = byDate.get(r.date);
+      if (hit) hit.confirmed = Number(r.n);
+      else byDate.set(r.date, { date: r.date, requests: 0, confirmed: Number(r.n) });
+    }
+
+    const row: AdminStatsRow = {
+      disputed: Number(totals?.disputed ?? 0),
+      confirmedLast30: Number(totals?.confirmedLast30 ?? 0),
+      completedLast30: Number(totals?.completedLast30 ?? 0),
+      grossLast30Minor: Number(totals?.grossLast30Minor ?? 0),
+      commissionLast30Minor: Number(totals?.commissionLast30Minor ?? 0),
+      newProvidersLast30: Number(providerRows[0]?.n ?? 0),
+      currency: totals?.currency ?? null,
+      today: todayRows[0]?.today ?? new Date(now).toISOString().slice(0, 10),
+    };
+    return { totals: row, perDay: [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date)) };
+  }
+
   async listForAdmin(
     filter: AdminBookingFilter,
     limit: number,
@@ -419,6 +505,14 @@ export class DrizzleBookingReadRepository implements BookingReadRepositoryPort {
  * to be able to say what today is.
  */
 const DEFAULT_TIMEZONE = "Africa/Maputo";
+
+/**
+ * The zone the platform's own days are counted in. The home market's, and
+ * the same string `provider.timezone` defaults to — but a constant of its
+ * own, because the two answer different questions: a workspace's dashboard
+ * is cut at that workspace's midnight, the platform's at the platform's.
+ */
+const PLATFORM_TIMEZONE = "Africa/Maputo";
 
 /**
  * The `booking_change.reason` a submitted booking carries, and the token the

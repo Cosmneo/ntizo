@@ -5,6 +5,7 @@ import { CUSTOMER_BOOKING_TABS } from "@ntizo/shared";
 import {
   ADMIN_BOOKING_TABS,
   adminBookingPageReadModel,
+  adminBookingStatsReadModel,
   customerBookingDetailReadModel,
   customerBookingPageReadModel,
   providerBookingDetailReadModel,
@@ -124,6 +125,17 @@ export const listAdminBookings = defineQuery({
 });
 
 /**
+ * The platform's numbers, in one read. Takes nothing, for the reason
+ * `listAdminBookings` takes no workspace: it spans all of them by design,
+ * and who may ask is decided in the handler by the session's role.
+ */
+export const getAdminStats = defineQuery({
+  input: zodSchema(z.object({})),
+  output: zodSchema(adminBookingStatsReadModel),
+  docs: { summary: "The platform's booking numbers", tags: ["Admin", "Booking"] },
+});
+
+/**
  * Nested one level, like `activity`'s and `notification`'s: the field kit
  * flattens these to `bookingMine` and `bookingById` on the wire —
  * `{ booking: { mine } }` → `bookingMine`, never `booking.mine`. Sits
@@ -140,6 +152,7 @@ export const bookingReadSchema = defineGraphQLSchema(
       byIdForProvider: getProviderBooking,
       statsForProvider: getProviderStats,
       needsAttentionForAdmin: listAdminBookings,
+      statsForAdmin: getAdminStats,
     },
   },
   { defaults: { context: ntizoGraphqlContextSchema } },

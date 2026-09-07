@@ -9,7 +9,7 @@ import type {
 } from "../ports/outbound/booking-read.repository.port";
 
 /** What a workspace that has never taken a booking is priced in. The launch market's, and the `booking` column's own default. */
-const DEFAULT_CURRENCY = "MZN";
+export const DEFAULT_CURRENCY = "MZN";
 
 const DAY_MS = 86_400_000;
 

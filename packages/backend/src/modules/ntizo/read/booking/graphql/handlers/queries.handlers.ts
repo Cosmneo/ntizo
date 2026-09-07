@@ -150,5 +150,11 @@ export function createBookingReadHandlers(mod: BookingReadModule) {
         now: new Date(),
       });
     })
+    .handle("booking.statsForAdmin", async (_args, ctx) => {
+      // First line, for the reason the queue's handler gives: nothing below
+      // this takes a requester, so nothing below this can refuse anybody.
+      requireAdmin(ctx);
+      return uc.statsForAdmin.execute({ now: new Date() });
+    })
     .build();
 }
