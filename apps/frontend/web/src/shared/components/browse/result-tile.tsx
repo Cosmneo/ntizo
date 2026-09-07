@@ -3,6 +3,7 @@ import { Star } from "lucide-react";
 import { cn } from "@ntizo/frontend-ui";
 import { BrandTile } from "@/shared/components/browse/brand-tile";
 import { BrandImage } from "@/shared/components/brand-image";
+import { formatRating } from "@/shared/domain/rating";
 
 /**
  * The whole-tile link, carried by the title.
@@ -71,15 +72,24 @@ export function TileMedia({
  * tile this number is the *provider's* average across everything they sell,
  * and a bare star beside a service's name claims a per-service rating this
  * product does not have.
+ *
+ * `locale` rather than a formatter of its own. This printed
+ * `toFixed(1).replace(".", ",")` before — a comma in all eight locales, so an
+ * en-US reader met "4,7" here and "4.7" on the same provider's page, and the
+ * `aria-label` beside it said "4.7" in every locale because the caller built
+ * that with `toFixed`. One function, `formatRating`, now writes both.
  */
 export function RatingMark({
   average,
   count,
   label,
+  locale,
 }: {
   average: number;
   count?: number | undefined;
   label: string;
+  /** The reader's locale — the separator is theirs, not Portuguese's. */
+  locale: string;
 }) {
   return (
     <span
@@ -87,7 +97,7 @@ export function RatingMark({
       className="inline-flex shrink-0 items-center gap-1 text-[13.5px] font-semibold text-[var(--color-foreground)]"
     >
       <Star className="h-3 w-3 fill-[var(--color-warning)] text-[var(--color-warning)]" aria-hidden="true" />
-      <span className="tabular-nums">{average.toFixed(1).replace(".", ",")}</span>
+      <span className="tabular-nums">{formatRating(average, locale)}</span>
       {count != null && (
         <span className="font-normal text-[var(--color-muted-foreground)]">({count})</span>
       )}

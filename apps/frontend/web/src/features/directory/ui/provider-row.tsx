@@ -9,6 +9,7 @@ import {
   RatingMark,
   TILE_TITLE_LINK_CLASS,
 } from "@/shared/components/browse/result-tile";
+import { formatRating } from "@/shared/domain/rating";
 import { formatHeadlinePrice } from "@/features/directory/services/domain/service-card";
 
 /**
@@ -169,8 +170,11 @@ export function ProviderRow({
             <RatingMark
               average={provider.ratingAverage}
               count={provider.reviewCount}
+              locale={locale}
+              // The same formatter the mark itself prints with, so the label
+              // and the digits beside it never disagree.
               label={t("providerRatingLabel", {
-                score: provider.ratingAverage.toFixed(1),
+                score: formatRating(provider.ratingAverage, locale),
                 count: provider.reviewCount,
               })}
             />

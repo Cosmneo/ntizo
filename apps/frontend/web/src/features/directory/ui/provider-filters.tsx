@@ -11,6 +11,7 @@ import {
 import { SortDropdown, type SortDropdownOption } from "@/shared/components/browse/sort-dropdown";
 import { FacetBox, FacetCount, facetOptionClass } from "@/shared/components/browse/facet-panel";
 import { EXACT_MATCH } from "@/shared/components/browse/active-match";
+import { formatRating } from "@/shared/domain/rating";
 import {
   directorySearch,
   PROVIDER_KINDS,
@@ -102,19 +103,6 @@ export function chooseProviderSort(
       to: "/providers",
       search: directorySearch(current, { sort: value, offset: undefined }),
     });
-}
-
-/**
- * A star threshold as this reader writes a decimal.
- *
- * Spelling it "4,5" by replacing the point was right for one language and
- * wrong for the other seven the platform ships. Exported because the phone's
- * quick chip offers the same 4.5 threshold the rating pill does, and two
- * copies of the formatting is how the chip and the pill come to print the
- * same number two different ways.
- */
-export function formatRatingScore(value: number, locale: string): string {
-  return new Intl.NumberFormat(locale, { minimumFractionDigits: 1 }).format(value);
 }
 
 /**
@@ -431,7 +419,7 @@ function RatingOptions({ current }: { current: DirectorySearch }) {
       {RATING_THRESHOLDS.map((v) => (
         <FacetOption
           key={v}
-          label={t("filterRatingOption", { score: formatRatingScore(v, locale) })}
+          label={t("filterRatingOption", { score: formatRating(v, locale) })}
           active={current.minRating === v}
           value={String(v)}
           toSearch={(raw) =>

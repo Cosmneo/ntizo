@@ -7,6 +7,7 @@ import {
   TileMedia,
   TILE_TITLE_LINK_CLASS,
 } from "@/shared/components/browse/result-tile";
+import { formatRating } from "@/shared/domain/rating";
 import {
   formatHeadlinePrice,
   servicePriceLine,
@@ -81,8 +82,12 @@ export function ServiceTile({ service, locale }: { service: ServiceDTO; locale: 
             <RatingMark
               average={service.providerRatingAverage}
               count={service.providerReviewCount}
+              locale={locale}
+              // The same formatter the mark itself prints with: a label
+              // reading "4.7 out of 5" beside a visible "4,7" is one score
+              // told two ways to the one reader who cannot check.
               label={t("providerRatingLabel", {
-                score: service.providerRatingAverage.toFixed(1),
+                score: formatRating(service.providerRatingAverage, locale),
                 count: service.providerReviewCount,
               })}
             />

@@ -9,6 +9,7 @@ import { SortDropdown } from "@/shared/components/browse/sort-dropdown";
 import { QuickChips, quickChipClass } from "@/shared/components/browse/quick-chips";
 import { PAGER_EDGE_CLASS, Pager, pagerPageClass } from "@/shared/components/browse/pager";
 import { EXACT_MATCH } from "@/shared/components/browse/active-match";
+import { formatRating } from "@/shared/domain/rating";
 // Categories are platform data that happens to be fetched under `landing/`.
 // Reached through its viewmodel rather than its repository — `ui` may not
 // touch `data`, and going through the hook reuses the cache the home page has
@@ -20,7 +21,6 @@ import {
   MobileProviderFilters,
   ProviderFilters,
   chooseProviderSort,
-  formatRatingScore,
   providerSortOptions,
 } from "@/features/directory/ui/provider-filters";
 import { DIRECTORY_PAGE_SIZE } from "@/features/directory/domain/provider-listing";
@@ -217,7 +217,7 @@ export function DirectoryPage() {
                 // formats its own rows with, rather than a "4.5" hard-coded
                 // for one of the eight languages the platform ships.
                 label={t("filterRatingOption", {
-                  score: formatRatingScore(QUICK_MIN_RATING, locale),
+                  score: formatRating(QUICK_MIN_RATING, locale),
                 })}
               />
               <QuickChip
