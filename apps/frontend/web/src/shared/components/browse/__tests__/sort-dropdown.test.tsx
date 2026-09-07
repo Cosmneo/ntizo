@@ -42,7 +42,7 @@ describe("SortDropdown", () => {
     // The same button is drawn on the white heading row and inside the navy
     // floating control. A colour token here would be navy on navy in the
     // second — and `ghost`'s own default is the brand blue, which belongs to
-    // the header's search button alone.
+    // the header and the search bar's button, never to the results.
     render(
       <SortDropdown
         active="newest"
@@ -98,9 +98,10 @@ describe("SortDropdown", () => {
   });
 
   it("marks the active order in headline navy, and no other", () => {
-    // Navy and not the brand blue: blue appears once per browse page, on the
-    // header's search button, and navy is what everything else that is "on"
-    // wears — the filled pill, the current page number, the tick box.
+    // Navy and not the brand blue: blue belongs to the header and the search
+    // bar's button, never to anything in the results, and navy is what
+    // everything else that is "on" wears — the filled pill, the current page
+    // number, the tick box.
     render(
       <SortDropdown active="price" options={OPTIONS} sortLabel="Sort:" onChoose={() => undefined} />,
     );

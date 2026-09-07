@@ -147,6 +147,16 @@ describe("ServiceSearch", () => {
 
     expect(router.state.location.search).toEqual({ q: "pintura" });
   });
+
+  it("searches on a real submit rather than a hand-rolled key handler", async () => {
+    // Enter inside a text field reaching the submit button is a browser
+    // behaviour; reimplementing it is how a search box becomes the one
+    // control on a page of links that does nothing before JavaScript runs.
+    // This is what the case above rides on, pinned directly — the page tests
+    // used to assert it, and it belongs to the shell, which is here.
+    await renderSearch();
+    expect(screen.getByRole("button", { name: "Search" })).toHaveAttribute("type", "submit");
+  });
 });
 
 describe("ServiceSearch, on a coloured background", () => {

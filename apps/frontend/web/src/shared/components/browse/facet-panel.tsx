@@ -28,10 +28,11 @@ export function facetOptionClass(active: boolean): string {
  * The tick box. Hidden from assistive technology — the link's `aria-pressed`
  * already says this.
  *
- * Filled headline navy, not the brand blue: blue appears once per browse page,
- * on the header's search button, and a checked box in every group of a filter
- * sheet is not once. Navy is what the rest of "this one is on" wears here —
- * the filled pill, the current page number, the floating control.
+ * Filled headline navy, not the brand blue: blue belongs to the header's nav
+ * pill and sign-in and to the search bar's button, and nothing inside the
+ * results wears it — least of all a checked box in every group of a filter
+ * sheet. Navy is what the rest of "this one is on" wears here — the filled
+ * pill, the current page number, the floating control.
  */
 export function FacetBox({ active }: { active: boolean }) {
   return (

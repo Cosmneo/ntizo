@@ -17,8 +17,9 @@ import { formatRating } from "@/shared/domain/rating";
  * native outline off without putting anything in its place is what the card
  * this replaces could afford: its `<article>` carried
  * `focus-within:border-…`, and the borderless tile carries nothing. Headline
- * navy, not the ring token, because the ring token is the blue this page
- * spends on the header's search button and nowhere else.
+ * navy, not the ring token, because the ring token is the site's blue — the
+ * header's and the search bar's button's — and nothing in the results wears
+ * it.
  */
 export const TILE_TITLE_LINK_CLASS =
   "after:absolute after:inset-0 after:rounded-[var(--radius-card)] focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-[var(--color-headline)] focus-visible:after:ring-offset-2";

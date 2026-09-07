@@ -95,9 +95,9 @@ describe("ProviderRow", () => {
     );
     await screen.findByRole("link", { name: /Estúdio Mavalane/ });
     expect(screen.getByText("3 more")).toBeInTheDocument();
-    // Headline navy, not `--color-primary`: blue is spent once per page, on
-    // the header's search button, and twenty rows of "+3 more" is twenty
-    // blues.
+    // Headline navy, not `--color-primary`: blue belongs to the header and
+    // the search bar's button, never to the results, and twenty rows of
+    // "+3 more" is twenty blues.
     expect(screen.getByText("3 more").className).not.toContain("--color-primary");
     expect(screen.getByText("3 more").className).toContain("--color-headline");
   });

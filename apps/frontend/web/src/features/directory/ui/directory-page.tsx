@@ -67,9 +67,10 @@ import { resultsScope } from "@/features/directory/domain/results-scope";
  * pills under the heading narrow one of those sets. The sort reorders what is
  * left. Making all four a row of chips would say they were peers.
  *
- * **A white page with one blue on it** — the search bar's button, alongside
- * the header's own nav pill and sign-in, exactly as on every other page.
- * Everything else is headline navy, ink, grey and the amber star, which is
+ * **Nothing in the results is blue.** The site's one blue goes where the site
+ * always puts it — the header's nav pill, the header's sign-in, the search
+ * bar's button — and no further down the page than that.
+ * Everything below is headline navy, ink, grey and the amber star, which is
  * why the rows carry no border, no shadow and no button of their own: what
  * the eye should land on down a column of results is the photographs, the
  * ratings and the prices, not twenty identical calls to action.

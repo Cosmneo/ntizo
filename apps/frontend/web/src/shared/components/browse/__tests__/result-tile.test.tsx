@@ -13,7 +13,8 @@ describe("TILE_TITLE_LINK_CLASS", () => {
     // because its `<article>` lit a border on `focus-within`. The borderless
     // tile has no border to light, so the ring is drawn on the `::after` that
     // already covers the whole tile — and in headline navy, since the ring
-    // token is the blue this page spends on the header's search button.
+    // token is the site's blue, which the header and the search bar's button
+    // wear and nothing in the results does.
     expect(TILE_TITLE_LINK_CLASS).toContain("focus-visible:after:ring-2");
     expect(TILE_TITLE_LINK_CLASS).toContain(
       "focus-visible:after:ring-[var(--color-headline)]",

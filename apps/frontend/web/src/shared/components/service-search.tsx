@@ -36,7 +36,8 @@ interface ServiceSearchProps {
  * does not exist yet. The city is not one of its fields either — it is the
  * browse pages' "Cidade" filter pill, which is where a narrowing belongs.
  *
- * Submitting navigates to `to?q=`, which is what the field says it does: the
+ * Submitting navigates to `/services?q=` by default, or to `/providers?q=`
+ * for the businesses list, which is what the field says it does: the
  * placeholder asks for the thing that list holds and the button searches it.
  * `to` is a destination and not a mode — the markup, the drafts and the
  * submit are identical either way, so `/providers` gets the same bar the

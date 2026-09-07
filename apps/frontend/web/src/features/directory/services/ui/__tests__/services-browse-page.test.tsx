@@ -340,16 +340,16 @@ describe("ServicesBrowsePage", () => {
   it("marks no filter link as the current page just for removing a filter", async () => {
     // The same subset trap, now in three places. A filter's *active* option
     // links back to `/services` — an empty search, which is a subset of every
-    // one — so the pill's row, the phone's quick chip and the sheet's row all
-    // announced it as where you are.
+    // one — so the filter pill's row, the phone's quick chip and the sheet's
+    // row all announced it as where you are.
     renderPage("/services?locationType=at_customer", {
       items: [service()],
       nextOffset: null,
       total: 1,
     });
-    // Two while the sheet is shut: the pill's option row and the phone's quick
-    // chip, which offers this same narrowing in one tap. `SheetContent`
-    // returns null until it is opened.
+    // Two while the sheet is shut: the filter pill's option row and the
+    // phone's quick chip, which offers this same narrowing in one tap.
+    // `SheetContent` returns null until it is opened.
     const closed = await screen.findAllByRole("link", { name: "At your place" });
     expect(closed).toHaveLength(2);
 
@@ -390,8 +390,8 @@ describe("ServicesBrowsePage", () => {
   it("counts on the phone's control only what its sheet can take off, and offers a way to take them all off", async () => {
     // The count once included a city the sheet had no group for, so it read 2
     // over a sheet showing one control the reader could act on. It leaves the
-    // typed term out for the same reason: the term is the header pill's, and
-    // this sheet has no box for it.
+    // typed term out for the same reason: the term belongs to the search bar
+    // under the header, and this sheet has no box for it.
     renderPage("/services?q=corte&city=Maputo&locationType=at_customer", {
       items: [service()],
       nextOffset: null,
