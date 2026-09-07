@@ -38,6 +38,6 @@ export function QuickChips({ label, children }: { label: string; children: React
 export function quickChipClass(active: boolean): string {
   const base = "shrink-0 rounded-full border px-3 py-2 text-[13px] font-medium";
   return active
-    ? `${base} border-[var(--color-navy-surface)] bg-[var(--color-navy-surface)] font-semibold text-[var(--color-navy-on)]`
+    ? `${base} border-[var(--color-navy-surface)] bg-[var(--color-navy-surface)] text-[var(--color-navy-on)]`
     : `${base} border-[var(--color-border-strong)] text-[var(--color-foreground)]`;
 }

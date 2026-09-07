@@ -23,4 +23,16 @@ describe("quickChipClass", () => {
     }
     expect(on).not.toBe(off);
   });
+
+  it("never turns bold on choosing a chip — only its colour changes", () => {
+    // Bold glyphs are wider than medium ones in essentially every
+    // non-monospace font, so a chip that gained weight on selection would
+    // shift its own width and every chip after it.
+    const on = quickChipClass(true);
+    const off = quickChipClass(false);
+    expect(on).toContain("font-medium");
+    expect(off).toContain("font-medium");
+    expect(on).not.toContain("font-semibold");
+    expect(off).not.toContain("font-semibold");
+  });
 });
