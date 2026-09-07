@@ -1,6 +1,5 @@
 import { describe, expect, it } from "bun:test";
 import type { NtizoGraphqlContext } from "../../../graphql/context";
-import type { QuoteBootstrap } from "../../../bounded-contexts/quote/bootstrap";
 import {
   createQuoteWriteHandlers,
   type QuoteWriteModule,
