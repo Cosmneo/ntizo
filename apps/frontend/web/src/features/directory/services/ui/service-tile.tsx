@@ -24,7 +24,7 @@ import type { ServiceDTO } from "@/features/directory/services/domain/types";
  *
  * **No button.** The price is what the eye lands on and the tile is the link.
  * A blue button repeated twenty-four times down a page competes with every
- * price on it and with the one button that matters, in the header.
+ * price on it and with the one button that matters, in the search bar.
  *
  * **The rating lives on the provider line, not the title line.** The score is
  * the *provider's* average across everything they sell, never the service's

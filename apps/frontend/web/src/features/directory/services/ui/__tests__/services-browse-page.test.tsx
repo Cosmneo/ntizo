@@ -300,8 +300,15 @@ describe("ServicesBrowsePage", () => {
       nextOffset: null,
       total: 1,
     });
-    fireEvent.change(await screen.findByRole("searchbox"), { target: { value: "corte" } });
-    fireEvent.submit(screen.getByRole("search"));
+    const form = await screen.findByRole("search");
+    // Under the header, which is half of what this case is called: the bar is
+    // a band of the page, not a pill the header carries. `FOLLOWING` is "the
+    // form comes after the header in document order".
+    const header = screen.getByRole("banner");
+    expect(header.compareDocumentPosition(form) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
+    fireEvent.change(screen.getByRole("searchbox"), { target: { value: "corte" } });
+    fireEvent.submit(form);
 
     await waitFor(() => {
       expect(router.state.location.pathname).toBe("/services");

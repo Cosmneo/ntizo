@@ -330,8 +330,15 @@ describe("DirectoryPage", () => {
     // page's own `?q=`. The page used to draw a search pill of its own in the
     // header, which is the inconsistency this replaced.
     const { router } = renderPage("/providers", { items: [provider()], total: 1 });
-    fireEvent.change(await screen.findByRole("searchbox"), { target: { value: "mavalane" } });
-    fireEvent.submit(screen.getByRole("search"));
+    const form = await screen.findByRole("search");
+    // Under the header, which is half of what this case is called: the bar is
+    // a band of the page, not a pill the header carries. `FOLLOWING` is "the
+    // form comes after the header in document order".
+    const header = screen.getByRole("banner");
+    expect(header.compareDocumentPosition(form) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
+    fireEvent.change(screen.getByRole("searchbox"), { target: { value: "mavalane" } });
+    fireEvent.submit(form);
 
     await waitFor(() => {
       expect(router.state.location.pathname).toBe("/providers");

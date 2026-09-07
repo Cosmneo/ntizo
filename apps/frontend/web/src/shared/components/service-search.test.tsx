@@ -126,8 +126,10 @@ describe("ServiceSearch", () => {
   });
 
   it("keeps going to /services by default", async () => {
-    // The home page and `/services` pass no `to` at all, so the default is
-    // the behaviour eight callers already depend on.
+    // The home page's hero passes no `to` at all — the one caller that does
+    // not — so the default has to stay the services browse. Asking for
+    // "corte de cabelo" and landing on a list of businesses instead is the
+    // behaviour this default was written to end.
     const user = userEvent.setup();
     const router = await renderSearch();
 
