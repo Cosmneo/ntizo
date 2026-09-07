@@ -139,6 +139,33 @@ describe("SiteHeader", () => {
   });
 
   /**
+   * Two classes that centre the bar, both of which were found by measuring a
+   * real browser rather than by reading the markup.
+   *
+   * The middle grid track is a maximum, not a floor, so the bar is meant to
+   * be the thing that gives way when the header runs out of room. Both of
+   * these are what make something else give way first, and neither looks
+   * load-bearing:
+   *
+   * - Tailwind's preflight caps every `img` at `max-width: 100%`, which makes
+   *   the logo's min-content contribution nearly nothing. The left track
+   *   collapsed and scaled the wordmark from 87px to 59px at a 1024px
+   *   viewport, so the bar never shrank at all.
+   * - "Sign in" is two words, and a wrappable string's min-content is its
+   *   longest word. The right track shrank below the pill and broke the label
+   *   over two lines, again instead of the bar yielding.
+   *
+   * jsdom does no layout, so the widths are not assertable here; the classes
+   * that produce them are.
+   */
+  it("makes the bar yield before the logo or the sign-in do", async () => {
+    await renderHeader();
+
+    expect(screen.getByAltText("Ntizo")).toHaveClass("max-w-none");
+    expect(screen.getByRole("link", { name: /sign in/i })).toHaveClass("whitespace-nowrap");
+  });
+
+  /**
    * The provider's door is the footer's, and the right-hand cluster is full:
    * the nav pill moved into it. The link `providerCta` used to add sat in the
    * same block as `HeaderActions` and stacked above it rather than beside it,
