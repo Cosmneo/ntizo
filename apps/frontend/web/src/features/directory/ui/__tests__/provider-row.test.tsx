@@ -95,6 +95,11 @@ describe("ProviderRow", () => {
     );
     await screen.findByRole("link", { name: /Estúdio Mavalane/ });
     expect(screen.getByText("3 more")).toBeInTheDocument();
+    // Headline navy, not `--color-primary`: blue is spent once per page, on
+    // the header's search button, and twenty rows of "+3 more" is twenty
+    // blues.
+    expect(screen.getByText("3 more").className).not.toContain("--color-primary");
+    expect(screen.getByText("3 more").className).toContain("--color-headline");
   });
 
   it("says nothing about the rest when there is no rest", async () => {
@@ -121,7 +126,9 @@ describe("ProviderRow", () => {
       provider({ services: [], serviceCount: 2, fromAmountMinor: null, fromCurrency: null }),
     );
     await screen.findByRole("link", { name: /Estúdio Mavalane/ });
-    expect(screen.getByText("2 services")).toBeInTheDocument();
+    const count = screen.getByText("2 services");
+    expect(count).toBeInTheDocument();
+    expect(count.className).not.toContain("--color-primary");
     expect(screen.queryByText(/more/)).toBeNull();
   });
 

@@ -81,6 +81,16 @@ describe("ServiceFilters", () => {
     await renderFilters({ q: "corte" });
     expect(screen.queryByRole("link", { name: "Clear all" })).toBeNull();
   });
+
+  it("wears navy on the price form's OK, not the kit's default blue", async () => {
+    // `--color-primary` is spent on the header's search button and nothing
+    // else on this page; the kit's default `Button` variant is that blue, and
+    // this submit is drawn twice — in the pill's popover and in the sheet.
+    await renderFilters({});
+    const ok = screen.getByRole("button", { name: "OK" });
+    expect(ok.className).toContain("--color-navy-surface");
+    expect(ok.className).not.toContain("--color-primary");
+  });
 });
 
 describe("MobileServiceFilters", () => {

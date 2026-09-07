@@ -236,7 +236,7 @@ export function SearchPill({
         aria-label={t("searchPillOpen")}
         className="flex w-full items-center gap-3 rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-background)] p-3.5 text-left shadow-[var(--shadow-float)] md:hidden"
       >
-        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-[9px] bg-[var(--color-muted)] text-[var(--color-primary)]">
+        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-[9px] bg-[var(--color-muted)] text-[var(--color-headline)]">
           <Search className="h-4 w-4" aria-hidden="true" />
         </span>
         <span className="grid min-w-0">
@@ -247,6 +247,11 @@ export function SearchPill({
             {city || cityPlaceholder}
           </span>
         </span>
+        {/* The filled square is the phone's one blue — the same button the
+            desktop pill spends it on, and the page's whole allowance. The
+            magnifier at the left of this trigger is headline navy for that
+            reason: two blues inside one control is the constraint broken
+            twice over in the space of 358px. */}
         <span
           aria-hidden="true"
           className="ml-auto grid h-9 w-9 shrink-0 place-items-center rounded-[10px] bg-[var(--color-primary)] text-[var(--color-primary-foreground)]"

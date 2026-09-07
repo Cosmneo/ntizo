@@ -124,7 +124,7 @@ export function ProviderRow({
                  "2 more" with nothing before it would read as an error, so
                  this says what it sells the same quiet way the side rail's
                  own `providerServiceCount` already does. */
-              <li className="self-center pl-0.5 text-[13px] font-semibold text-[var(--color-primary)]">
+              <li className="self-center pl-0.5 text-[13px] font-semibold text-[var(--color-headline)]">
                 {t("providerServiceCount", { count: provider.serviceCount })}
               </li>
             ) : (
@@ -132,7 +132,7 @@ export function ProviderRow({
               // capped at three server-side, and counting it would always say
               // "+0".
               rest > 0 && (
-                <li className="self-center pl-0.5 text-[13px] font-semibold text-[var(--color-primary)]">
+                <li className="self-center pl-0.5 text-[13px] font-semibold text-[var(--color-headline)]">
                   {t("providerServicesMore", { count: rest })}
                 </li>
               )
