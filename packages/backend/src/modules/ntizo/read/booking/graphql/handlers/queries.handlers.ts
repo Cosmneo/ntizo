@@ -143,12 +143,19 @@ export function createBookingReadHandlers(mod: BookingReadModule) {
       requireAdmin(ctx);
       return uc.listForAdmin.execute({
         tab: args.input.tab,
+        search: args.input.search,
         limit: args.input.limit ?? 20,
         offset: args.input.offset ?? 0,
         // The edge's instant, so `unclosed` is a question about now rather
         // than about whenever the query happened to reach Postgres.
         now: new Date(),
       });
+    })
+    .handle("booking.statsForAdmin", async (_args, ctx) => {
+      // First line, for the reason the queue's handler gives: nothing below
+      // this takes a requester, so nothing below this can refuse anybody.
+      requireAdmin(ctx);
+      return uc.statsForAdmin.execute({ now: new Date() });
     })
     .build();
 }

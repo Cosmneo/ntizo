@@ -232,6 +232,13 @@ function mutations(): { field: string; input: Record<string, unknown> }[] {
     }));
 }
 
+/** Opens the filter panel and its queue picker, so the three queues are on screen as options. */
+async function openQueuePicker() {
+  await userEvent.click(screen.getByRole("button", { name: /^filtrar/i }));
+  const panel = await screen.findByRole("dialog", { name: "Filtrar reservas" });
+  await userEvent.click(within(panel).getByRole("button", { name: "Fila" }));
+}
+
 /** How many times the queue itself has been asked for. */
 function queueReads(): number {
   return sent().filter(([document]) => document.includes("bookingNeedsAttentionForAdmin"))
@@ -252,24 +259,31 @@ afterEach(async () => {
 });
 
 describe("AdminBookingsPage", () => {
-  it("offers the three tabs the queue has, and no others", async () => {
+  it("offers the three queues in the shared filter panel, and no others", async () => {
+    renderQueue("/admin/bookings");
+    await row("Ana");
+    // Nothing loose above the card: no tab row, no count sentence.
+    expect(screen.queryByRole("tablist")).not.toBeInTheDocument();
+
+    await openQueuePicker();
+    const options = screen.getAllByRole("option");
+    expect(options.map((o) => o.textContent)).toEqual(["Por fechar", "Em janela", "Reclamações"]);
+    // Which one is selected, not merely that one is: `aria-selected` is the
+    // only thing that tells a screen reader where it is.
+    expect(options.map((o) => o.getAttribute("aria-selected"))).toEqual(["true", "false", "false"]);
+  });
+
+  it("searches on the server, by whatever names the row", async () => {
     renderQueue("/admin/bookings");
     await row("Ana");
 
-    const tabs = screen.getAllByRole("tab");
-    expect(tabs.map((t) => t.textContent)).toEqual([
-      "Por fechar",
-      "Em janela",
-      "Reclamações",
-    ]);
-    // Which one is selected, not merely that one is: `aria-selected` is the
-    // only thing that tells a screen reader where it is, and a hardcoded
-    // `true` (or `false`) on all three renders the same three tabs.
-    expect(tabs.map((t) => t.getAttribute("aria-selected"))).toEqual([
-      "true",
-      "false",
-      "false",
-    ]);
+    await userEvent.type(screen.getByPlaceholderText("Procurar por prestador, cliente ou serviço"), "Zita");
+
+    await waitFor(() =>
+      expect(fakes.graphql).toHaveBeenCalledWith(expect.stringContaining("bookingNeedsAttentionForAdmin"), {
+        input: { tab: "unclosed", limit: 20, offset: 0, search: "Zita" },
+      }),
+    );
   });
 
   it("shows the workspace, the customer, the service and how long it has waited", async () => {
@@ -326,7 +340,8 @@ describe("AdminBookingsPage", () => {
     });
     await row("Ana");
 
-    await userEvent.click(screen.getByRole("tab", { name: "Em janela" }));
+    await openQueuePicker();
+    await userEvent.click(screen.getByRole("option", { name: "Em janela" }));
 
     await waitFor(() =>
       expect(router.state.location.search).toMatchObject({ tab: "in_window" }),
@@ -587,9 +602,8 @@ describe("AdminBookingsPage", () => {
     });
     await row("Ana");
 
-    expect(screen.getByText("21 reservas a precisar de atenção")).toBeInTheDocument();
-    // Two different numbers, and the card must not print the queue's where the
-    // page's belongs: one row is on screen out of twenty-one waiting.
+    // Two different numbers, and the card must not print the page's where
+    // the queue's belongs: one row is on screen out of twenty-one waiting.
     expect(screen.getByText("1 de 21 mostradas")).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: "Seguinte" }));

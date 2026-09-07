@@ -5,6 +5,7 @@ import { CUSTOMER_BOOKING_TABS } from "@ntizo/shared";
 import {
   ADMIN_BOOKING_TABS,
   adminBookingPageReadModel,
+  adminBookingStatsReadModel,
   customerBookingDetailReadModel,
   customerBookingPageReadModel,
   providerBookingDetailReadModel,
@@ -115,12 +116,26 @@ export const listAdminBookings = defineQuery({
   input: zodSchema(
     z.object({
       tab: z.enum(ADMIN_BOOKING_TABS),
+      // Bounded, like every other free-text filter here: the string ends up in
+      // a LIKE pattern.
+      search: z.string().trim().max(120).optional(),
       limit: z.number().int().min(1).max(50).optional(),
       offset: z.number().int().min(0).optional(),
     }),
   ),
   output: zodSchema(adminBookingPageReadModel),
   docs: { summary: "The bookings an administrator has to look at", tags: ["Booking"] },
+});
+
+/**
+ * The platform's numbers, in one read. Takes nothing, for the reason
+ * `listAdminBookings` takes no workspace: it spans all of them by design,
+ * and who may ask is decided in the handler by the session's role.
+ */
+export const getAdminStats = defineQuery({
+  input: zodSchema(z.object({})),
+  output: zodSchema(adminBookingStatsReadModel),
+  docs: { summary: "The platform's booking numbers", tags: ["Admin", "Booking"] },
 });
 
 /**
@@ -140,6 +155,7 @@ export const bookingReadSchema = defineGraphQLSchema(
       byIdForProvider: getProviderBooking,
       statsForProvider: getProviderStats,
       needsAttentionForAdmin: listAdminBookings,
+      statsForAdmin: getAdminStats,
     },
   },
   { defaults: { context: ntizoGraphqlContextSchema } },

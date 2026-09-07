@@ -1,7 +1,8 @@
 import { z } from "zod";
 import { defineQuery, defineGraphQLSchema } from "@cosmneo/onion-lasagna/graphql/field";
 import { zodSchema } from "@cosmneo/onion-lasagna-zod";
-import { activityPageReadModel } from "@ntizo/shared/read-models";
+import { ACTIVITY_TYPES } from "@ntizo/shared";
+import { activityPageReadModel, platformActivityPageReadModel } from "@ntizo/shared/read-models";
 import { ntizoGraphqlContextSchema } from "../../../../graphql/context";
 
 /**
@@ -26,14 +27,37 @@ export const listMyActivity = defineQuery({
 });
 
 /**
- * Nested one level, like `notification`'s: the field kit flattens this to
- * `activityMine` on the wire — `{ activity: { mine } }` → `activityMine`,
- * never `activity.mine`. Task 8's frontend calls it by that flattened name.
+ * Everybody's history — the platform's own feed. Guarded by the handler:
+ * administrators only, and refused before anything is read.
+ *
+ * `type` is validated against `ACTIVITY_TYPES` here, the same list the
+ * picker on the page offers; `search` is bounded like every other free-text
+ * filter, because the string ends up in a LIKE pattern.
+ */
+export const listPlatformActivity = defineQuery({
+  input: zodSchema(
+    z.object({
+      limit: z.number().int().min(1).max(50).optional(),
+      cursor: z.string().optional(),
+      type: z.enum(ACTIVITY_TYPES).optional(),
+      search: z.string().trim().max(120).optional(),
+    }),
+  ),
+  output: zodSchema(platformActivityPageReadModel),
+  docs: { summary: "Everybody's activity, for administration", tags: ["Admin", "Activity"] },
+});
+
+/**
+ * Nested one level, like `notification`'s: the field kit flattens these to
+ * `activityMine` and `activityAll` on the wire — `{ activity: { mine } }` →
+ * `activityMine`, never `activity.mine`. The frontend calls them by those
+ * flattened names.
  */
 export const activityReadSchema = defineGraphQLSchema(
   {
     activity: {
       mine: listMyActivity,
+      all: listPlatformActivity,
     },
   },
   { defaults: { context: ntizoGraphqlContextSchema } },

@@ -348,7 +348,7 @@ function chart() {
  * merely started.
  *
  * `StatCard`'s label paints in the *first* render, before the query has
- * resolved, because `overview-cards.tsx` deliberately keeps the label out of
+ * resolved, because `stat-card.tsx` deliberately keeps the label out of
  * its own `loading` branch (see that file's doc comment). So `findByText` on
  * a label — "Por responder", "Reservas recentes", "Avaliação" — resolves the
  * instant the component mounts, proves nothing about whether the number

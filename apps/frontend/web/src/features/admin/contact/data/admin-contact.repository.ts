@@ -47,6 +47,23 @@ export const adminContactQueries = {
         return d.contactRequestAllForAdmin;
       },
     }),
+
+  /**
+   * `openCount` rides on the page payload, so the cheapest way to read it
+   * alone is a page of one. Under the same prefix, so resolving a request
+   * refreshes it with the list.
+   */
+  openCount: () =>
+    queryOptions({
+      queryKey: ["admin", "contact", "openCount"] as const,
+      queryFn: async (): Promise<number> => {
+        const d = await sessionGraphql<{ contactRequestAllForAdmin: ContactRequestAdminPageDTO }>(ALL, {
+          input: { limit: 1, offset: 0 },
+        });
+        return d.contactRequestAllForAdmin.openCount;
+      },
+      staleTime: 30_000,
+    }),
 };
 
 export async function setContactRequestStatus(requestId: string, status: ContactRequestStatus): Promise<void> {

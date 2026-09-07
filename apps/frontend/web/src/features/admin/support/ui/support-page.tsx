@@ -7,6 +7,12 @@ import { CollectionCard } from "@/shared/components/collection-card";
 import { usePageHeader } from "@/shared/lib/page-header";
 import { useAdminSupport, useSupportOpenCount } from "@/features/admin/support/viewmodel/use-admin-support";
 import type { AdminSupportSearch } from "@/features/admin/support/data/admin-support.repository";
+import {
+  DEFAULT_SUPPORT_FILTERS,
+  SupportFilterSheet,
+  supportFilterCount,
+  type SupportFilters,
+} from "./support-filters";
 
 /**
  * The support queue: what people asked the platform, and what is still open.
@@ -16,25 +22,40 @@ import type { AdminSupportSearch } from "@/features/admin/support/data/admin-sup
  * requests arrive from anonymous forms and are answered by email; these are
  * threads with signed-in people and are answered here.
  *
- * No search box: a request is found by its subject in a list of open ones,
- * and the backend has no search argument to offer. `CollectionCard` wants
- * `search`/`onSearchChange`, so they are passed as a controlled empty value.
+ * The same card and the same filter panel as every other list here. The
+ * search is over the subject, on the server, which is what a request is
+ * found by in a list of open ones.
  */
 export function AdminSupportPage() {
   const { t, i18n } = useTranslation("admin");
   const locale = i18n.resolvedLanguage ?? i18n.language;
 
-  const [status, setStatus] = useState<AdminSupportSearch["status"]>("open");
-  const [audience, setAudience] = useState<AdminSupportSearch["audience"]>(undefined);
+  const [filters, setFilters] = useState<SupportFilters>(DEFAULT_SUPPORT_FILTERS);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const { status, audience } = filters;
 
-  const search: AdminSupportSearch = {
+  const input: AdminSupportSearch = {
     ...(status ? { status } : {}),
     ...(audience ? { audience } : {}),
+    ...(search.trim() ? { search: search.trim() } : {}),
   };
-  const { requests, loading, hasMore, loadMore, errorCode } = useAdminSupport(search);
+  const { requests, loading, hasMore, loadMore, errorCode } = useAdminSupport(input);
   const openCount = useSupportOpenCount();
 
   usePageHeader(t("supportTitle"), t("supportSubtitle"));
+
+  /**
+   * The whole the card's "N of M shown" counts against.
+   *
+   * `supportRequests` is cursor-paged and never returns a count, so the list
+   * cannot say how long it is. While the queue is on open requests, though,
+   * the platform's open count *is* that whole — before the audience or the
+   * search narrows it — and it is the number this screen exists to bring
+   * down. Off "open" there is no such number, and the card says "N shown"
+   * rather than claim one.
+   */
+  const whole = status === "open" ? openCount.data : undefined;
 
   const when = new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 
@@ -42,45 +63,17 @@ export function AdminSupportPage() {
     <div className="mx-auto flex max-w-6xl flex-col gap-4">
       {errorCode && <p className="type-body text-[var(--color-destructive)]">{t("supportError")}</p>}
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="type-body">{t("supportOpenCount", { count: openCount.data ?? 0 })}</p>
-        <div className="flex flex-wrap gap-2">
-          <Button variant={status === "open" ? "default" : "outline"} size="sm" onClick={() => setStatus("open")}>
-            {t("supportStatus.open")}
-          </Button>
-          <Button variant={status === "resolved" ? "default" : "outline"} size="sm" onClick={() => setStatus("resolved")}>
-            {t("supportStatus.resolved")}
-          </Button>
-          <Button variant={status === undefined ? "default" : "outline"} size="sm" onClick={() => setStatus(undefined)}>
-            {t("supportStatusAll")}
-          </Button>
-          <span className="mx-1 hidden w-px bg-[var(--color-border)] sm:block" aria-hidden="true" />
-          <Button variant={audience === undefined ? "default" : "outline"} size="sm" onClick={() => setAudience(undefined)}>
-            {t("supportAudienceAll")}
-          </Button>
-          <Button variant={audience === "customer" ? "default" : "outline"} size="sm" onClick={() => setAudience("customer")}>
-            {t("supportAudience.customer")}
-          </Button>
-          <Button variant={audience === "provider" ? "default" : "outline"} size="sm" onClick={() => setAudience("provider")}>
-            {t("supportAudience.provider")}
-          </Button>
-        </div>
-      </div>
-
       <CollectionCard
         title={t("supportTitle")}
         shown={requests.length}
-        total={requests.length}
-        // `supportRequests` is cursor-paged and never returns a count: once
-        // another page exists, `requests.length` is only how many are
-        // loaded so far, not the whole. Rather than pass it off as `total`
-        // (a lie the moment `hasMore` is true), tell `CollectionCard` the
-        // total is not known and let it say "N shown" instead of "N of N".
-        totalUnknown={hasMore}
+        total={whole ?? requests.length}
+        totalUnknown={whole === undefined && hasMore}
         loading={loading}
-        search=""
-        onSearchChange={() => {}}
-        searchPlaceholder=""
+        search={search}
+        onSearchChange={setSearch}
+        searchPlaceholder={t("supportSearchPlaceholder")}
+        onOpenFilters={() => setFiltersOpen(true)}
+        activeFilterCount={supportFilterCount(filters)}
         columns={[
           { key: "request", label: t("supportRequest"), className: "pl-5" },
           { key: "who", label: t("supportWho"), skeletonWidth: "w-28" },
@@ -91,9 +84,9 @@ export function AdminSupportPage() {
         emptyText={t("supportEmpty")}
         emptyTitle={t("supportEmptyTitle")}
         emptyBadge={LifeBuoy}
-        noMatchesText={t("supportEmpty")}
-        noMatchesTitle={t("supportEmptyTitle")}
-        filtered={status !== "open" || audience !== undefined}
+        noMatchesText={t("supportNoMatches")}
+        noMatchesTitle={t("supportNoMatchesTitle")}
+        filtered={supportFilterCount(filters) > 0 || search.trim() !== ""}
         rows={requests.map((request) => ({
           key: request.threadId,
           primary: (
@@ -138,6 +131,8 @@ export function AdminSupportPage() {
           },
         }))}
       />
+
+      <SupportFilterSheet open={filtersOpen} onOpenChange={setFiltersOpen} filters={filters} onChange={setFilters} />
 
       {hasMore && (
         <Button variant="outline" size="sm" className="justify-self-center" onClick={loadMore}>

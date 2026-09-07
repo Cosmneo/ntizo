@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useTranslation } from "react-i18next";
 import type { ProviderBookingStatsDayDTO } from "@ntizo/shared/read-models";
 import {
   CHART,
@@ -8,7 +7,7 @@ import {
   chartTicks,
   seriesTotals,
   tooltipPlacement,
-} from "../domain/activity-chart";
+} from "@/shared/domain/activity-chart";
 
 /**
  * Thirty days of two counts, drawn rather than imported: a charting library
@@ -29,29 +28,42 @@ import {
  * thirty days legible at 390px; the rounded shoulders distort by a hair and
  * nothing else does.
  */
+
+/** The chart's own words, handed in: the provider's namespace and the admin's differ, the figure does not. */
+export interface ActivityChartLabels {
+  title: string;
+  range: string;
+  requests: string;
+  confirmed: string;
+  empty: string;
+  /** The accessible table's first column header. */
+  day: string;
+}
+
 export function ActivityChart({
   days,
   locale,
+  labels,
+  dayLabel,
 }: {
   days: readonly ProviderBookingStatsDayDTO[];
   locale: string;
+  labels: ActivityChartLabels;
+  /** The tooltip's sentence for one day; `date` is already formatted for the reader. */
+  dayLabel: (date: string, day: ProviderBookingStatsDayDTO) => string;
 }) {
-  const { t } = useTranslation("provider");
   const [hovered, setHovered] = useState<number | null>(null);
   const { bars, groups } = chartGeometry(days);
   const totals = seriesTotals(days);
   const ticks = chartTicks(days, locale);
   const empty = totals.requests === 0 && totals.confirmed === 0;
-  const dayLabel = (d: ProviderBookingStatsDayDTO) =>
-    t("overview.chartDayLabel", {
-      date: new Intl.DateTimeFormat(locale, {
-        day: "numeric",
-        month: "long",
-        timeZone: "UTC",
-      }).format(new Date(`${d.date}T00:00:00.000Z`)),
-      requests: d.requests,
-      confirmed: d.confirmed,
-    });
+  const formatDay = (d: ProviderBookingStatsDayDTO) =>
+    dayLabel(
+      new Intl.DateTimeFormat(locale, { day: "numeric", month: "long", timeZone: "UTC" }).format(
+        new Date(`${d.date}T00:00:00.000Z`),
+      ),
+      d,
+    );
 
   return (
     <section
@@ -61,21 +73,21 @@ export function ActivityChart({
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <div>
           <h2 className="type-caption font-bold tracking-[0.14em] text-[var(--color-muted-foreground)] uppercase">
-            {t("overview.chartTitle")}
+            {labels.title}
           </h2>
           <p className="type-caption text-[var(--color-muted-foreground)]">
-            {t("overview.chartRange")}
+            {labels.range}
           </p>
         </div>
         <ul className="flex list-none gap-4 p-0">
           {(
             [
-              ["requests", "var(--color-primary)", totals.requests, t("overview.chartRequests")],
+              ["requests", "var(--color-primary)", totals.requests, labels.requests],
               [
                 "confirmed",
                 "var(--chart-confirmed)",
                 totals.confirmed,
-                t("overview.chartConfirmed"),
+                labels.confirmed,
               ],
             ] as const
           ).map(([key, colour, total, label]) => (
@@ -94,7 +106,7 @@ export function ActivityChart({
 
       {empty ? (
         <p className="type-body mt-6 mb-2 text-[var(--color-muted-foreground)]">
-          {t("overview.chartEmpty")}
+          {labels.empty}
         </p>
       ) : (
         <div className="relative mt-4">
@@ -148,7 +160,7 @@ export function ActivityChart({
               className="type-caption pointer-events-none absolute -top-1 max-w-full whitespace-nowrap rounded-[var(--radius-field)] bg-[var(--color-foreground)] px-2 py-1 text-[var(--color-background)]"
               style={tooltipPlacement(groups[hovered]!.x, groups[hovered]!.width)}
             >
-              {dayLabel(groups[hovered]!.day)}
+              {formatDay(groups[hovered]!.day)}
             </p>
           )}
 
@@ -163,12 +175,12 @@ export function ActivityChart({
       )}
 
       <table className="sr-only">
-        <caption>{`${t("overview.chartTitle")} — ${t("overview.chartRange")}`}</caption>
+        <caption>{`${labels.title} — ${labels.range}`}</caption>
         <thead>
           <tr>
-            <th scope="col">{t("overview.chartTableDay")}</th>
-            <th scope="col">{t("overview.chartRequests")}</th>
-            <th scope="col">{t("overview.chartConfirmed")}</th>
+            <th scope="col">{labels.day}</th>
+            <th scope="col">{labels.requests}</th>
+            <th scope="col">{labels.confirmed}</th>
           </tr>
         </thead>
         <tbody>

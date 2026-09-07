@@ -1,4 +1,5 @@
 import type { Activity } from "../../../domain/aggregates/activity.aggregate";
+import type { ActivityType } from "../../../domain/activity-type";
 
 /** One page of somebody's history, newest first. */
 export interface ActivityPage {
@@ -31,5 +32,24 @@ export interface ActivityRepositoryPort {
     actorUserId: string;
     limit: number;
     cursor?: string | null;
+  }): Promise<ActivityPage>;
+
+  /**
+   * Everybody's rows, newest first — the platform's own feed.
+   *
+   * The one method here with no actor in its signature, and that is the
+   * point rather than an omission: the whole of its authorisation is the
+   * `requireAdmin` at the GraphQL edge, the same arrangement the booking
+   * queue's `listForAdmin` documents. The same cursor, with the same
+   * refusal of one that does not decode.
+   *
+   * `search` is matched against the payload's text, accents aside — the
+   * names the sentence will print are the only words a row has.
+   */
+  listAll(params: {
+    limit: number;
+    cursor?: string | null;
+    type?: ActivityType | undefined;
+    search?: string | undefined;
   }): Promise<ActivityPage>;
 }

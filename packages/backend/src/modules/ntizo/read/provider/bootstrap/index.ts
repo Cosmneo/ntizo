@@ -2,7 +2,10 @@ import { DrizzleProviderReadRepository } from "../infra/repositories/drizzle/pro
 import { ListMyProvidersProjection } from "../app/use-cases/list-my-providers.projection";
 import { GetProviderDetailProjection } from "../app/use-cases/get-provider-detail.projection";
 import { GetProviderDetailForAdminProjection } from "../app/use-cases/get-provider-detail-for-admin.projection";
-import { ListProvidersForAdminProjection } from "../app/use-cases/list-providers-for-admin.projection";
+import {
+  CountProvidersByStatusProjection,
+  ListProvidersForAdminProjection,
+} from "../app/use-cases/list-providers-for-admin.projection";
 import { DrizzleProviderAdminRepository } from "../infra/repositories/drizzle/provider-admin.repository";
 import type { ProviderReadModule } from "../graphql/handlers/queries.handlers";
 
@@ -21,6 +24,7 @@ export function bootstrapProviderRead(): {
       getProviderDetailForAdmin: new GetProviderDetailForAdminProjection(
         providerAdminRepository,
       ),
+      countProvidersByStatus: new CountProvidersByStatusProjection(providerAdminRepository),
     },
   };
 }

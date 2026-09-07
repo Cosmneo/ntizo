@@ -10,8 +10,13 @@ import type { ActivityRepositoryPort } from "../../../../bounded-contexts/activi
  * and an unbounded one is a way to ask for the whole table — follow-up #20's
  * lesson, applied rather than rediscovered.
  */
-const DEFAULT_LIMIT = 20;
-const MAX_LIMIT = 50;
+export const DEFAULT_LIMIT = 20;
+export const MAX_LIMIT = 50;
+
+/** `limit` inside 1..MAX_LIMIT, defaulting when absent. Both feeds page by this one rule. */
+export function clampLimit(limit: number | undefined): number {
+  return Math.min(Math.max(limit ?? DEFAULT_LIMIT, 1), MAX_LIMIT);
+}
 
 /**
  * A page of one person's own history.
@@ -29,7 +34,7 @@ export class ListActivityProjection {
     cursor?: string | null | undefined;
   }): Promise<ActivityPageDTO> {
     // Clamped here, not in the schema: see DEFAULT_LIMIT's comment above.
-    const limit = Math.min(Math.max(input.limit ?? DEFAULT_LIMIT, 1), MAX_LIMIT);
+    const limit = clampLimit(input.limit);
     const page = await this.repo.listForActor({
       actorUserId: input.requesterUserId,
       limit,

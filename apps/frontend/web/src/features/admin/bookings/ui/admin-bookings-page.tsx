@@ -2,8 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { CalendarCheck, MessageSquareWarning } from "lucide-react";
-import { ADMIN_BOOKING_TABS, type AdminBookingTab } from "@ntizo/shared/read-models";
-import { Button, cn } from "@ntizo/frontend-ui";
+import type { AdminBookingTab } from "@ntizo/shared/read-models";
+import { Button } from "@ntizo/frontend-ui";
 import { CollectionCard, type CollectionRow } from "@/shared/components/collection-card";
 import { usePageHeader } from "@/shared/lib/page-header";
 import { compactSlotWording } from "@/features/checkout/domain/slot-wording";
@@ -19,26 +19,27 @@ import {
   useAdminBookings,
   type AdminBookingAction,
 } from "../viewmodel/use-admin-bookings";
+import { BookingsFilterSheet, DEFAULT_BOOKING_TAB } from "./bookings-filters";
 
 /**
  * The bookings an administrator has to look at, in the three tabs the queue
  * has: ones nobody closed, ones inside the customer's window, and complaints
  * waiting on a decision.
  *
- * `AdminContactPage`'s anatomy — `usePageHeader`, a count of what is waiting,
- * `CollectionCard` and per-row actions — with the provider list's tab row,
- * because these three are tabs rather than filters: `bookingNeedsAttentionForAdmin`
- * answers a different result set per tab, not the same one narrowed.
+ * The same card, search box and filter panel as every other list here. The
+ * three queues are still tabs in substance — `bookingNeedsAttentionForAdmin`
+ * answers a different result set per queue, not the same one narrowed — but
+ * the control that picks one lives in the panel behind the card's Filter
+ * button, where every other list keeps its filters, rather than in a row of
+ * its own above the card.
  *
- * **The tab and the page are both in the URL**, so a refresh keeps your place
- * and a link to "the second page of the disputes" is a link. The page used to
- * be component state while the tab was not, which made a refresh keep half of
- * where you were; the asymmetry bought nothing. Changing tab simply omits the
- * offset, so a new list starts at its own first page with no reset to write.
- *
- * No search box: the field has no search argument to offer, and
- * `CollectionCard`'s search became optional, so none is drawn rather than one
- * that does nothing.
+ * **The queue and the page are both in the URL**, so a refresh keeps your
+ * place and a link to "the second page of the disputes" is a link. The page
+ * used to be component state while the tab was not, which made a refresh keep
+ * half of where you were; the asymmetry bought nothing. Changing queue simply
+ * omits the offset, so a new list starts at its own first page with no reset
+ * to write. The search is component state, as it is on every other list: a
+ * keystroke is not a place somebody wants Back to return to.
  *
  * **Nothing on this screen is written optimistically, and nothing here
  * announces that an action worked.** All three mutations answer `{ bookingId }`
@@ -54,8 +55,10 @@ export function AdminBookingsPage() {
   const locale = i18n.resolvedLanguage ?? i18n.language;
   const navigate = useNavigate();
   const search = useSearch({ strict: false }) as AdminQueueSearch;
-  const tab: AdminBookingTab = search.tab ?? "unclosed";
+  const tab: AdminBookingTab = search.tab ?? DEFAULT_BOOKING_TAB;
   const offset = search.offset ?? 0;
+  const [needle, setNeedle] = useState("");
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   usePageHeader(t("bookingsTitle"), t("bookingsSubtitle"));
 
@@ -79,7 +82,7 @@ export function AdminBookingsPage() {
       replace: next.replace ?? false,
     });
 
-  const query = useAdminBookings({ tab, offset });
+  const query = useAdminBookings({ tab, offset, ...(needle.trim() ? { search: needle.trim() } : {}) });
   const actions = useAdminBookingActions();
 
   const rows = query.data?.items ?? [];
@@ -168,38 +171,22 @@ export function AdminBookingsPage() {
         </p>
       )}
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div
-          role="tablist"
-          aria-label={t("bookingsTitle")}
-          className="inline-flex rounded-full bg-[var(--color-muted)] p-1"
-        >
-          {ADMIN_BOOKING_TABS.map((key) => (
-            <button
-              key={key}
-              type="button"
-              role="tab"
-              aria-selected={tab === key}
-              onClick={() => go({ tab: key })}
-              className={cn(
-                "rounded-full px-4 py-2 text-sm font-semibold transition-colors",
-                tab === key
-                  ? "bg-[var(--color-primary)] text-[var(--color-primary-foreground)]"
-                  : "text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]",
-              )}
-            >
-              {t(`bookingsTab.${key}`)}
-            </button>
-          ))}
-        </div>
-        <p className="type-body m-0">{t("bookingsOpenCount", { count: total })}</p>
-      </div>
-
       <CollectionCard
         title={t(`bookingsTab.${tab}`)}
         shown={rows.length}
         total={total}
         loading={query.isLoading}
+        search={needle}
+        onSearchChange={(value) => {
+          setNeedle(value);
+          // A search is a new list, and page three of the old one is past
+          // the end of it. `replace`, because the reader did not choose the
+          // page they are being moved off — see `go`.
+          if (offset > 0) go({ tab, replace: true });
+        }}
+        searchPlaceholder={t("bookingsSearchPlaceholder")}
+        onOpenFilters={() => setFiltersOpen(true)}
+        activeFilterCount={tab === DEFAULT_BOOKING_TAB ? 0 : 1}
         columns={[
           { key: "provider", label: t("bookingsCol.provider"), className: "pl-5" },
           { key: "customer", label: t("bookingsCol.customer"), skeletonWidth: "w-24" },
@@ -222,12 +209,12 @@ export function AdminBookingsPage() {
         emptyTitle={t(`bookingsEmpty.${tab}.title`)}
         emptyText={t(`bookingsEmpty.${tab}.body`)}
         emptyBadge={CalendarCheck}
-        // Never reachable, and passed because the card requires it: this list
-        // has no search and no filter — a tab is a different question, not a
-        // narrowing of one — so an empty tab is always genuinely empty.
-        noMatchesTitle={t(`bookingsEmpty.${tab}.title`)}
-        noMatchesText={t(`bookingsEmpty.${tab}.body`)}
-        filtered={false}
+        // Only the search narrows: a queue is a different question, not a
+        // narrowing of one, so an empty queue with nothing typed is genuinely
+        // empty and says so in that queue's own words.
+        noMatchesTitle={t("bookingsNoMatchesTitle")}
+        noMatchesText={t("bookingsNoMatches")}
+        filtered={needle.trim() !== ""}
         /**
          * Cards until a 1024px viewport, not the card's usual 768.
          *
@@ -244,6 +231,13 @@ export function AdminBookingsPage() {
         rows={rows.map((b) =>
           queueRow(b, { locale, now, t, act, actedOn, pending: actions.pending, failure: actions.failure }),
         )}
+      />
+
+      <BookingsFilterSheet
+        open={filtersOpen}
+        onOpenChange={setFiltersOpen}
+        tab={tab}
+        onTabChange={(next) => go({ tab: next })}
       />
 
       {/* Shown whenever there is anywhere to go, which is not the same

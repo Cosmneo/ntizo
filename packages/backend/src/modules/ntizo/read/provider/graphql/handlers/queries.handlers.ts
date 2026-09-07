@@ -1,6 +1,7 @@
 import { graphqlRoutes } from "@cosmneo/onion-lasagna/graphql/server";
 import { asNtizoGraphqlContext } from "../../../../graphql/context";
 import type {
+  CountProvidersByStatusPort,
   GetProviderDetailProjectionPort,
   ListMyProvidersProjectionPort,
   ListProvidersForAdminPort,
@@ -19,6 +20,7 @@ export interface ProviderReadModule {
   readonly getProviderDetail: GetProviderDetailProjectionPort;
   readonly getProviderDetailForAdmin: GetProviderDetailForAdminProjection;
   readonly listProvidersForAdmin: ListProvidersForAdminPort;
+  readonly countProvidersByStatus: CountProvidersByStatusPort;
 }
 
 /** The page size when the caller does not ask for one. See the projection. */
@@ -82,6 +84,18 @@ export function createProviderReadHandlers(readModule: ProviderReadModule) {
       },
       useCase: readModule.listProvidersForAdmin,
       responseMapper: (output) => output,
+    })
+    .handle("provider.countByStatusForAdmin", async (_args, ctx) => {
+      // Stated again rather than shared with the two admin fields above, for
+      // the reason they state it: two fields, two decisions.
+      const { requesterUserId, role } = asNtizoGraphqlContext(ctx);
+      if (!requesterUserId || role !== "admin") {
+        throw new ForbiddenError({
+          message: "Only administrators may count every provider",
+          code: "ADMIN_ONLY",
+        });
+      }
+      return readModule.countProvidersByStatus.execute();
     })
     .build();
 }

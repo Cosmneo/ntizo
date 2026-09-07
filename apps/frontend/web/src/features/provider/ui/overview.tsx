@@ -11,14 +11,12 @@ import {
   useProviderStats,
   useRecentBookings,
 } from "../bookings/viewmodel/use-provider-bookings";
-import { greetingKey } from "../domain/greeting";
+import type { ProviderBookingStatsDayDTO } from "@ntizo/shared/read-models";
+import { ActivityChart } from "@/shared/components/activity-chart";
+import { CARD_LINK as LINK, StatCard } from "@/shared/components/stat-card";
+import { greetingKey } from "@/shared/domain/greeting";
 import { useActiveProvider } from "../viewmodel/use-active-provider";
 import { useProviderRating } from "../viewmodel/use-provider-rating";
-import { ActivityChart } from "./overview-chart";
-import { StatCard } from "./overview-cards";
-
-/** A card's way out, at caption size: small enough not to compete with the number. */
-const LINK = "type-caption font-semibold text-[var(--color-primary)] hover:underline";
 
 /**
  * The workspace at a glance: what needs an answer, what is coming, what the
@@ -184,7 +182,21 @@ export function OverviewPage() {
         />
       </div>
 
-      <ActivityChart days={s?.perDay ?? []} locale={locale} />
+      <ActivityChart
+        days={s?.perDay ?? []}
+        locale={locale}
+        labels={{
+          title: t("overview.chartTitle"),
+          range: t("overview.chartRange"),
+          requests: t("overview.chartRequests"),
+          confirmed: t("overview.chartConfirmed"),
+          empty: t("overview.chartEmpty"),
+          day: t("overview.chartTableDay"),
+        }}
+        dayLabel={(date, d: ProviderBookingStatsDayDTO) =>
+          t("overview.chartDayLabel", { date, requests: d.requests, confirmed: d.confirmed })
+        }
+      />
 
       <CollectionCard
         title={t("overview.recentTitle")}

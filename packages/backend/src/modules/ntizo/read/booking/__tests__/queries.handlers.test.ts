@@ -37,6 +37,7 @@ describe("bookingReadSchema", () => {
       "forProvider",
       "mine",
       "needsAttentionForAdmin",
+      "statsForAdmin",
       "statsForProvider",
     ]);
   });
@@ -94,11 +95,19 @@ function spyProjection(result: unknown = EMPTY_PAGE) {
   };
 }
 
-function makeModule(listForAdmin = spyProjection()) {
+/** A valid, empty platform: the field's own output schema validates this shape. */
+const EMPTY_STATS = {
+  disputed: 0, confirmedLast30: 0, completedLast30: 0,
+  grossLast30Minor: 0, commissionLast30Minor: 0, newProvidersLast30: 0, currency: "MZN",
+  perDay: Array.from({ length: 30 }, (_, i) => ({ date: `2026-08-${String(i + 1).padStart(2, "0")}`, requests: 0, confirmed: 0 })),
+};
+
+function makeModule(listForAdmin = spyProjection(), statsForAdmin = spyProjection(EMPTY_STATS)) {
   return {
     listForAdmin,
+    statsForAdmin,
     module: {
-      bookingRead: { adapters: {}, useCases: { listForAdmin } },
+      bookingRead: { adapters: {}, useCases: { listForAdmin, statsForAdmin } },
     } as unknown as BookingReadModule,
   };
 }
@@ -147,9 +156,9 @@ describe("booking.needsAttentionForAdmin", () => {
   it("passes a page the caller asked for through unchanged", async () => {
     const { module, listForAdmin } = makeModule();
 
-    await handlerFor(module).handler({ tab: "unclosed", limit: 5, offset: 10 }, adminCtx());
+    await handlerFor(module).handler({ tab: "unclosed", limit: 5, offset: 10, search: "Nuño" }, adminCtx());
 
-    expect(listForAdmin.calls[0]).toMatchObject({ tab: "unclosed", limit: 5, offset: 10 });
+    expect(listForAdmin.calls[0]).toMatchObject({ tab: "unclosed", limit: 5, offset: 10, search: "Nuño" });
   });
 
   /**
@@ -204,4 +213,46 @@ describe("booking.needsAttentionForAdmin", () => {
     expect(seen.size).toBe(1);
     expect([...seen][0]).toBe("ADMIN_ONLY|Only administrators may read the booking queue");
   });
+});
+
+/**
+ * The platform's numbers: the same guard as the queue, for the same reason —
+ * `GetAdminStatsProjection` takes no requester and the repository no owner
+ * id, so this `requireAdmin` is the entire security surface of the field.
+ */
+describe("booking.statsForAdmin", () => {
+  const handlerFor = (mod: BookingReadModule) => {
+    const found = createBookingReadHandlers(mod).find((h) => h.key === "booking.statsForAdmin");
+    if (!found) throw new Error("no handler mounted for booking.statsForAdmin");
+    return found;
+  };
+  const adminCtx = () => ctx({ requesterUserId: "u-admin", role: "admin" });
+
+  it("asks the projection for the platform's numbers as of now", async () => {
+    const { module, statsForAdmin } = makeModule();
+    const before = Date.now();
+    const out = await handlerFor(module).handler({}, adminCtx());
+    const after = Date.now();
+
+    expect(out).toEqual(EMPTY_STATS);
+    expect(statsForAdmin.calls).toHaveLength(1);
+    const { now } = statsForAdmin.calls[0] as { now: Date };
+    expect(now).toBeInstanceOf(Date);
+    expect(now.getTime()).toBeGreaterThanOrEqual(before);
+    expect(now.getTime()).toBeLessThanOrEqual(after);
+  });
+
+  const refused = [
+    { name: "a customer", over: { requesterUserId: "u-cust", role: "customer" } as const },
+    { name: "a provider", over: { requesterUserId: "u-member", role: "individual_provider" } as const },
+    { name: "an anonymous caller", over: { requesterUserId: null, role: "customer" } as const },
+    { name: "an admin role with nobody behind it", over: { requesterUserId: null, role: "admin" } as const },
+  ];
+  for (const who of refused) {
+    it(`refuses ${who.name} with ADMIN_ONLY, before the projection runs`, async () => {
+      const { module, statsForAdmin } = makeModule();
+      await expect(handlerFor(module).handler({}, ctx(who.over))).rejects.toMatchObject({ code: "ADMIN_ONLY" });
+      expect(statsForAdmin.calls).toEqual([]);
+    });
+  }
 });

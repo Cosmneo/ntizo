@@ -1,23 +1,27 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Mail, MailOpen } from "lucide-react";
-import type { ContactRequestKind, ContactRequestStatus } from "@ntizo/shared";
 import type { ContactRequestAdminDTO } from "@ntizo/shared/read-models";
 import { Badge, Button } from "@ntizo/frontend-ui";
 import { CollectionCard } from "@/shared/components/collection-card";
 import { usePageHeader } from "@/shared/lib/page-header";
 import { ADMIN_CONTACT_PAGE_SIZE } from "../data/admin-contact.repository";
 import { useAdminContact, useSetContactRequestStatus } from "../viewmodel/use-admin-contact";
-
-const KINDS: readonly ContactRequestKind[] = ["contact", "feedback"];
+import {
+  ContactFilterSheet,
+  DEFAULT_CONTACT_FILTERS,
+  contactFilterCount,
+  type ContactFilters,
+} from "./contact-filters";
 
 /**
  * The contact queue: what people wrote through the two forms, and whether
  * anybody has answered yet.
  *
- * On the `/admin/reviews` pattern. Open requests by default — the queue is
- * worked, not browsed — with kind and status filters and a search that also
- * matches the reference a person quoted back. A row expands to the whole
+ * The same card and the same filter panel as every other list here. Open
+ * requests by default — the queue is worked, not browsed — with kind and
+ * status filters and a search that also matches the reference a person
+ * quoted back. A row expands to the whole
  * message and where it came from; the two actions are "reply by email" (a
  * mailto with the reference in the subject, because the reply happens in the
  * inbox, not here — spec, "What the context deliberately does not do") and
@@ -28,11 +32,12 @@ export function AdminContactPage() {
   const { t, i18n } = useTranslation("admin");
   const locale = i18n.resolvedLanguage ?? i18n.language;
 
-  const [kind, setKind] = useState<ContactRequestKind | undefined>(undefined);
-  const [status, setStatus] = useState<ContactRequestStatus | undefined>("open");
+  const [filters, setFilters] = useState<ContactFilters>(DEFAULT_CONTACT_FILTERS);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [offset, setOffset] = useState(0);
   const [expanded, setExpanded] = useState<string | null>(null);
+  const { kind, status } = filters;
 
   const query = useAdminContact({
     offset,
@@ -46,7 +51,6 @@ export function AdminContactPage() {
 
   const rows = query.data?.items ?? [];
   const total = query.data?.total ?? 0;
-  const openCount = query.data?.openCount ?? 0;
   const dateFormat = new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", year: "numeric" });
   const topicLabel = (r: ContactRequestAdminDTO) => t(`topics.${r.kind}.${r.topic}`, { ns: "company", defaultValue: r.topic });
 
@@ -59,30 +63,6 @@ export function AdminContactPage() {
       {query.error && <p className="type-body text-[var(--color-destructive)]">{t("contactError")}</p>}
       {setRequestStatus.error && <p className="type-body text-[var(--color-destructive)]">{t("contactStatusFailed")}</p>}
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="type-body">{t("contactOpenCount", { count: openCount })}</p>
-        <div className="flex flex-wrap gap-2">
-          <Button variant={kind === undefined ? "default" : "outline"} size="sm" onClick={() => { setKind(undefined); resetPage(); }}>
-            {t("contactKindAll")}
-          </Button>
-          {KINDS.map((k) => (
-            <Button key={k} variant={kind === k ? "default" : "outline"} size="sm" onClick={() => { setKind(k); resetPage(); }}>
-              {t(`contactKind.${k}`)}
-            </Button>
-          ))}
-          <span className="mx-1 hidden w-px bg-[var(--color-border)] sm:block" aria-hidden="true" />
-          <Button variant={status === "open" ? "default" : "outline"} size="sm" onClick={() => { setStatus("open"); resetPage(); }}>
-            {t("contactStatus.open")}
-          </Button>
-          <Button variant={status === "resolved" ? "default" : "outline"} size="sm" onClick={() => { setStatus("resolved"); resetPage(); }}>
-            {t("contactStatus.resolved")}
-          </Button>
-          <Button variant={status === undefined ? "default" : "outline"} size="sm" onClick={() => { setStatus(undefined); resetPage(); }}>
-            {t("contactStatusAll")}
-          </Button>
-        </div>
-      </div>
-
       <CollectionCard
         title={t("contactTitle")}
         shown={rows.length}
@@ -91,6 +71,8 @@ export function AdminContactPage() {
         search={search}
         onSearchChange={(value) => { setSearch(value); resetPage(); }}
         searchPlaceholder={t("contactSearchPlaceholder")}
+        onOpenFilters={() => setFiltersOpen(true)}
+        activeFilterCount={contactFilterCount(filters)}
         columns={[
           { key: "request", label: t("contactRequest"), className: "pl-5" },
           { key: "kind", label: t("contactKindColumn"), skeletonWidth: "w-20", skeletonShape: "badge" },
@@ -140,6 +122,18 @@ export function AdminContactPage() {
             </span>
           ),
         }))}
+      />
+
+      <ContactFilterSheet
+        open={filtersOpen}
+        onOpenChange={setFiltersOpen}
+        filters={filters}
+        onChange={(next) => {
+          setFilters(next);
+          // Back to the first page: page three of the open list is past the
+          // end of a two-row resolved one, which reads as nothing matching.
+          resetPage();
+        }}
       />
 
       {total > ADMIN_CONTACT_PAGE_SIZE && (
