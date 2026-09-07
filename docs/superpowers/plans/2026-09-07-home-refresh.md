@@ -1865,7 +1865,9 @@ describe("VerifiedProviders", () => {
   it("omits the price line for a business that publishes nothing priced", async () => {
     await renderProviders([provider({ fromAmountMinor: null, fromCurrency: null })]);
     await screen.findByText("Oficina do Zeca");
-    expect(screen.queryByText(/from/i)).toBeNull();
+    // Asserted on the currency, not on a "from" label: this card prints no
+    // such label, so a query for one passes whether or not a price rendered.
+    expect(screen.queryByText(/MZN/)).toBeNull();
   });
 
   it("does not appear when nobody is verified yet", async () => {
@@ -2532,19 +2534,55 @@ export function LandingPage() {
 
 - [ ] **Step 5: Delete what nothing reads any more**
 
+`sections.tsx` cannot simply be removed: it also exports `LANDING_VARS`, which `become-provider-page.tsx` and `company-page.tsx` both import. Move that constant to where it belongs first.
+
+Add to the end of `src/features/landing/ui/palette.ts`:
+
+```ts
+/**
+ * The landing palette as local custom properties, for the two pages that
+ * still paint themselves with it.
+ *
+ * It lived in `sections.tsx` until the home page stopped having a file by
+ * that name. It is a map of palette values, so this is where it belongs.
+ */
+export const LANDING_VARS = {
+  "--l-navy": NAVY,
+  "--l-accent": ACCENT,
+  "--l-card": CARD,
+  "--l-muted": MUTED,
+  "--l-border": BORDER,
+  "--l-band": PAGE_TOP,
+} as React.CSSProperties;
+```
+
+Add `import type * as React from "react";` at the top of `palette.ts`.
+
+Repoint the two importers, changing only the module path:
+
+```bash
+grep -rn 'LANDING_VARS } from "@/features/landing/ui/sections"' src/
+```
+
+In each hit — `src/features/become-provider/ui/become-provider-page.tsx` and `src/features/company/ui/company-page.tsx` — change `ui/sections` to `ui/palette`. If either file already imports from `ui/palette`, merge the two imports into one.
+
+Then delete the file:
+
 ```bash
 git rm src/features/landing/ui/sections.tsx
 ```
 
-In `src/features/landing/ui/palette.ts`, delete `PAGE_TOP`, `PAGE_MID` and `PAGE_BOTTOM` — the page tint and the wave fill are both gone. Keep `NAVY`, `ACCENT`, `CARD`, `MUTED` and `BORDER`: `footer.tsx` still imports them.
+In `palette.ts`, delete `PAGE_MID` (nothing imports it) and `PAGE_BOTTOM` (only the hero did, and Task 4 rewrote it). **Keep `PAGE_TOP`**: `footer.tsx` uses it as the footer's own background, and `become-provider-page.tsx` and `company-page.tsx` both import it. Keep `NAVY`, `ACCENT`, `CARD`, `MUTED` and `BORDER` too — the footer and the company pages read them.
+
+`footer.tsx` is not touched by this task. Its pale tint is a shared component's appearance on eight pages, which is outside this change.
 
 Then confirm nothing dangles:
 
 ```bash
-grep -rn "sections\|PAGE_TOP\|PAGE_MID\|PAGE_BOTTOM\|LANDING_VARS" src/features/landing src/routes
+grep -rn "ui/sections\|PAGE_MID\|PAGE_BOTTOM" src/
 ```
 
-Expected: no hits outside `palette.ts`'s own removed lines. Any hit is an import to fix now.
+Expected: no hits. Any hit is an import to fix now.
 
 - [ ] **Step 6: Remove the dead copy from all eight locales**
 
@@ -2552,13 +2590,19 @@ Delete these keys from every `src/shared/locales/*/landing.json`, now that nothi
 
 Keep `signIn`, `favorites`, `nav.*`, `footer.*`, `badgeVerified`, `noReviewsYet`, `reviewCount`, `storyRating` and `storyAnonymous` — all are still read, several by the header and the footer.
 
-Verify with the compiler, which is the only reliable reader of a translation key:
+A key is only dead if nothing reads it, and `become-provider` and the company pages read this same `landing` namespace. Check each one before removing it, rather than trusting the list:
 
 ```bash
-grep -rn "heroLine\|zeroFee\|promiseRated\|seeAll\|fromPrice" src/
+for k in heroLine1 heroLine2 heroLine3 heroSubtitle place promiseRated \
+         promiseMessage promiseVerified categoriesTitle categoriesBlurb \
+         popularTitle popularBlurb storiesTitle storiesBlurb seeAll \
+         zeroFeeTitle zeroFeeBody zeroFeeCta fromPrice; do
+  n=$(grep -rn "\"$k\"\|t(\"$k\")\|'$k'" src/ --include='*.tsx' --include='*.ts' | wc -l)
+  echo "$k: $n reader(s)"
+done
 ```
 
-Expected: no hits.
+Expected: `0 reader(s)` for every one. Anything with a reader stays in all eight files — report it in your notes rather than deleting it.
 
 - [ ] **Step 7: Run the whole suite**
 
