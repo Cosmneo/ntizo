@@ -1,0 +1,216 @@
+import { queryOptions } from "@tanstack/react-query";
+import { sessionGraphql } from "@/shared/lib/graphql/session-graphql";
+import type { FavouriteList, FavouriteTargetType } from "../domain/types";
+
+/**
+ * Field names taken from a **live introspection of a running server**
+ * (Task 8's `__schema { queryType { fields { name } } }` run), not inferred
+ * from the backend's source.
+ *
+ * The field kit (`generateFieldId` in `@cosmneo/onion-lasagna/graphql/field`)
+ * flattens a nested schema key into a single wire name, so the backend's
+ * `{ favourite: { marked } }` emits as `favouriteMarked` — never
+ * `favourite.marked`, and never a `favourite { marked }` selection. `activity`
+ * and `messaging` each lost a whole review round to exactly that mistake; the
+ * names below are confirmed, so do not re-derive them.
+ *
+ * The nine fields, as the server reports them:
+ *
+ * | Wire field | Input type |
+ * |---|---|
+ * | `favouriteMarked` | `FavouriteMarkedInput!` |
+ * | `favouriteListsFor` | `FavouriteListsForInput!` |
+ * | `favouriteListMine` | **`JSON!`** |
+ * | `favouriteListById` | `FavouriteListByIdInput!` |
+ * | `favouriteQuickSave` | `FavouriteQuickSaveInput!` |
+ * | `favouriteSetLists` | `FavouriteSetListsInput!` |
+ * | `favouriteListCreate` | `FavouriteListCreateInput!` |
+ * | `favouriteListRename` | `FavouriteListRenameInput!` |
+ * | `favouriteListRemove` | `FavouriteListRemoveInput!` |
+ *
+ * **`favouriteListMine` is the one exception to "every field gets its own
+ * named input".** Its input carries nothing but identity — the server reads
+ * the caller off the session — so the kit emits the generic `JSON!` scalar
+ * and there is *no* `FavouriteListMineInput` type in the schema at all
+ * (confirmed by listing every `Favourite*` type the server has). A document
+ * declaring one is refused before it reaches a resolver. `providerMine` and
+ * `userMe` already use this same shape; see `provider.repository.ts`'s `MINE`.
+ *
+ * `favouriteMarked` and `favouriteListsFor` answer `[String!]!` — plain lists
+ * of ids, **leaves on the wire**. They take no selection set, and adding one
+ * is not a harmless no-op: it invalidates the whole document.
+ *
+ * The four fields this task does not use yet — `favouriteListsFor`,
+ * `favouriteListById`, `favouriteListRename`, `favouriteListRemove` — belong
+ * to the dialog and the `/favourites` page, and land with them (Tasks 10-12).
+ */
+const MARKED = `
+  query FavouriteMarked($input: FavouriteMarkedInput!) {
+    favouriteMarked(input: $input)
+  }`;
+
+const MY_LISTS = `
+  query FavouriteListMine($input: JSON!) {
+    favouriteListMine(input: $input) { id name isDefault itemCount coverUrls }
+  }`;
+
+const QUICK_SAVE = `
+  mutation FavouriteQuickSave($input: FavouriteQuickSaveInput!) {
+    favouriteQuickSave(input: $input) { listIds }
+  }`;
+
+const SET_LISTS = `
+  mutation FavouriteSetLists($input: FavouriteSetListsInput!) {
+    favouriteSetLists(input: $input) { listIds }
+  }`;
+
+const CREATE_LIST = `
+  mutation FavouriteListCreate($input: FavouriteListCreateInput!) {
+    favouriteListCreate(input: $input) { id }
+  }`;
+
+/**
+ * The plain network calls, exported separately from the hooks that wrap them.
+ *
+ * The split exists for one reason: a test can then assert the **real, unmocked
+ * query string** off the spy (`spy.mock.calls[0][0]`) without rendering
+ * anything. `communicationSend` went a whole review round with no such test,
+ * and a rewrite that nested it as `communication { send(...) }` passed both
+ * `vitest` and `tsc` clean. See `__tests__/favourites.repository.test.ts`.
+ */
+
+/**
+ * Which of these listings the caller has saved, anywhere.
+ *
+ * Takes the ids on screen rather than everything ever saved, and that
+ * direction is the design rather than an optimisation — a reader with two
+ * thousand favourites must not ship two thousand ids to draw twenty-four
+ * hearts. Capped server-side at `FAVOURITE_MARKS_MAX_IDS`.
+ *
+ * One bit per card. *Which* lists hold a listing is the dialog's question,
+ * and `favouriteListsFor` answers it (Tasks 10-12).
+ */
+export function fetchFavouriteMarks(
+  targetType: FavouriteTargetType,
+  targetIds: string[],
+): Promise<string[]> {
+  return sessionGraphql<{ favouriteMarked: string[] }>(MARKED, {
+    input: { targetType, targetIds },
+  }).then((d) => d.favouriteMarked);
+}
+
+/**
+ * Every list the caller owns, with a count and a cover mosaic on each.
+ *
+ * Default list first — the server orders it that way deliberately (it is
+ * where the heart saves, so the dialog's pre-ticked row belongs at the top),
+ * and nothing on this side re-sorts it.
+ */
+export function fetchMyLists(): Promise<FavouriteList[]> {
+  return sessionGraphql<{ favouriteListMine: FavouriteList[] }>(MY_LISTS, {
+    input: {},
+  }).then((d) => d.favouriteListMine);
+}
+
+/**
+ * The heart: saves into the default list, creating it on the first tap.
+ *
+ * Returns every list the listing is now in, so a dialog opened straight
+ * afterwards already knows the answer and need not ask again.
+ */
+export function quickSaveFavourite(
+  targetType: FavouriteTargetType,
+  targetId: string,
+): Promise<string[]> {
+  return sessionGraphql<{ favouriteQuickSave: { listIds: string[] } }>(QUICK_SAVE, {
+    input: { targetType, targetId },
+  }).then((d) => d.favouriteQuickSave.listIds);
+}
+
+/**
+ * The dialog: states the whole desired membership at once.
+ *
+ * Not an add/remove pair — a pair would make the client diff two states and
+ * send the difference, which is where a stale card sends `add` for something
+ * already added, gets a conflict, and the row flickers.
+ *
+ * **`listIds: []` is meaningful, not empty**: it is how somebody unsaves a
+ * listing altogether.
+ */
+export function setFavouriteLists(
+  targetType: FavouriteTargetType,
+  targetId: string,
+  listIds: string[],
+): Promise<string[]> {
+  return sessionGraphql<{ favouriteSetLists: { listIds: string[] } }>(SET_LISTS, {
+    input: { targetType, targetId, listIds },
+  }).then((d) => d.favouriteSetLists.listIds);
+}
+
+/** A new, empty list. Returns its id. Names are trimmed and bounded server-side. */
+export function createFavouriteList(name: string): Promise<string> {
+  return sessionGraphql<{ favouriteListCreate: { id: string } }>(CREATE_LIST, {
+    input: { name },
+  }).then((d) => d.favouriteListCreate.id);
+}
+
+/**
+ * The prefix every favourites query key starts with.
+ *
+ * One prefix, so a write can invalidate the whole feature in one call rather
+ * than enumerating keys — a quick save changes both the marks on screen and
+ * the counts and covers on every list. Same whole-prefix reasoning
+ * `useSendMessage` gives for `["messaging"]`.
+ */
+export const FAVOURITES_QUERY_KEY = "favourites";
+
+/** The marks sub-prefix, so an optimistic write can find every cached page of hearts. */
+export const FAVOURITE_MARKS_QUERY_KEY = "marks";
+
+/**
+ * Where the sorted id list sits in a marks key —
+ * `[FAVOURITES_QUERY_KEY, FAVOURITE_MARKS_QUERY_KEY, targetType, ids]`.
+ *
+ * Named here, beside the key it indexes, rather than written as a bare `3`
+ * wherever a key is read back: `patchMarks` reads that slot to check a cached
+ * page actually asked about the listing it is about to patch, and an index
+ * that drifted from the key's shape would silently stop matching — every
+ * heart would go back to waiting for the round trip, with every test still
+ * green except the ones that watch for exactly that.
+ */
+export const FAVOURITE_MARKS_KEY_IDS_INDEX = 3;
+
+export const favouriteQueries = {
+  /**
+   * The hearts for one page of cards.
+   *
+   * **The ids in the key are sorted**, and a copy is sorted rather than the
+   * caller's own array: two different pages of cards are two cache entries,
+   * but the *same* page re-sorted by price is one. Without the sort, changing
+   * the sort order of a listing would silently buy a second round trip and a
+   * second copy of the same answer; sorting in place would reorder the cards
+   * on screen as a side effect of asking about them.
+   *
+   * `enabled` is deliberately **not** set here. Half of it is the caller's
+   * business — `ids.length > 0` is knowable from the arguments, but whether
+   * there is a session is not something the data layer reads. `useFavouriteMarks`
+   * sets both together.
+   */
+  marks: (targetType: FavouriteTargetType, targetIds: string[]) =>
+    queryOptions({
+      queryKey: [
+        FAVOURITES_QUERY_KEY,
+        FAVOURITE_MARKS_QUERY_KEY,
+        targetType,
+        [...targetIds].sort(),
+      ] as const,
+      queryFn: () => fetchFavouriteMarks(targetType, targetIds),
+    }),
+
+  /** The caller's own lists. No arguments — the server resolves them from the session. */
+  myLists: () =>
+    queryOptions({
+      queryKey: [FAVOURITES_QUERY_KEY, "lists", "mine"] as const,
+      queryFn: () => fetchMyLists(),
+    }),
+};
