@@ -40,7 +40,7 @@ export function ServiceTile({ service, locale }: { service: ServiceDTO; locale: 
 
   return (
     <ResultTile
-      media={<TileMedia src={service.imageUrls[0] ?? null} name={service.providerName} />}
+      media={<TileMedia src={service.imageUrls[0] ?? null} />}
       title={
         /* Two lines on a phone, where the row gives the title the whole
            width beside a 116px photo and a clipped name is the one thing

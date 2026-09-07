@@ -173,10 +173,10 @@ describe("ServiceTile", () => {
     expect(screen.getAllByRole("link")).toHaveLength(1);
   });
 
-  it("falls back to the brand tile when the service has no photograph", async () => {
+  it("falls back to the site's placeholder when the service has no photograph", async () => {
     renderTile(service({ imageUrls: [] }));
     await screen.findByRole("listitem");
-    expect(screen.getByTestId("brand-tile")).toBeInTheDocument();
+    expect(screen.getByTestId("media-fallback")).toBeInTheDocument();
   });
 
   /**

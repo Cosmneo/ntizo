@@ -3,7 +3,6 @@ import { useTranslation } from "react-i18next";
 import { Check, ChevronRight } from "lucide-react";
 import type { ProviderPublicDTO } from "@ntizo/shared";
 import { ResultRow, ServiceChip } from "@/shared/components/browse/result-row";
-import { BrandTile } from "@/shared/components/browse/brand-tile";
 import { BrandImage } from "@/shared/components/brand-image";
 import {
   RatingMark,
@@ -61,19 +60,21 @@ export function ProviderRow({
         // of a stacked card and a 4:3 crop of it took a third of the screen;
         // four-by-three from `md`, where it is the row's first column.
         <div className="relative aspect-[16/9] overflow-hidden rounded-[14px] bg-[var(--color-navy-surface)] md:aspect-[4/3] md:rounded-[var(--radius-card)]">
-          {/* `BrandImage` swaps in the navy `BrandTile` both when there is no
-              photograph and when the one given 404s — a photo that fails to
-              load is the same "no photo is a designed state" as one that was
-              never there. */}
+          {/* With no `fallback`, `BrandImage` draws the site's own
+              `MediaFallback` both when there is no photograph and when the one
+              given 404s — a photo that fails to load is the same "no photo is
+              a designed state" as one that was never there. It wears this
+              `className`, so it fills exactly the box the photograph would
+              have. */}
           <BrandImage
             src={photo}
             alt=""
             className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.035]"
-            fallback={<BrandTile name={provider.name} />}
           />
           {/* The logo sits on the photograph: a square for a business, a circle
-              for a person. With no photograph the tile above is the brand's own
-              and the logo centres on it, so the row keeps its shape either way. */}
+              for a person. With no photograph the box above is the site's
+              placeholder and the logo centres on it, so the row keeps its
+              shape either way. */}
           {provider.logoUrl && (
             <span
               className={[

@@ -23,17 +23,28 @@ describe("TILE_TITLE_LINK_CLASS", () => {
 
 describe("TileMedia", () => {
   it("shows the photograph when there is one", () => {
-    render(<TileMedia src="https://cdn/photo.jpg" name="Estúdio Mavalane" />);
+    render(<TileMedia src="https://cdn/photo.jpg" />);
     expect(screen.getByRole("presentation")).toHaveAttribute("src", "https://cdn/photo.jpg");
   });
 
-  it("falls back to the brand tile, not to an empty box", () => {
-    render(<TileMedia src={null} name="Estúdio Mavalane" />);
-    expect(screen.getByTestId("brand-tile")).toBeInTheDocument();
+  it("falls back to the site's placeholder, not to an empty box", () => {
+    // The same pale-blue mark the landing cards show, not a listing-only
+    // navy tile: a reader who meets a missing photo on the home page and on
+    // this list should meet the same thing twice.
+    render(<TileMedia src={null} />);
+    expect(screen.getByTestId("media-fallback")).toBeInTheDocument();
+  });
+
+  it("gives the placeholder the box the photograph would have filled", () => {
+    // `MediaFallback` sets no size of its own by design, so it has to wear
+    // the `<img>`'s own sizing class or it collapses to the mark's height.
+    render(<TileMedia src={null} />);
+    expect(screen.getByTestId("media-fallback").className).toContain("h-full");
+    expect(screen.getByTestId("media-fallback").className).toContain("w-full");
   });
 
   it("is square on a phone and four-by-three from sm, because the tile changes shape", () => {
-    const { container } = render(<TileMedia src={null} name="Estúdio Mavalane" />);
+    const { container } = render(<TileMedia src={null} />);
     const box = container.firstElementChild!;
     expect(box.className).toContain("aspect-square");
     expect(box.className).toContain("sm:aspect-[4/3]");

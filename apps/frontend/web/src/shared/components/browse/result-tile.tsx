@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 import { Star } from "lucide-react";
 import { cn } from "@ntizo/frontend-ui";
-import { BrandTile } from "@/shared/components/browse/brand-tile";
 import { BrandImage } from "@/shared/components/brand-image";
 import { formatRating } from "@/shared/domain/rating";
 
@@ -25,7 +24,7 @@ export const TILE_TITLE_LINK_CLASS =
   "after:absolute after:inset-0 after:rounded-[var(--radius-card)] focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-[var(--color-headline)] focus-visible:after:ring-offset-2";
 
 /**
- * The photograph, or the brand tile when there is none.
+ * The photograph, or the site's own placeholder when there is none.
  *
  * Square on a phone, four-by-three from `sm` up, because the tile itself
  * changes shape there: below `sm` it is a 116px-square photo with the words
@@ -33,15 +32,12 @@ export const TILE_TITLE_LINK_CLASS =
  * it. One responsive box rather than a `ratio` prop — the prop existed, no
  * caller ever passed anything but the default, and the shape is a property of
  * the width rather than of the caller.
+ *
+ * It takes no `name`. It used to, to print initials on a listings-only tile;
+ * the placeholder is now the one the whole product draws, which says nothing
+ * about whose listing it is and does not need to be told.
  */
-export function TileMedia({
-  src,
-  name,
-}: {
-  src: string | null;
-  /** Whose listing this is — the brand tile prints its initials. */
-  name: string;
-}) {
+export function TileMedia({ src }: { src: string | null }) {
   return (
     <div
       className={cn(
@@ -51,15 +47,17 @@ export function TileMedia({
     >
       {/* `alt=""` gives the `<img>` the implicit `presentation` role: the name
           is the heading right beside this, and repeating it is read twice and
-          says nothing new either time. `BrandImage` swaps in `fallback` both
-          when there is no `src` and when the photo it was given 404s — a
-          photo that fails to load is the same "no photo is a designed state"
-          as one that was never there. */}
+          says nothing new either time. With no `fallback`, `BrandImage` draws
+          its own `MediaFallback` — the pale-blue mark the landing cards and
+          the checkout rail already show — both when there is no `src` and
+          when the photo it was given 404s; a photo that fails to load is the
+          same "no photo is a designed state" as one that was never there. The
+          fallback wears this `className`, so it fills exactly the box the
+          photograph would have. */}
       <BrandImage
         src={src}
         alt=""
         className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.035]"
-        fallback={<BrandTile name={name} />}
       />
     </div>
   );

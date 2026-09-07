@@ -172,12 +172,12 @@ describe("ProviderRow", () => {
     expect(screen.getByTestId("row-kind").textContent).not.toMatch(/\bin\b/);
   });
 
-  it("centres the logo on the brand tile when there is no cover photo", async () => {
+  it("centres the logo on the site's placeholder when there is no cover photo", async () => {
     const { container } = renderRow(
       provider({ photoUrls: [], logoUrl: "https://cdn/logo.png" }),
     );
     await screen.findByRole("link", { name: /Estúdio Mavalane/ });
-    expect(screen.getByTestId("brand-tile")).toBeInTheDocument();
+    expect(screen.getByTestId("media-fallback")).toBeInTheDocument();
     expect(container.querySelector("img")).toHaveAttribute("src", "https://cdn/logo.png");
   });
 
