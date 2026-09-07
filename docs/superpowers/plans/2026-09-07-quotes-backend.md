@@ -82,9 +82,11 @@
 - Create: `packages/shared/src/read-models/system/quote/quote.schema.ts`
 - Create: `packages/shared/src/read-models/system/quote/index.ts`
 - Modify: `packages/shared/src/read-models/system/index.ts`
+- Modify: `packages/shared/src/enums/notification-enums/notification-type.enum.ts`
 - Test: `packages/shared/src/enums/__tests__/quote-enums.test.ts`
 
 **Interfaces:**
+- Produces, additionally: `NotificationType.QuoteAccepted`, `.QuoteDeclined`, `.ProviderQuoteWithdrawn`, `.ProviderQuoteExpired`, `.ProviderQuoteSlotTaken` — five new members, so that Tasks 7 to 12 can name them without a forward reference. The other five quote types already exist.
 - Produces: `QUOTE_STATUSES`, `quoteStatusSchema`, `QuoteStatus` (type), `QUOTE_OPEN_STATUSES`, `QUOTE_PROVIDER_DECLINE_REASONS`, `QUOTE_CUSTOMER_REJECT_REASONS`, `QUOTE_WITHDRAWN_REASON`, `QUOTE_EXPIRED_CAUSES`, `QUOTE_SUPERSEDED_CAUSES`, `QUOTE_ATTACHMENT_STEPS`, `CUSTOMER_QUOTE_TABS`, `PROVIDER_QUOTE_TABS`; read models `customerQuoteReadModel`, `customerQuoteDetailReadModel`, `customerQuotePageReadModel`, `providerQuoteReadModel`, `providerQuoteDetailReadModel`, `providerQuotePageReadModel`, `providerQuoteCountsReadModel`, `quoteProposalReadModel`, `quoteAttachmentReadModel`, `quoteAddressReadModel` and their `*DTO` types.
 
 - [ ] **Step 1: Write the failing test**
@@ -347,16 +349,45 @@ Append to `packages/shared/src/read-models/system/index.ts`:
 export * from "./quote";
 ```
 
-- [ ] **Step 5: Run the test and typecheck**
+- [ ] **Step 5: Add the five notification types**
 
-Run: `cd packages/shared && bun test src/enums/__tests__/quote-enums.test.ts && bun run typecheck`
-Expected: PASS; typecheck clean.
+In `packages/shared/src/enums/notification-enums/notification-type.enum.ts`, the `--- quotes ---` block becomes:
 
-- [ ] **Step 6: Commit**
+```ts
+  QuoteReceived = "QUOTE_RECEIVED",
+  QuoteAccepted = "QUOTE_ACCEPTED",
+  QuoteDeclined = "QUOTE_DECLINED",
+  QuoteExpired = "QUOTE_EXPIRED",
+  ProviderQuoteRequested = "PROVIDER_QUOTE_REQUESTED",
+  ProviderQuoteAccepted = "PROVIDER_QUOTE_ACCEPTED",
+  ProviderQuoteDeclined = "PROVIDER_QUOTE_DECLINED",
+  ProviderQuoteWithdrawn = "PROVIDER_QUOTE_WITHDRAWN",
+  ProviderQuoteExpired = "PROVIDER_QUOTE_EXPIRED",
+  ProviderQuoteSlotTaken = "PROVIDER_QUOTE_SLOT_TAKEN",
+```
+
+`bucketForNotificationType` is an exhaustive switch with no `default`, so it stops compiling until the five new members are listed. Add them beside the existing quote cases in the arm that `return null` — every quote message is transactional, none is a reminder or a promotion:
+
+```ts
+    case NotificationType.QuoteAccepted:
+    case NotificationType.QuoteDeclined:
+    case NotificationType.ProviderQuoteWithdrawn:
+    case NotificationType.ProviderQuoteExpired:
+    case NotificationType.ProviderQuoteSlotTaken:
+```
+
+The templates for them are Task 13; a type with no template is an in-app row by the registry's own rule, so this step leaves nothing broken.
+
+- [ ] **Step 6: Run the tests and typecheck**
+
+Run: `cd packages/shared && bun test src/enums && bun run typecheck`
+Expected: PASS, including the existing `src/enums/__tests__/notifications.test.ts`, which iterates every type. A missing `case` is a compile error rather than a test failure, so the typecheck is the real proof.
+
+- [ ] **Step 7: Commit**
 
 ```bash
 git add packages/shared/src/enums packages/shared/src/read-models/system
-git commit -m "feat(quote): the shared enums and read models for quotes"
+git commit -m "feat(quote): the shared enums, read models and notification types for quotes"
 ```
 
 ---
@@ -819,15 +850,58 @@ describe("ntizo_quote constraints", () => {
 });
 ```
 
-- [ ] **Step 7: Run the test and the whole backend typecheck**
+Add one more case to that file, proving the two declarations of the seven statuses agree — the wire enum in `packages/shared` and the column's CHECK cannot import each other, so this test is the only guard against them drifting:
 
-Run: `cd packages/backend && bun test src/modules/ntizo/shared/infrastructure/database/__tests__/quote-constraints.test.ts && bun run typecheck`
-Expected: PASS. Typecheck will fail in `booking.repository.ts`'s mapper and `Booking.restore` because `serviceOptionId`/`optionName` rows are now nullable: that is Task 10's work. If it blocks the commit hook, temporarily cast in the mapper (`row.serviceOptionId as string`) and leave a `// Task 10` comment that Task 10 removes.
+```ts
+import { QUOTE_STATUSES } from "@ntizo/shared";
 
-- [ ] **Step 8: Commit**
+test("the shared status list and the database's are the same set", () => {
+  expect([...QUOTE_STATUS_VALUES].sort()).toEqual([...QUOTE_STATUSES].sort());
+});
+```
+
+- [ ] **Step 7: Carry the nullability through everything that reads those two columns**
+
+Making `service_option_id` and `option_name` nullable breaks the typecheck in six places. All six are mechanical, and they land here rather than in Task 10 so that the tree compiles at the end of every task.
+
+In `booking.aggregate.ts`'s `BookingProps`:
+
+```ts
+  /** Null on a booking born from a quote; a priced booking always names its option. */
+  readonly serviceOptionId: string | null;
+  readonly optionName: string | null;
+  /** Null on a priced booking. Exactly one of it and `serviceOptionId` is set. */
+  readonly quoteId: string | null;
+```
+
+`Booking.create` keeps `serviceOptionId: string` and `optionName: string` in its own input — a priced booking always has both — and adds `quoteId: null` to the props it returns. In `Booking.restore`, the two unconditional `requireNonBlank` calls for those fields become:
+
+```ts
+    // Null means "born from a quote"; "" means a bug, and is refused everywhere.
+    if (props.serviceOptionId !== null) Booking.requireNonBlank(props.serviceOptionId, "serviceOptionId");
+    if (props.optionName !== null) Booking.requireNonBlank(props.optionName, "optionName");
+    if ((props.serviceOptionId === null) === (props.quoteId === null)) {
+      throw new BookingSnapshotInconsistentError("origin", String(props.serviceOptionId), String(props.quoteId));
+    }
+```
+
+Add the getter beside the others: `get quoteId(): string | null { return this.props.quoteId; }`.
+
+In `booking/infrastructure/repositories/drizzle/booking.repository.ts`: `toRow` gains `quoteId: entity.quoteId,`; `toAggregate` gains `quoteId: row.quoteId,` and leaves the two option fields passing straight through.
+
+In `packages/shared/src/read-models/system/booking/booking.schema.ts` and `provider-booking.schema.ts`: `serviceOptionId: z.string().nullable()` and `optionName: z.string().nullable()`, with the comment *"Null on a booking born from a quote: the price is the proposal's, not an option's. Screens render the service name alone in that case."*
+
+In `read/booking/app/ports/outbound/booking-read.repository.port.ts`: both row types' `serviceOptionId` and `optionName` become `string | null`. `to-booking-dto.ts` and `to-provider-booking-dto.ts` pass them through unchanged.
+
+- [ ] **Step 8: Run the tests and the whole backend typecheck**
+
+Run: `cd packages/backend && bun test src/modules/ntizo/shared/infrastructure/database/__tests__/quote-constraints.test.ts && bun test src/modules/ntizo/bounded-contexts/booking && bun run typecheck`
+Expected: PASS on all three, including every existing booking test. Nothing in this task changes booking behaviour; if a booking test fails, the nullability propagation is wrong, not the test.
+
+- [ ] **Step 9: Commit**
 
 ```bash
-git add packages/backend/src/modules/ntizo
+git add packages/backend/src/modules/ntizo packages/shared/src/read-models
 git commit -m "feat(quote): the ntizo_quote schema, the booking's quote origin, the validity setting"
 ```
 
@@ -2266,6 +2340,23 @@ export function proposedQuote(over: Partial<Parameters<typeof Quote.request>[0]>
   return Quote.restore({ ...props, proposals: props.proposals.map((p, i) => ({ ...p, id: p.id ?? `prop-${i + 1}` })) });
 }
 
+/**
+ * A proposed quote whose live proposal has already lapsed.
+ *
+ * Built through `restore` with a `validUntil` one second in the past, rather
+ * than by relying on the fixture's `NOW` having gone by: a test that only
+ * starts asserting on a particular date is worse than one that fails today.
+ */
+export function lapsedProposedQuote(over: Partial<Parameters<typeof Quote.request>[0]> = {}): Quote {
+  const props = proposedQuote(over).toProps();
+  return Quote.restore({
+    ...props,
+    proposals: props.proposals.map((p) =>
+      p.supersededAt === null ? { ...p, validUntil: new Date(Date.now() - 1_000) } : p,
+    ),
+  });
+}
+
 export class FakeQuoteRepo implements QuoteRepositoryPort {
   public inserted: Quote[] = [];
   public saveCalls = 0;
@@ -3625,45 +3716,17 @@ git commit -m "feat(quote): either side can close a quote, with a reason, a note
 
 **Files:**
 - Modify: `.../bounded-contexts/booking/domain/aggregates/booking.aggregate.ts`
-- Modify: `.../booking/infrastructure/repositories/drizzle/booking.repository.ts` (mapper)
 - Create: `.../booking/app/use-cases/create-booking-from-quote.command.ts`
 - Modify: `.../booking/bootstrap/index.ts`, `.../booking/index.ts`
-- Modify: `packages/backend/src/modules/ntizo/read/booking/app/ports/outbound/booking-read.repository.port.ts` and `app/use-cases/to-booking-dto.ts`, `to-provider-booking-dto.ts`
-- Modify: `packages/shared/src/read-models/system/booking/booking.schema.ts`, `provider-booking.schema.ts`
 - Test: `.../booking/__tests__/create-booking-from-quote.command.test.ts`
 
 **Interfaces:**
 - Consumes: `OpenBookingFromQuoteInput` (Task 5) is the shape the adapter maps onto this command's input.
 - Produces: `Booking.createFromQuote(input)`, `Booking#quoteId`, `CreateBookingFromQuoteCommand` with `CreateBookingFromQuoteInput` and result `{ bookingId: string; payBy: Date }`; `SlotAlreadyTakenError` is what it throws when the calendar refuses.
 
-- [ ] **Step 1: Widen the aggregate**
+- [ ] **Step 1: Add the factory**
 
-In `BookingProps`, make the two option fields nullable and add the origin:
-
-```ts
-  /** Null on a booking born from a quote; a priced booking always names its option. */
-  readonly serviceOptionId: string | null;
-  readonly optionName: string | null;
-  /** Null on a priced booking. Exactly one of it and `serviceOptionId` is set. */
-  readonly quoteId: string | null;
-```
-
-In `Booking.create`, keep `serviceOptionId: string` and `optionName: string` in the input (a priced booking always has both) and add to the returned props `quoteId: null`. In `Booking.restore`, replace the two unconditional `requireNonBlank` calls for `serviceOptionId`/`optionName` with:
-
-```ts
-    // Null means "born from a quote"; "" means a bug, and is refused everywhere.
-    if (props.serviceOptionId !== null) Booking.requireNonBlank(props.serviceOptionId, "serviceOptionId");
-    if (props.optionName !== null) Booking.requireNonBlank(props.optionName, "optionName");
-    if ((props.serviceOptionId === null) === (props.quoteId === null)) {
-      throw new BookingSnapshotInconsistentError("origin", String(props.serviceOptionId), String(props.quoteId));
-    }
-```
-
-Add the getter beside the others:
-
-```ts
-  get quoteId(): string | null { return this.props.quoteId; }
-```
+Task 2 already made `serviceOptionId` and `optionName` nullable on `BookingProps`, added `quoteId` and its getter, taught `restore` the origin rule, and carried all of that through the mapper and the read models. This task adds only the new behaviour.
 
 Add the factory after `create`:
 
@@ -3784,13 +3847,7 @@ Add the factory after `create`:
   }
 ```
 
-In the repository's `toRow`, add `quoteId: entity.quoteId,`; in `toAggregate`, add `quoteId: row.quoteId,` and leave `serviceOptionId`/`optionName` passing straight through now that both sides are nullable.
-
-- [ ] **Step 2: Carry the nullability into the read models**
-
-`packages/shared/src/read-models/system/booking/booking.schema.ts` — `serviceOptionId: z.string().nullable()` and `optionName: z.string().nullable()`, with the comment: *"Null on a booking born from a quote: the price is the proposal's, not an option's. Screens render the service name alone in that case."* Same two fields in `provider-booking.schema.ts`. The read repository's row types (`booking-read.repository.port.ts`, both occurrences) become `string | null`; `to-booking-dto.ts` and `to-provider-booking-dto.ts` pass them through unchanged.
-
-- [ ] **Step 3: Write the failing command test**
+- [ ] **Step 2: Write the failing command test**
 
 `.../booking/__tests__/create-booking-from-quote.command.test.ts`:
 
@@ -3893,12 +3950,12 @@ describe("CreateBookingFromQuoteCommand", () => {
 });
 ```
 
-- [ ] **Step 4: Run it to verify it fails**
+- [ ] **Step 3: Run it to verify it fails**
 
 Run: `cd packages/backend && bun test src/modules/ntizo/bounded-contexts/booking/__tests__/create-booking-from-quote.command.test.ts`
 Expected: FAIL, module not found.
 
-- [ ] **Step 5: Write the command**
+- [ ] **Step 4: Write the command**
 
 `.../booking/app/use-cases/create-booking-from-quote.command.ts`:
 
@@ -4049,7 +4106,7 @@ export class CreateBookingFromQuoteCommand {
 }
 ```
 
-- [ ] **Step 6: Wire it into the booking bootstrap**
+- [ ] **Step 5: Wire it into the booking bootstrap**
 
 In `.../booking/bootstrap/index.ts`, beside the other constructions:
 
@@ -4072,12 +4129,12 @@ export {
 } from "./app/use-cases/create-booking-from-quote.command";
 ```
 
-- [ ] **Step 7: Run the booking suite**
+- [ ] **Step 6: Run the booking suite**
 
 Run: `cd packages/backend && bun test src/modules/ntizo/bounded-contexts/booking && bun run typecheck`
 Expected: PASS, including every existing booking test (the nullable columns must not have broken them).
 
-- [ ] **Step 8: Commit**
+- [ ] **Step 7: Commit**
 
 ```bash
 git add packages/backend/src/modules/ntizo packages/shared/src/read-models
@@ -4111,7 +4168,8 @@ import {
 } from "../domain/exceptions";
 import {
   ADDRESS, CapturingOutbox, FakeBookingOpener, FakePhoneReader, FakeQuoteRepo, FakeRaiser,
-  FakeServiceReader, FakeSettings, TrackingUnitOfWork, proposedQuote, requestedQuote, serviceSnapshot, withId,
+  FakeServiceReader, FakeSettings, TrackingUnitOfWork, lapsedProposedQuote, proposedQuote,
+  requestedQuote, serviceSnapshot, withId,
 } from "./support/fakes";
 
 function setup(initial = withId(proposedQuote(), "q-1"), opts: { opener?: FakeBookingOpener; phones?: FakePhoneReader; snapshot?: ReturnType<typeof serviceSnapshot> } = {}) {
@@ -4165,9 +4223,7 @@ describe("AcceptQuoteCommand", () => {
     await expect(setup().command.execute({ ...INPUT, requesterUserId: "cust-2" })).rejects.toThrow(QuoteNotYoursError);
     await expect(setup(withId(requestedQuote(), "q-1")).command.execute(INPUT)).rejects.toThrow(QuoteTransitionError);
 
-    const lapsed = withId(proposedQuote(), "q-1");
-    const lapsedSetup = setup(lapsed);
-    // The live proposal's validity is 72 h from the fixture's NOW, which is in the past by now.
+    const lapsedSetup = setup(withId(lapsedProposedQuote(), "q-1"));
     await expect(lapsedSetup.command.execute(INPUT)).rejects.toThrow(QuoteProposalLapsedError);
 
     const noPhone = setup(withId(proposedQuote(), "q-1"), { phones: new FakePhoneReader({ "cust-1": null }) });
@@ -4195,8 +4251,6 @@ describe("AcceptQuoteCommand", () => {
   });
 });
 ```
-
-Note on the lapsed case: the fixtures fix `NOW` at 2026-09-07, so `proposedQuote()`'s validity is already in the past relative to the real clock. Task 8's tests pass a `validUntil` explicitly; here the fixture is used as-is, which is what makes the lapse assertion true without stubbing the clock. If the fixture is ever moved forward, this test needs a `validUntil` in the past passed through `proposedQuote`.
 
 - [ ] **Step 2: Run it to verify it fails**
 
@@ -4500,16 +4554,15 @@ git commit -m "feat(quote): accepting a proposal creates the booking and asks fo
 
 ---
 
-### Task 12: The sweep and its cron entry
+### Task 12: The sweep
 
 **Files:**
 - Create: `.../quote/app/use-cases/sweep-quote.command.ts`
 - Create: `.../quote/app/use-cases/sweep-due-quotes.internal.command.ts`
-- Modify: `apps/backend/api/src/scheduled.ts`
 - Test: `.../quote/__tests__/sweep-quote.command.test.ts`
 
 **Interfaces:**
-- Produces: `SweepQuoteCommand` (`{ quoteId }` → `Promise<"expired" | "noop">`), `SweepDueQuotesInternalCommand` (`{ limit }` → `Promise<{ swept: number; failed: number }>`), `QUOTE_SWEEP_LIMIT` in `scheduled.ts`.
+- Produces: `SweepQuoteCommand` (`{ quoteId }` → `Promise<"expired" | "noop">`) and `SweepDueQuotesInternalCommand` (`{ limit }` → `Promise<{ swept: number; failed: number }>`). The cron entry that calls the second is Task 14's, with the composition root that fills its ports.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -4716,100 +4769,22 @@ export class SweepDueQuotesInternalCommand {
 }
 ```
 
-- [ ] **Step 3: Add the fourth sweep to the cron**
-
-In `apps/backend/api/src/scheduled.ts`, beside the other limits:
-
-```ts
-/**
- * How many due quotes one sweep may claim.
- *
- * The same budget as the booking sweep and for the same arithmetic: this is
- * database work, two hundred rows is two hundred short transactions, and the
- * clocks it watches are measured in hours rather than minutes, so whatever
- * goes stale in any one minute is a small fraction of the ceiling.
- */
-export const QUOTE_SWEEP_LIMIT = 200;
-```
-
-and a fourth inner `try` after the charge sweep, in the same shape as the third:
-
-```ts
-        try {
-          const quote = bootstrapQuote({
-            raiseNotification: bootstrapNotification().useCases.internal.raiseNotification,
-            openBooking: bookingOpenerForCron(),
-            startThread: startThreadForCron(),
-            attachmentStorage: new AttachmentStorageAdapter(),
-          });
-          const { swept, failed: quoteFailed } = await quote.useCases.internal.sweepDue.execute({
-            limit: QUOTE_SWEEP_LIMIT,
-          });
-
-          if (quoteFailed > 0) {
-            console.error(`[scheduled] quote sweep: ${swept} swept, ${quoteFailed} failed`);
-          }
-        } catch (error) {
-          console.error("[scheduled] quote sweep threw", error);
-        }
-```
-
-with the two cron-only port fillers beside `disputeThreadForCron`:
-
-```ts
-/**
- * The booking-opener and thread ports the quote bootstrap requires, for a
- * caller that will never accept or request anything.
- *
- * The sweep reaches `internal.sweepDue` and nothing else, but a bootstrap that
- * constructs every use case constructs the acceptance too. Same situation as
- * `disputeThreadForCron` above, and the same answer: build the real graph
- * lazily, inside `execute`, so a run that never accepts never builds it.
- */
-function bookingOpenerForCron(): BookingOpenerPort {
-  return {
-    async openFromQuote(input) {
-      const booking = bootstrapBooking({
-        raiseNotification: bootstrapNotification().useCases.internal.raiseNotification,
-        openDisputeThread: disputeThreadForCron(),
-      });
-      return await bookingOpenerOver(booking.useCases.createBookingFromQuote).openFromQuote(input);
-    },
-  };
-}
-
-function startThreadForCron(): StartThreadPort {
-  return {
-    async execute(input) {
-      const communication = bootstrapCommunication({
-        raiseNotification: bootstrapNotification().useCases.internal.raiseNotification,
-        attachmentStorage: new AttachmentStorageAdapter(),
-      });
-      return await startThreadOver(communication.useCases.startThread).execute(input);
-    },
-  };
-}
-```
-
-(`bookingOpenerOver` and `startThreadOver` are the composition-root adapters written in Task 14; this step lands with that task if the compiler blocks it earlier.)
-
-- [ ] **Step 4: Run the tests**
+- [ ] **Step 3: Run the tests**
 
 Run: `cd packages/backend && bun test src/modules/ntizo/bounded-contexts/quote/__tests__/sweep-quote.command.test.ts`
 Expected: PASS (4 cases).
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 4: Commit**
 
 ```bash
-git add packages/backend/src/modules/ntizo/bounded-contexts/quote apps/backend/api/src/scheduled.ts
+git add packages/backend/src/modules/ntizo/bounded-contexts/quote
 git commit -m "feat(quote): the sweep ends a request nobody answered and a proposal nobody decided"
 ```
 
 ---
-### Task 13: Notification types and their templates
+### Task 13: The quote emails
 
 **Files:**
-- Modify: `packages/shared/src/enums/notification-enums/notification-type.enum.ts`
 - Create: `.../notification/infrastructure/templates/quote-received.template.ts`
 - Create: `.../notification/infrastructure/templates/quote-declined.template.ts`
 - Create: `.../notification/infrastructure/templates/quote-accepted.template.ts`
@@ -4818,44 +4793,12 @@ git commit -m "feat(quote): the sweep ends a request nobody answered and a propo
 - Create: `.../notification/infrastructure/templates/provider-quote-accepted.template.ts`
 - Create: `.../notification/infrastructure/templates/provider-quote-slot-taken.template.ts`
 - Modify: `.../notification/infrastructure/templates/registry.ts`
-- Modify: `packages/shared/src/enums/__tests__/notifications.test.ts` (it iterates every type; no change needed if it is generic — run it and see)
 
 **Interfaces:**
-- Produces: `NotificationType.QuoteAccepted`, `.QuoteDeclined`, `.ProviderQuoteWithdrawn`, `.ProviderQuoteExpired`, `.ProviderQuoteSlotTaken` (the other five already exist), and seven `TemplateModule` exports registered in `TEMPLATE_REGISTRY`.
+- Consumes: the ten `NotificationType` quote members, five of which Task 1 added.
+- Produces: seven `TemplateModule` exports registered in `TEMPLATE_REGISTRY`.
 
-- [ ] **Step 1: Add the five types**
-
-In `packages/shared/src/enums/notification-enums/notification-type.enum.ts`, in the `--- quotes ---` block:
-
-```ts
-  QuoteReceived = "QUOTE_RECEIVED",
-  QuoteAccepted = "QUOTE_ACCEPTED",
-  QuoteDeclined = "QUOTE_DECLINED",
-  QuoteExpired = "QUOTE_EXPIRED",
-  ProviderQuoteRequested = "PROVIDER_QUOTE_REQUESTED",
-  ProviderQuoteAccepted = "PROVIDER_QUOTE_ACCEPTED",
-  ProviderQuoteDeclined = "PROVIDER_QUOTE_DECLINED",
-  ProviderQuoteWithdrawn = "PROVIDER_QUOTE_WITHDRAWN",
-  ProviderQuoteExpired = "PROVIDER_QUOTE_EXPIRED",
-  ProviderQuoteSlotTaken = "PROVIDER_QUOTE_SLOT_TAKEN",
-```
-
-and the five new members beside the existing quote cases in `bucketForNotificationType`'s exhaustive switch (the `return null` arm — every quote message is transactional, none is a reminder or a promotion):
-
-```ts
-    case NotificationType.QuoteAccepted:
-    case NotificationType.QuoteDeclined:
-    case NotificationType.ProviderQuoteWithdrawn:
-    case NotificationType.ProviderQuoteExpired:
-    case NotificationType.ProviderQuoteSlotTaken:
-```
-
-- [ ] **Step 2: Run the enum tests to see what the switch demands**
-
-Run: `cd packages/shared && bun test src/enums/__tests__/notifications.test.ts`
-Expected: PASS. A missing `case` is a compile error, not a test failure, so a clean typecheck (`bun run typecheck`) is the real proof here — run it too.
-
-- [ ] **Step 3: Write the seven templates**
+- [ ] **Step 1: Write the seven templates**
 
 Each is a copy of `booking-accepted.template.ts`'s shape: seven `Copy` objects (PT, EN, ES, FR, IT, DE, NL), a `BY_LOCALE: Record<string, Copy>` with eight keys (`pt-MZ` and `pt-PT` both pointing at `PT`), and a `TemplateModule` whose `render` reads only the payload fields it needs and links into the app. Written, not translated, for `pt-MZ`; the mockup's copy is the source. The links:
 
@@ -4937,7 +4880,7 @@ export const quoteReceivedTemplate: TemplateModule = {
 };
 ```
 
-- [ ] **Step 4: Register them**
+- [ ] **Step 2: Register them**
 
 In `registry.ts`, import the seven and add:
 
@@ -4953,14 +4896,14 @@ In `registry.ts`, import the seven and add:
 
 `PROVIDER_QUOTE_DECLINED`, `PROVIDER_QUOTE_WITHDRAWN` and `PROVIDER_QUOTE_EXPIRED` are deliberately absent: a type with no template is an in-app row by the registry's own rule, and none of the three needs to reach a provider's inbox at night.
 
-- [ ] **Step 5: Run and commit**
+- [ ] **Step 3: Run and commit**
 
 Run: `cd packages/backend && bun test src/modules/ntizo/bounded-contexts/notification && cd ../shared && bun run typecheck`
 Expected: PASS.
 
 ```bash
-git add packages/shared/src/enums packages/backend/src/modules/ntizo/bounded-contexts/notification
-git commit -m "feat(quote): five notification types and seven emails for the quote path"
+git add packages/backend/src/modules/ntizo/bounded-contexts/notification
+git commit -m "feat(quote): seven emails for the quote path"
 ```
 
 ---
@@ -4973,10 +4916,11 @@ git commit -m "feat(quote): five notification types and seven emails for the quo
 - Create: `apps/backend/api/src/start-thread.adapter.ts`
 - Modify: `packages/backend/package.json` (exports)
 - Modify: `apps/backend/api/src/graphql/private.ts`
+- Modify: `apps/backend/api/src/scheduled.ts`
 - Test: `.../quote/__tests__/bootstrap.test.ts`
 
 **Interfaces:**
-- Produces: `bootstrapQuote(deps)` → `{ adapters, useCases: { requestQuote, proposeQuote, declineQuote, rejectQuote, withdrawQuote, acceptQuote, internal: { sweepDue, markProposalStale } } }`, `QuoteBootstrap`; `bookingOpenerOver(createBookingFromQuote)`, `startThreadOver(startThread)`.
+- Produces: `bootstrapQuote(deps)` → `{ adapters, useCases: { requestQuote, proposeQuote, declineQuote, rejectQuote, withdrawQuote, acceptQuote, internal: { sweepDue, markProposalStale } } }`, `QuoteBootstrap`; `bookingOpenerOver(createBookingFromQuote)`, `startThreadOver(startThread)`, `QUOTE_SWEEP_LIMIT` and the cron's fourth sweep.
 
 - [ ] **Step 1: Write the bootstrap**
 
@@ -5166,7 +5110,84 @@ and in the `fields` array:
       ...createQuoteReadHandlers({ quoteRead }),
 ```
 
-- [ ] **Step 5: Write the bootstrap smoke test**
+- [ ] **Step 5: Add the fourth sweep to the cron**
+
+In `apps/backend/api/src/scheduled.ts`, beside the other limits:
+
+```ts
+/**
+ * How many due quotes one sweep may claim.
+ *
+ * The same budget as the booking sweep and for the same arithmetic: this is
+ * database work, two hundred rows is two hundred short transactions, and the
+ * clocks it watches are measured in hours rather than minutes, so whatever
+ * goes stale in any one minute is a small fraction of the ceiling.
+ */
+export const QUOTE_SWEEP_LIMIT = 200;
+```
+
+and a fourth inner `try` after the charge sweep, in the same shape as the third:
+
+```ts
+        try {
+          const quote = bootstrapQuote({
+            raiseNotification: bootstrapNotification().useCases.internal.raiseNotification,
+            openBooking: bookingOpenerForCron(),
+            startThread: startThreadForCron(),
+            attachmentStorage: new AttachmentStorageAdapter(),
+          });
+          const { swept, failed: quoteFailed } = await quote.useCases.internal.sweepDue.execute({
+            limit: QUOTE_SWEEP_LIMIT,
+          });
+
+          if (quoteFailed > 0) {
+            console.error(`[scheduled] quote sweep: ${swept} swept, ${quoteFailed} failed`);
+          }
+        } catch (error) {
+          console.error("[scheduled] quote sweep threw", error);
+        }
+```
+
+with the two cron-only port fillers beside `disputeThreadForCron`:
+
+```ts
+/**
+ * The booking-opener and thread ports the quote bootstrap requires, for a
+ * caller that will never accept or request anything.
+ *
+ * The sweep reaches `internal.sweepDue` and nothing else, but a bootstrap that
+ * constructs every use case constructs the acceptance too. Same situation as
+ * `disputeThreadForCron` above, and the same answer: build the real graph
+ * lazily, inside `execute`, so a run that never accepts never builds it.
+ */
+function bookingOpenerForCron(): BookingOpenerPort {
+  return {
+    async openFromQuote(input) {
+      const booking = bootstrapBooking({
+        raiseNotification: bootstrapNotification().useCases.internal.raiseNotification,
+        openDisputeThread: disputeThreadForCron(),
+      });
+      return await bookingOpenerOver(booking.useCases.createBookingFromQuote).openFromQuote(input);
+    },
+  };
+}
+
+function startThreadForCron(): StartThreadPort {
+  return {
+    async execute(input) {
+      const communication = bootstrapCommunication({
+        raiseNotification: bootstrapNotification().useCases.internal.raiseNotification,
+        attachmentStorage: new AttachmentStorageAdapter(),
+      });
+      return await startThreadOver(communication.useCases.startThread).execute(input);
+    },
+  };
+}
+```
+
+Both fillers build their graph lazily, inside `execute`, so a run that never accepts and never requests builds neither — which is every run of the sweep.
+
+- [ ] **Step 6: Write the bootstrap smoke test**
 
 `.../quote/__tests__/bootstrap.test.ts`:
 
@@ -5191,7 +5212,7 @@ describe("bootstrapQuote", () => {
 });
 ```
 
-- [ ] **Step 6: Run and commit**
+- [ ] **Step 7: Run and commit**
 
 Run: `cd packages/backend && bun test src/modules/ntizo/bounded-contexts/quote && bun run typecheck`
 Expected: PASS.
@@ -5266,7 +5287,12 @@ export const proposeQuote = defineMutation({
       attachments: attachmentsInput,
     }),
   ),
-  output: zodSchema(z.object({ quoteId: z.string().min(1), validUntil: z.string() })),
+  /**
+   * `validUntil` is null when the compare-and-swap lost: a colleague's
+   * proposal stands and this call changed nothing. Inventing a deadline here
+   * would be a lie the screen would render as a countdown.
+   */
+  output: zodSchema(z.object({ quoteId: z.string().min(1), validUntil: z.string().nullable() })),
   docs: { summary: "Answer a request with a price, a date and a duration", tags: ["Quote"] },
 });
 
@@ -5389,7 +5415,7 @@ export function createQuoteWriteHandlers(mod: QuoteWriteModule) {
         note: args.input.note ?? null,
         attachments: args.input.attachments ?? [],
       });
-      return result ?? { quoteId: args.input.quoteId, validUntil: new Date().toISOString() };
+      return result ?? { quoteId: args.input.quoteId, validUntil: null };
     })
     .handle("quote.decline", async (args, ctx) => {
       await uc.declineQuote.execute({
@@ -5933,7 +5959,7 @@ Introspect the deployed schema once and confirm the eleven new fields are on the
 ## Deviations from the spec
 
 1. **The address travels as fields, not as an `addressId`.** The spec's GraphQL table shows `quoteRequest({ …, addressId? })` and `quoteAccept({ quoteId, addressId? })`. The shipped `bookingSubmit` takes the address fields themselves, and following it keeps one convention, avoids a new `CustomerAddressReaderPort` in this context, and keeps the write path free of a cross-context read. The client still picks from the address book; it sends what it picked.
-2. **`quotePropose` returns the quote id and validity even when the compare-and-swap loses.** The spec does not say. Two members pressing "Enviar proposta" at once is the ordinary case, and answering the loser with an error would report a failure that did not happen: the proposal stands, it is simply the other member's.
+2. **`quotePropose` answers a lost compare-and-swap with a null `validUntil` rather than an error.** The spec does not say. Two members pressing "Enviar proposta" at once is the ordinary case, and an error would report a failure that did not happen: the proposal stands, it is simply the other member's. Null is what says "nothing of yours is counting down".
 3. **Three provider-side notifications ship without an email template** (`PROVIDER_QUOTE_DECLINED`, `PROVIDER_QUOTE_WITHDRAWN`, `PROVIDER_QUOTE_EXPIRED`). The spec's table already marks them "no" for email; this records that the registry's absent-template rule is how that is implemented.
 4. **A quote-born booking is inserted with capacity 1.** The spec does not mention seats. A time the provider chose by hand has no `member_availability` rule behind it, and seats exist for a rule that offers one slot to several customers.
 
