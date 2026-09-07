@@ -157,6 +157,21 @@ describe("ProviderRow", () => {
     );
   });
 
+  it("says only the category when the business gave no place at all", async () => {
+    // `district` and `city` are both nullable, and the sentence has nowhere to
+    // stop without them: "Electrical in " with the preposition dangling.
+    renderRow(
+      provider({
+        district: null,
+        city: null,
+        categories: [{ code: "electrical", name: "Electrical" }],
+      }),
+    );
+    await screen.findByRole("link", { name: /Estúdio Mavalane/ });
+    expect(screen.getByTestId("row-kind")).toHaveTextContent("Electrical");
+    expect(screen.getByTestId("row-kind").textContent).not.toMatch(/\bin\b/);
+  });
+
   it("centres the logo on the brand tile when there is no cover photo", async () => {
     const { container } = renderRow(
       provider({ photoUrls: [], logoUrl: "https://cdn/logo.png" }),

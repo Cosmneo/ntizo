@@ -37,13 +37,19 @@ export function ProviderRow({
   const { t } = useTranslation("directory");
   const photo = provider.photoUrls[0] ?? null;
   const place = [provider.district, provider.city].filter(Boolean).join(", ");
+  const category =
+    provider.categories[0]?.name ?? t(`filterProviderKindOption.${provider.type}`);
   // The kind and the place as one sentence, not a dot-joined meta line:
   // "Electricista certificado em Sommerschield, Maputo" is what a person would
   // say out loud, and "Individual · Sommerschield" is what a database would.
-  const kind = t(`providerKindSentence.${provider.type}`, {
-    category: provider.categories[0]?.name ?? t(`filterProviderKindOption.${provider.type}`),
-    place,
-  });
+  //
+  // With no place, the category alone. Both `district` and `city` are nullable
+  // (`provider-public.schema.ts`), and a business that filled in neither got
+  // the sentence with its tail cut off — "Beleza em " — because the template
+  // has nowhere to stop.
+  const kind = place
+    ? t(`providerKindSentence.${provider.type}`, { category, place })
+    : category;
   const rest = provider.serviceCount - provider.services.length;
 
   return (
