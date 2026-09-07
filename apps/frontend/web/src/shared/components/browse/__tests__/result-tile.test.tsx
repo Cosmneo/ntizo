@@ -31,6 +31,13 @@ describe("TileMedia", () => {
     render(<TileMedia src={null} name="Estúdio Mavalane" />);
     expect(screen.getByTestId("brand-tile")).toBeInTheDocument();
   });
+
+  it("is square on a phone and four-by-three from sm, because the tile changes shape", () => {
+    const { container } = render(<TileMedia src={null} name="Estúdio Mavalane" />);
+    const box = container.firstElementChild!;
+    expect(box.className).toContain("aspect-square");
+    expect(box.className).toContain("sm:aspect-[4/3]");
+  });
 });
 
 describe("RatingMark", () => {
@@ -52,5 +59,17 @@ describe("ResultTile", () => {
     );
     const article = container.querySelector("article")!;
     expect(article.className).not.toMatch(/border|shadow|rounded-\[var\(--radius-card\)\]/);
+  });
+
+  it("is a 116px-square row on a phone and the stacked tile from sm", () => {
+    // The spec's whole reason for the phone redesign: four results a screen
+    // against the one a stacked tile gave. jsdom has no layout, so the
+    // columns are asserted as the class that declares them.
+    const { container } = render(
+      <ResultTile media={<i />} title={<h3>T</h3>} byline={<p>B</p>} price={<p>P</p>} />,
+    );
+    const article = container.querySelector("article")!;
+    expect(article.className).toContain("grid-cols-[116px_minmax(0,1fr)]");
+    expect(article.className).toContain("sm:block");
   });
 });

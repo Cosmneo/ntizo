@@ -41,7 +41,14 @@ export function ServiceTile({ service, locale }: { service: ServiceDTO; locale: 
     <ResultTile
       media={<TileMedia src={service.imageUrls[0] ?? null} name={service.providerName} />}
       title={
-        <h3 className="min-w-0 truncate text-[15px] font-semibold text-[var(--color-foreground)] group-hover:underline group-hover:decoration-[1.5px] group-hover:underline-offset-[3px] group-focus-within:underline">
+        /* Two lines on a phone, where the row gives the title the whole
+           width beside a 116px photo and a clipped name is the one thing
+           a reader cannot recover; one truncated line in the desktop
+           grid, where four tiles share the row and a second line would
+           make every tile in it taller. `sm:line-clamp-none` first,
+           because `truncate` alone leaves `display:-webkit-box` in
+           place and the clamp would go on applying under it. */
+        <h3 className="min-w-0 line-clamp-2 text-[15px] font-semibold text-[var(--color-foreground)] group-hover:underline group-hover:decoration-[1.5px] group-hover:underline-offset-[3px] group-focus-within:underline sm:line-clamp-none sm:truncate">
           <Link to="/services/$id" params={{ id: service.id }} className={TILE_TITLE_LINK_CLASS}>
             {service.name}
           </Link>

@@ -184,6 +184,23 @@ describe("ServicesBrowsePage", () => {
     expect(screen.queryByRole("button", { name: /book/i })).toBeNull();
   });
 
+  it("separates the phone's rows with a hairline the list draws, not the tile", async () => {
+    // `divide-y` draws between children and never above the first, which is
+    // the mockup's `.m-row:first-child{border-top:0}` for free — so unlike
+    // `/providers`, no tile has to be told it is first. From `sm` the grid's
+    // own white space separates them again and the hairline goes.
+    const { container } = renderPage("/services", {
+      items: [service()],
+      nextOffset: null,
+      total: 1,
+    });
+    await screen.findByRole("link", { name: "Corte de cabelo" });
+    const list = container.querySelector("article")!.closest("ul")!;
+    expect(list.className).toContain("divide-y");
+    expect(list.className).toContain("sm:divide-y-0");
+    expect(list.className).toContain("grid-cols-1");
+  });
+
   it("does not tell somebody who filtered that the platform is empty", async () => {
     // Two different sentences because they are two different situations, and
     // `city` has to be in `isNarrowed` for the right one to be chosen.

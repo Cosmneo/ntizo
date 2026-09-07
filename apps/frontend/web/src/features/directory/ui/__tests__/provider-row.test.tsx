@@ -172,6 +172,35 @@ describe("ProviderRow", () => {
     expect(screen.getAllByRole("link")).toHaveLength(1);
   });
 
+  /**
+   * The phone card, asserted through the classes that build it — jsdom has no
+   * layout and no media queries, so the breakpoint itself cannot be measured
+   * here. Stacked at 390px the row was ~660px tall, about one and a third
+   * results a screen; the mockup's `.m-pcard` drops the blurb and the
+   * chevron, widens the photograph to 16:9 and reads the price on one line.
+   */
+  it("drops the blurb and the chevron on a phone, and widens the photograph", async () => {
+    const { container } = renderRow(
+      provider({ description: "Cortes, barba e coloração desde 2014." }),
+    );
+    await screen.findByRole("link", { name: /Estúdio Mavalane/ });
+
+    const blurb = screen.getByText("Cortes, barba e coloração desde 2014.");
+    expect(blurb.className).toContain("hidden");
+    // `md:line-clamp-2` is what shows it again, and it has to be the only
+    // display in that media query or the clamp stops clamping.
+    expect(blurb.className).toContain("md:line-clamp-2");
+    expect(blurb.className).not.toContain("md:block");
+
+    const chevron = container.querySelector("span[aria-hidden='true'].rounded-full")!;
+    expect(chevron.className).toContain("hidden");
+    expect(chevron.className).toContain("md:grid");
+
+    const media = container.querySelector("div.relative.overflow-hidden")!;
+    expect(media.className).toContain("aspect-[16/9]");
+    expect(media.className).toContain("md:aspect-[4/3]");
+  });
+
   it("says a person's profile is a profile, not a business", async () => {
     renderRow(provider({ type: "individual" }));
     await screen.findByRole("link", { name: /Estúdio Mavalane/ });

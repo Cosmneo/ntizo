@@ -23,22 +23,29 @@ import { BrandImage } from "@/shared/components/brand-image";
 export const TILE_TITLE_LINK_CLASS =
   "after:absolute after:inset-0 after:rounded-[var(--radius-card)] focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-[var(--color-headline)] focus-visible:after:ring-offset-2";
 
-/** The photograph, or the brand tile when there is none. */
+/**
+ * The photograph, or the brand tile when there is none.
+ *
+ * Square on a phone, four-by-three from `sm` up, because the tile itself
+ * changes shape there: below `sm` it is a 116px-square photo with the words
+ * beside it, and above it the photo is the top of a tile with the words under
+ * it. One responsive box rather than a `ratio` prop — the prop existed, no
+ * caller ever passed anything but the default, and the shape is a property of
+ * the width rather than of the caller.
+ */
 export function TileMedia({
   src,
   name,
-  ratio = "4/3",
 }: {
   src: string | null;
   /** Whose listing this is — the brand tile prints its initials. */
   name: string;
-  ratio?: "4/3" | "1/1";
 }) {
   return (
     <div
       className={cn(
-        "relative overflow-hidden rounded-[var(--radius-card)] bg-[var(--color-navy-surface)]",
-        ratio === "4/3" ? "aspect-[4/3]" : "aspect-square",
+        "relative aspect-square overflow-hidden rounded-[12px] bg-[var(--color-navy-surface)]",
+        "sm:aspect-[4/3] sm:rounded-[var(--radius-card)]",
       )}
     >
       {/* `alt=""` gives the `<img>` the implicit `presentation` role: the name
@@ -95,6 +102,13 @@ export function RatingMark({
  * space between tiles is the grid's. The design this replaces put every result
  * in a bordered box on a tinted ground, which is the shape of a template rather
  * than of a catalogue.
+ *
+ * **Two shapes, one component.** Below `sm` it is a hairline row — a 116px
+ * square photo with the words beside it, four to a screen — and from `sm` up
+ * it is the tile the desktop grid lays out, photo above and words below. A
+ * phone showing one result per screen is the failure the whole redesign is
+ * for. The hairline itself is the list's, not the row's: `divide-y` on the
+ * `<ul>` draws between children, so the first row needs no special case.
  */
 export function ResultTile({
   media,
@@ -110,7 +124,7 @@ export function ResultTile({
   price: ReactNode;
 }) {
   return (
-    <article className="group relative">
+    <article className="group relative grid grid-cols-[116px_minmax(0,1fr)] gap-3.5 py-3.5 sm:block sm:py-0">
       {media}
       <div className="grid gap-[3px] pt-2.5">
         {title}

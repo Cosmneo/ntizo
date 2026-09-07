@@ -246,11 +246,18 @@ export function ServicesBrowsePage() {
           )
         ) : (
           <>
-            {/* Four across at `lg`, one below `sm`. The row gap is larger than
+            {/* Four across at `lg`, two at `sm`. The row gap is larger than
                 the column gap on purpose: the tiles carry no border, so what
                 separates one row from the next is the space itself, and equal
-                gaps read as a grid of unrelated things rather than as rows. */}
-            <ul className="grid list-none grid-cols-1 gap-x-6 gap-y-8 p-0 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+                gaps read as a grid of unrelated things rather than as rows.
+
+                Below `sm` the tiles become hairline rows, so the separation
+                changes with them: no gap at all, and a `divide-y` hairline
+                between the list's own children. `divide-y` draws between
+                children and not above the first, which is exactly the rule
+                the mockup's `.m-row:first-child{border-top:0}` states — so
+                unlike `/providers`, no row has to be told it is first. */}
+            <ul className="grid list-none grid-cols-1 gap-0 divide-y divide-[var(--color-border)] p-0 sm:grid-cols-2 sm:gap-x-6 sm:gap-y-8 sm:divide-y-0 md:grid-cols-3 lg:grid-cols-4">
               {page.items.map((service) => (
                 <li key={service.id}>
                   <ServiceTile service={service} locale={locale} />

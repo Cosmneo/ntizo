@@ -49,7 +49,10 @@ export function ProviderRow({
     <ResultRow
       first={first}
       media={
-        <div className="relative aspect-[4/3] overflow-hidden rounded-[var(--radius-card)] bg-[var(--color-navy-surface)]">
+        // Sixteen-by-nine on a phone, where the photograph is the full width
+        // of a stacked card and a 4:3 crop of it took a third of the screen;
+        // four-by-three from `md`, where it is the row's first column.
+        <div className="relative aspect-[16/9] overflow-hidden rounded-[14px] bg-[var(--color-navy-surface)] md:aspect-[4/3] md:rounded-[var(--radius-card)]">
           {/* `BrandImage` swaps in the navy `BrandTile` both when there is no
               photograph and when the one given 404s — a photo that fails to
               load is the same "no photo is a designed state" as one that was
@@ -102,14 +105,27 @@ export function ProviderRow({
       }
       description={
         provider.description ? (
-          <p className="line-clamp-2 max-w-[60ch] text-[14.5px] leading-relaxed">
+          // Not on a phone. Two lines of a business's own blurb is the first
+          // thing to go when the card has to fit more than one to a screen:
+          // the name, the kind, what it sells and what it costs are all facts
+          // a reader compares rows on, and the blurb is not.
+          //
+          // `md:line-clamp-2` is what puts it back, without an `md:block`
+          // beside it: the clamp *is* a display (`-webkit-box`), and a
+          // `display: block` generated after it in the same media query would
+          // leave the paragraph unclamped at every width above `md`.
+          <p className="hidden max-w-[60ch] text-[14.5px] leading-relaxed md:line-clamp-2">
             {provider.description}
           </p>
         ) : null
       }
       services={
         provider.services.length > 0 || rest > 0 ? (
-          <ul className="mt-2 flex list-none flex-wrap gap-1.5 p-0">
+          /* One line on a phone, wrapping from `md`. Three chips and a "+n"
+             wrap to three rows in 358px and the card stops being a card; the
+             mask says the row ends mid-chip on purpose, the same way the
+             category strip and the quick chips already do. */
+          <ul className="mt-2 flex list-none flex-nowrap gap-1.5 overflow-hidden p-0 [mask-image:linear-gradient(90deg,#000_0,#000_calc(100%-56px),transparent_100%)] md:flex-wrap md:overflow-visible md:[mask-image:none]">
             {provider.services.map((s) => (
               <ServiceChip
                 key={`${s.name}-${String(s.amountMinor)}`}
@@ -141,7 +157,12 @@ export function ProviderRow({
         ) : null
       }
       side={
-        <div className="grid content-between justify-items-end pt-1 text-right">
+        /* A column at the right of the row from `md`; one baseline line below
+           it — "4,7 · desde 450 MZN · 2 serviços" reading left to right under
+           the chips, as the mockup's `.from{grid-auto-flow:column}` draws it.
+           Stacked as a third block on a phone it took a third of the card to
+           say three short things. */
+        <div className="flex flex-wrap items-baseline gap-x-2 md:grid md:content-between md:justify-items-end md:pt-1 md:text-right">
           {provider.ratingAverage === null ? (
             <span className="text-[13px] text-[var(--color-muted-foreground)]">{t("ratingNew")}</span>
           ) : (
@@ -154,26 +175,35 @@ export function ProviderRow({
               })}
             />
           )}
-          <div>
+          {/* `contents` below `md`: the price, the count and the rating are
+              one baseline line there, and a wrapper in the middle of them
+              would make the whole block a single flex item that cannot align
+              with the rating beside it. From `md` it is a block again, which
+              is what puts the chevron under the price rather than after it. */}
+          <div className="contents md:block">
             {provider.fromAmountMinor !== null && provider.fromCurrency !== null && (
-              <p className="grid justify-items-end">
+              <p className="flex flex-wrap items-baseline gap-x-2 md:grid md:justify-items-end">
                 <small className="text-[12.5px] text-[var(--color-muted-foreground)]">
                   {t("priceFromPrefix")}
                 </small>
                 <b className="text-[20px] font-bold leading-tight text-[var(--color-headline)] tabular-nums">
                   {formatHeadlinePrice(provider.fromAmountMinor, provider.fromCurrency, locale)}
                 </b>
-                <span className="mt-0.5 text-[12.5px] text-[var(--color-muted-foreground)]">
+                <span className="text-[12.5px] text-[var(--color-muted-foreground)] md:mt-0.5">
                   {t("providerServiceCount", { count: provider.serviceCount })}
                 </span>
               </p>
             )}
             {/* Decoration of the row's own link, not a second tab stop: the
                 whole row already goes there, and a chevron a keyboard reader
-                has to step past adds a stop that goes nowhere new. */}
+                has to step past adds a stop that goes nowhere new.
+
+                Not drawn at all on a phone, where the whole card is the tap
+                target and a 34px circle pointing at it is a hint nobody
+                needs. */}
             <span
               aria-hidden="true"
-              className="mt-2.5 grid h-[34px] w-[34px] place-items-center rounded-full border border-[var(--color-border-strong)] text-[var(--color-headline)]"
+              className="mt-2.5 hidden h-[34px] w-[34px] place-items-center rounded-full border border-[var(--color-border-strong)] text-[var(--color-headline)] md:grid"
             >
               <ChevronRight className="h-[15px] w-[15px]" />
             </span>
