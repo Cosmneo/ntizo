@@ -4,8 +4,9 @@ import { cn } from "@ntizo/frontend-ui";
 /**
  * One option row.
  *
- * A class rather than a component, for the same reason `LISTING_TITLE_LINK_CLASS`
- * is: the row is a route-typed `<Link>` owned by its page.
+ * A class rather than a component, for the same reason `TILE_TITLE_LINK_CLASS`
+ * is one: the row is a route-typed `<Link>` owned by its page, and only the
+ * page knows the route and the search it goes to.
  *
  * The row stays a link and carries `aria-pressed`, so it announces as a toggle
  * button in a pressed or unpressed state. It is deliberately NOT given a

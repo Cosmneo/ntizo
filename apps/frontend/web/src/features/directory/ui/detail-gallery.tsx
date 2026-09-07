@@ -112,11 +112,12 @@ export function DetailGallery({
         <DialogContent className="flex max-h-[88svh] w-full max-w-3xl flex-col overflow-hidden rounded-[var(--radius-card)] p-0">
           {/*
            * `Dialog`/`DialogContent` draw a fixed backdrop and a panel and
-           * nothing else — no role, no name, no focus trap — the same bare
-           * primitive `mobile-search-sheet.tsx` documents for `Sheet`. The
-           * `role="dialog"` and `aria-labelledby` below are supplied here for
-           * the same reason they are there: without them a screen reader is
-           * handed a floating panel with no boundary and no name.
+           * nothing else — no role, no name, no focus trap. (The kit's `Sheet`
+           * was the same until follow-up #78 gave `SheetContent` all three;
+           * `Dialog` has not had that pass.) The `role="dialog"` and
+           * `aria-labelledby` below are supplied here because without them a
+           * screen reader is handed a floating panel with no boundary and no
+           * name.
            */}
           <div role="dialog" aria-labelledby={titleId} className="flex min-h-0 flex-1 flex-col">
             <div className="flex items-center justify-between gap-3 px-5 pt-5 pb-4">

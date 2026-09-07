@@ -3,12 +3,13 @@ import type { ReactNode } from "react";
 /**
  * A row of one-tap narrowings, above the results on a phone.
  *
- * A `<ul>`, so it announces as a list and can be skipped — the same choice
- * `ActiveFilterChips` makes. Unlike that list, there is no second exported
- * item component: the children are the page's own route-typed `<Link>`s, each
- * carrying `quickChipClass`, and this row does nothing but lay them out and
- * let them scroll sideways instead of wrapping onto a second row and pushing
- * the first result down by a different amount at every screen width.
+ * A `<ul>`, so it announces as a list and can be skipped past — a reader who
+ * does not want to narrow anything should not have to hear five links to find
+ * the results. There is no exported item component to go with it: the children
+ * are the page's own route-typed `<Link>`s, each carrying `quickChipClass`,
+ * and this row does nothing but lay them out and let them scroll sideways
+ * instead of wrapping onto a second row and pushing the first result down by a
+ * different amount at every screen width.
  *
  * The fade at the right edge does the same job `CategoryStrip`'s does — the
  * row reads as a scroll container that ends mid-item on purpose, not as a

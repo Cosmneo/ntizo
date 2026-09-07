@@ -75,10 +75,10 @@ function renderTile(dto: ServiceDTO, locale = "en-US") {
 }
 
 describe("ServiceTile", () => {
-  // Every test awaits `findByRole("listitem")` first, the same settle point
-  // `service-listing-card.test.tsx` uses: `RouterProvider` resolves its route
-  // asynchronously even with no loader, so a bare synchronous `render` leaves
-  // the container empty and every query beneath it fails.
+  // Every test awaits `findByRole("listitem")` first: `RouterProvider`
+  // resolves its route asynchronously even with no loader, so a bare
+  // synchronous `render` leaves the container empty and every query beneath
+  // it fails.
   it("prints the price in full and the duration beside it", async () => {
     renderTile(service());
     await screen.findByRole("listitem");

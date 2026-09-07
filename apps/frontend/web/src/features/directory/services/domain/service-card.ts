@@ -81,12 +81,13 @@ export function formatAmount(
  * Any amount in minor units, as a headline price rather than a total.
  *
  * Whole units only, `useGrouping: "always"`: a rail's headline and a service
- * row's price cell are the same kind of number the browse cards already
- * print — `ProviderListingCard` and `ServiceListingCard` each carry their own
- * private `formatPrice` twin of this, with the same shape, for the same
- * reason recorded on both: two cards in the same product disagreeing about
- * whether this platform writes "800 MZN" or "800,00 MZN" is worse than either
- * choice, and the approved mockup writes whole units. `useGrouping: "always"`
+ * row's price cell are the same kind of number every result on the browse
+ * pages prints. The two listing cards this replaced each carried their own
+ * private `formatPrice` twin of this, with the same shape, for the reason
+ * recorded on both: two surfaces in the same product disagreeing about whether
+ * this platform writes "800 MZN" or "800,00 MZN" is worse than either choice,
+ * and the approved mockup writes whole units. One function now, which is what
+ * made deleting those two safe. `useGrouping: "always"`
  * exists because `pt-MZ` and `pt-PT` set `minimumGroupingDigits: 2`, which
  * would otherwise leave a four-digit price ungrouped — "1200 MZN" against the
  * mockup's "1 200 MZN".
