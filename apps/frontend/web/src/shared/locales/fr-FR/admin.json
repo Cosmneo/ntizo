@@ -77,7 +77,6 @@
     "archived": "Archivé"
   },
   "providersFilterTitle": "Filtrer les prestataires",
-  "providersClearFilters": "Effacer les filtres",
   "usersTitle": "Utilisateurs",
   "usersSubtitle": "Toutes les personnes sur la plateforme.",
   "usersSearchPlaceholder": "Rechercher par nom, e-mail ou téléphone",
@@ -91,7 +90,6 @@
   "usersNoMatches": "Aucun utilisateur ne correspond.",
   "usersError": "Impossible de charger la liste des utilisateurs.",
   "usersFilterTitle": "Filtrer les utilisateurs",
-  "usersClearFilters": "Effacer les filtres",
   "userRole": {
     "customer": "Client",
     "individual_provider": "Prestataire individuel",
@@ -265,6 +263,9 @@
   "reviewsOnHome": "Sur l'accueil",
   "reviewsPutOnHome": "Afficher sur l'accueil",
   "reviewsOnHomeFilter": "Sur l'accueil",
+  "reviewsFilterTitle": "Filtrer les avis",
+  "reviewsFilterHome": "Accueil",
+  "reviewsAllReviews": "Tous les avis",
   "reviewsFeaturedCount": "{{count}} avis sur {{max}} affichés sur l'accueil",
   "reviewsFeatureFull": "L'accueil affiche déjà {{max}} avis — retirez-en un d'abord",
   "reviewsCannotFeatureNoComment": "Un avis sans texte n'a rien à montrer",

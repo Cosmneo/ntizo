@@ -77,7 +77,6 @@
     "archived": "Arquivado"
   },
   "providersFilterTitle": "Filtrar prestadores",
-  "providersClearFilters": "Limpar filtros",
   "usersTitle": "Utilizadores",
   "usersSubtitle": "Todas as pessoas na plataforma.",
   "usersSearchPlaceholder": "Procurar por nome, email ou telefone",
@@ -91,7 +90,6 @@
   "usersNoMatches": "Nenhum utilizador corresponde a isso.",
   "usersError": "Não foi possível carregar a lista de utilizadores.",
   "usersFilterTitle": "Filtrar utilizadores",
-  "usersClearFilters": "Limpar filtros",
   "userRole": {
     "customer": "Cliente",
     "individual_provider": "Prestador individual",
@@ -265,6 +263,9 @@
   "reviewsOnHome": "Na página inicial",
   "reviewsPutOnHome": "Mostrar na inicial",
   "reviewsOnHomeFilter": "Na página inicial",
+  "reviewsFilterTitle": "Filtrar avaliações",
+  "reviewsFilterHome": "Página inicial",
+  "reviewsAllReviews": "Todas as avaliações",
   "reviewsFeaturedCount": "{{count}} de {{max}} avaliações na página inicial",
   "reviewsFeatureFull": "A página inicial já mostra {{max}} avaliações — retire uma primeiro",
   "reviewsCannotFeatureNoComment": "Uma avaliação sem texto não tem nada para mostrar",

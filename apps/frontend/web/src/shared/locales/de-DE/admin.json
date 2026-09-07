@@ -77,7 +77,6 @@
     "archived": "Archiviert"
   },
   "providersFilterTitle": "Anbieter filtern",
-  "providersClearFilters": "Filter zurücksetzen",
   "usersTitle": "Benutzer",
   "usersSubtitle": "Alle Personen auf der Plattform.",
   "usersSearchPlaceholder": "Nach Name, E-Mail oder Telefon suchen",
@@ -91,7 +90,6 @@
   "usersNoMatches": "Keine Benutzer stimmen damit überein.",
   "usersError": "Die Benutzerliste konnte nicht geladen werden.",
   "usersFilterTitle": "Benutzer filtern",
-  "usersClearFilters": "Filter zurücksetzen",
   "userRole": {
     "customer": "Kunde",
     "individual_provider": "Einzelanbieter",
@@ -265,6 +263,9 @@
   "reviewsOnHome": "Auf der Startseite",
   "reviewsPutOnHome": "Auf Startseite zeigen",
   "reviewsOnHomeFilter": "Auf der Startseite",
+  "reviewsFilterTitle": "Bewertungen filtern",
+  "reviewsFilterHome": "Startseite",
+  "reviewsAllReviews": "Alle Bewertungen",
   "reviewsFeaturedCount": "{{count}} von {{max}} Bewertungen auf der Startseite",
   "reviewsFeatureFull": "Die Startseite zeigt bereits {{max}} Bewertungen — nimm zuerst eine weg",
   "reviewsCannotFeatureNoComment": "Eine Bewertung ohne Text hat nichts zu zeigen",

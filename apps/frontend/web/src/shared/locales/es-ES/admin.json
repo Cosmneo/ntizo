@@ -77,7 +77,6 @@
     "archived": "Archivado"
   },
   "providersFilterTitle": "Filtrar proveedores",
-  "providersClearFilters": "Limpiar filtros",
   "usersTitle": "Usuarios",
   "usersSubtitle": "Todas las personas de la plataforma.",
   "usersSearchPlaceholder": "Buscar por nombre, correo o teléfono",
@@ -91,7 +90,6 @@
   "usersNoMatches": "Ningún usuario coincide con eso.",
   "usersError": "No se pudo cargar la lista de usuarios.",
   "usersFilterTitle": "Filtrar usuarios",
-  "usersClearFilters": "Borrar filtros",
   "userRole": {
     "customer": "Cliente",
     "individual_provider": "Proveedor individual",
@@ -265,6 +263,9 @@
   "reviewsOnHome": "En la portada",
   "reviewsPutOnHome": "Mostrar en portada",
   "reviewsOnHomeFilter": "En la portada",
+  "reviewsFilterTitle": "Filtrar reseñas",
+  "reviewsFilterHome": "Portada",
+  "reviewsAllReviews": "Todas las reseñas",
   "reviewsFeaturedCount": "{{count}} de {{max}} reseñas en la portada",
   "reviewsFeatureFull": "La portada ya muestra {{max}} reseñas — quita una primero",
   "reviewsCannotFeatureNoComment": "Una reseña sin texto no tiene nada que mostrar",

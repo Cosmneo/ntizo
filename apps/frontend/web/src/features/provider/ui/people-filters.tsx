@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
-import { X } from "lucide-react";
-import { Button, Select, Sheet, SheetContent } from "@ntizo/frontend-ui";
+import { Select } from "@ntizo/frontend-ui";
+import { FilterField, FilterSheet } from "@/shared/components/filter-sheet";
 import {
   EMPTY_FILTERS,
   type PeopleFilters,
@@ -9,16 +9,12 @@ import {
 import type { ProviderRole } from "../domain/types";
 
 /**
- * The filter panel, in a sheet on the right.
+ * The people list's filters, in the panel every list shares.
  *
  * A sheet rather than a popover under the button, following the reference. Two
  * pickers fit in a popover, but the panel is where a third and fourth will go —
  * date joined, invited-by — and a popover that grows into a form is a popover
  * that starts covering the table it filters.
- *
- * Filters apply as they change; there is no Apply button. The list is right
- * there and updates under the panel, so the result *is* the feedback — an Apply
- * step would only add a way to set a filter and not get it.
  */
 export function PeopleFilterSheet({
   open,
@@ -48,84 +44,44 @@ export function PeopleFilterSheet({
   ];
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="flex w-full max-w-sm flex-col">
-        <div className="flex items-start justify-between border-b border-[var(--color-border)] px-5 py-4">
-          <h2 className="type-h3 font-semibold">{t("peopleFilterTitle")}</h2>
-          <button
-            type="button"
-            onClick={() => onOpenChange(false)}
-            aria-label={t("close")}
-            className="grid h-8 w-8 place-items-center rounded-full text-[var(--color-muted-foreground)] hover:bg-[var(--color-muted)]"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
+    <FilterSheet
+      open={open}
+      onOpenChange={onOpenChange}
+      title={t("peopleFilterTitle")}
+      canClear={filters.role !== null || filters.status !== null}
+      // The search box is left where it is: it lives outside this panel.
+      onClear={() => onChange({ ...EMPTY_FILTERS, query: filters.query })}
+    >
+      <FilterField id="filter-role" label={t("peopleRole")}>
+        <Select
+          id="filter-role"
+          value={filters.role ?? ""}
+          onChange={(value) =>
+            onChange({
+              ...filters,
+              role: (value || null) as ProviderRole | null,
+            })
+          }
+          options={roleOptions}
+          ariaLabel={t("peopleRole")}
+        />
+      </FilterField>
 
-        <div className="grid flex-1 content-start gap-5 overflow-y-auto p-5">
-          <div className="grid gap-1.5">
-            <label
-              htmlFor="filter-role"
-              className="type-caption font-bold tracking-[0.14em] text-[var(--color-muted-foreground)] uppercase"
-            >
-              {t("peopleRole")}
-            </label>
-            <Select
-              id="filter-role"
-              value={filters.role ?? ""}
-              onChange={(value) =>
-                onChange({
-                  ...filters,
-                  role: (value || null) as ProviderRole | null,
-                })
-              }
-              options={roleOptions}
-              ariaLabel={t("peopleRole")}
-            />
-          </div>
-
-          <div className="grid gap-1.5">
-            <label
-              htmlFor="filter-status"
-              className="type-caption font-bold tracking-[0.14em] text-[var(--color-muted-foreground)] uppercase"
-            >
-              {t("peopleStatusLabel")}
-            </label>
-            <Select
-              id="filter-status"
-              value={filters.status ?? ""}
-              onChange={(value) =>
-                onChange({
-                  ...filters,
-                  status: (value || null) as PersonStatus | null,
-                })
-              }
-              options={statusOptions}
-              ariaLabel={t("peopleStatusLabel")}
-            />
-          </div>
-        </div>
-
-        <div className="flex items-center justify-between gap-3 border-t border-[var(--color-border)] px-5 py-4">
-          {/* Only offered when it would do something. A permanently-live
-              "clear" reads as a control that does nothing. The search box is
-              deliberately left alone — it lives outside this panel, in sight,
-              and clearing something the person cannot see from here is worse
-              than leaving it. */}
-          <Button
-            type="button"
-            variant="ghost"
-            disabled={filters.role === null && filters.status === null}
-            onClick={() => onChange({ ...EMPTY_FILTERS, query: filters.query })}
-          >
-            {t("peopleClearFilters")}
-          </Button>
-          <Button type="button" onClick={() => onOpenChange(false)}>
-            {t("close")}
-          </Button>
-        </div>
-      </SheetContent>
-    </Sheet>
+      <FilterField id="filter-status" label={t("peopleStatusLabel")}>
+        <Select
+          id="filter-status"
+          value={filters.status ?? ""}
+          onChange={(value) =>
+            onChange({
+              ...filters,
+              status: (value || null) as PersonStatus | null,
+            })
+          }
+          options={statusOptions}
+          ariaLabel={t("peopleStatusLabel")}
+        />
+      </FilterField>
+    </FilterSheet>
   );
 }
 

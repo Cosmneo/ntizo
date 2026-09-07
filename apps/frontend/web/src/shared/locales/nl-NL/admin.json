@@ -77,7 +77,6 @@
     "archived": "Gearchiveerd"
   },
   "providersFilterTitle": "Aanbieders filteren",
-  "providersClearFilters": "Filters wissen",
   "usersTitle": "Gebruikers",
   "usersSubtitle": "Iedereen op het platform.",
   "usersSearchPlaceholder": "Zoeken op naam, e-mail of telefoon",
@@ -91,7 +90,6 @@
   "usersNoMatches": "Geen gebruikers komen overeen.",
   "usersError": "Kan de gebruikerslijst niet laden.",
   "usersFilterTitle": "Gebruikers filteren",
-  "usersClearFilters": "Filters wissen",
   "userRole": {
     "customer": "Klant",
     "individual_provider": "Individuele aanbieder",
@@ -265,6 +263,9 @@
   "reviewsOnHome": "Op de homepage",
   "reviewsPutOnHome": "Op homepage tonen",
   "reviewsOnHomeFilter": "Op de homepage",
+  "reviewsFilterTitle": "Beoordelingen filteren",
+  "reviewsFilterHome": "Homepage",
+  "reviewsAllReviews": "Alle beoordelingen",
   "reviewsFeaturedCount": "{{count}} van {{max}} beoordelingen op de homepage",
   "reviewsFeatureFull": "De homepage toont al {{max}} beoordelingen — haal er eerst een af",
   "reviewsCannotFeatureNoComment": "Een beoordeling zonder tekst heeft niets te tonen",

@@ -77,7 +77,6 @@
     "archived": "Archived"
   },
   "providersFilterTitle": "Filter providers",
-  "providersClearFilters": "Clear filters",
   "usersTitle": "Users",
   "usersSubtitle": "Everyone on the platform.",
   "usersSearchPlaceholder": "Search by name, email or phone",
@@ -91,7 +90,6 @@
   "usersNoMatches": "No users match that.",
   "usersError": "Couldn't load the user list.",
   "usersFilterTitle": "Filter users",
-  "usersClearFilters": "Clear filters",
   "userRole": {
     "customer": "Customer",
     "individual_provider": "Individual provider",
@@ -265,6 +263,9 @@
   "reviewsOnHome": "On home page",
   "reviewsPutOnHome": "Show on home",
   "reviewsOnHomeFilter": "On the home page",
+  "reviewsFilterTitle": "Filter reviews",
+  "reviewsFilterHome": "Home page",
+  "reviewsAllReviews": "All reviews",
   "reviewsFeaturedCount": "{{count}} of {{max}} reviews on the home page",
   "reviewsFeatureFull": "The home page already shows {{max}} reviews — take one off first",
   "reviewsCannotFeatureNoComment": "A review with no words has nothing to show",
