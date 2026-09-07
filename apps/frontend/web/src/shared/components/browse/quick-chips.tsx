@@ -34,9 +34,18 @@ export function QuickChips({ label, children }: { label: string; children: React
  * Only the colour tokens move between the two states — never the padding or
  * the type size — so a chip going from off to on never resizes and shifts
  * every chip after it sideways, the same rule `categoryItemClass` follows.
+ *
+ * `whitespace-nowrap` is what actually keeps the row one row. `shrink-0` on
+ * this link is not enough on its own: the flex item is the `<li>` the page
+ * wraps around it, and a flex item's automatic minimum size is its
+ * min-content width — one word wide, with wrapping allowed. Measured on a
+ * 390px screen, every chip was 48px of `<li>` around a 57px two-line link
+ * ("Fixed / price", "At your / place"). Forbidding the wrap makes the
+ * min-content width the whole chip, so nothing can squeeze it.
  */
 export function quickChipClass(active: boolean): string {
-  const base = "shrink-0 rounded-full border px-3 py-2 text-[13px] font-medium";
+  const base =
+    "shrink-0 whitespace-nowrap rounded-full border px-3 py-2 text-[13px] font-medium";
   return active
     ? `${base} border-[var(--color-navy-surface)] bg-[var(--color-navy-surface)] text-[var(--color-navy-on)]`
     : `${base} border-[var(--color-border-strong)] text-[var(--color-foreground)]`;

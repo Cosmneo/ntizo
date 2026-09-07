@@ -35,4 +35,11 @@ describe("quickChipClass", () => {
     expect(on).not.toContain("font-semibold");
     expect(off).not.toContain("font-semibold");
   });
+
+  it("forbids the wrap that turned every chip into two lines on a phone", () => {
+    // Without this the `<li>` around the chip shrank to its min-content
+    // width — one word — and the label wrapped inside it.
+    expect(quickChipClass(true)).toContain("whitespace-nowrap");
+    expect(quickChipClass(false)).toContain("whitespace-nowrap");
+  });
 });

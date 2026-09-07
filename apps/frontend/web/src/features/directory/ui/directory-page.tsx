@@ -454,7 +454,9 @@ function QuickChip({
   label: string;
 }) {
   return (
-    <li>
+    /* `shrink-0` here as well as on the link: this `<li>` is the flex item
+       `QuickChips` lays out, and it is the one that was being squeezed. */
+    <li className="shrink-0">
       <Link
         to="/providers"
         activeOptions={EXACT_MATCH}
