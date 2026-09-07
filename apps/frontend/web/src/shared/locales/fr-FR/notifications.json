@@ -12,6 +12,12 @@
   "loadError": "Impossible de charger vos notifications.",
   "showingCount": "{{shown}} sur {{total}} affichés.",
   "loadMore": "Charger plus",
+  "markRead": "Marquer comme lue",
+  "openConversation": "Ouvrir la conversation",
+  "unreadOfTotal": "{{count}} non lue sur {{total}}",
+  "unreadOfTotal_other": "{{count}} non lues sur {{total}}",
+  "loading": "Chargement des notifications",
+  "markError": "Impossible de marquer comme lue. Réessayez.",
   "type": {
     "welcome": "Bienvenue sur Ntizo",
     "providerWorkspaceWelcome": "Votre espace de travail est prêt",

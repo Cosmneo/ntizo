@@ -12,6 +12,12 @@
   "loadError": "Could not load your notifications.",
   "showingCount": "Showing {{shown}} of {{total}}.",
   "loadMore": "Load more",
+  "markRead": "Mark as read",
+  "openConversation": "Open the conversation",
+  "unreadOfTotal": "{{count}} unread of {{total}}",
+  "unreadOfTotal_other": "{{count}} unread of {{total}}",
+  "loading": "Loading notifications",
+  "markError": "Could not mark as read. Try again.",
   "type": {
     "welcome": "Welcome to Ntizo",
     "providerWorkspaceWelcome": "Your workspace is set up",

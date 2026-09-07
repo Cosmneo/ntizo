@@ -9,5 +9,5 @@ import { NotificationsPage } from "@/features/notifications/ui/notifications-pag
  * document.
  */
 export const Route = createFileRoute("/_customer/account/notifications")({
-  component: () => <NotificationsPage scope={{ kind: "mine" }} />,
+  component: () => <NotificationsPage scope={{ kind: "mine" }} zone={{ kind: "customer" }} />,
 });

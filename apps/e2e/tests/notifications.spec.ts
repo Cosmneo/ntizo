@@ -62,20 +62,27 @@ test("marking it read clears the badge", async ({ page }) => {
   // Matching on this row's own accessible name sidesteps the ambiguity
   // instead of guessing an index into a list shared with unrelated UI.
   const row = page.getByRole("button", { name: /welcome to ntizo/i });
+  // The row's own list item, which is where the unread state now lives: an
+  // unread row carries its own "Mark as read" control beside the sentence,
+  // and a read row does not. That control is the marker, not a class — a
+  // class name is what the 2026-09-07 refresh changed, and this assertion
+  // survived the change only because it is about what the reader can do.
+  const item = row.locator("xpath=ancestor::li[1]");
+  const markRead = item.getByRole("button", { name: /mark as read/i });
 
   // Asserted present before the click, not just absent after: a negative
   // assertion with nothing to negate is true from first render, and would
-  // keep passing forever — proving nothing — if the unread styling ever
-  // moved to a different class or a `data-read` attribute. `useMarkRead`
-  // does no optimistic update, so this row is the only end-to-end proof the
-  // server state actually changed.
-  await expect(row).toHaveClass(/border-\[var\(--color-primary\)\]/);
+  // keep passing forever — proving nothing. `useMarkRead` does no optimistic
+  // update, so this row is the only end-to-end proof the server state
+  // actually changed. `toHaveCount`, not `toBeVisible`: the control is
+  // hidden until the row is hovered, and its presence is the point.
+  await expect(markRead).toHaveCount(1);
 
   await row.click();
 
-  // The dot is gone from the row, which is the assertion that survives a
-  // refactor of the badge's polling interval.
-  await expect(row).not.toHaveClass(/border-\[var\(--color-primary\)\]/);
+  // The control is gone from the row, which is the assertion that survives
+  // a refactor of the badge's polling interval.
+  await expect(markRead).toHaveCount(0);
 });
 
 /**
