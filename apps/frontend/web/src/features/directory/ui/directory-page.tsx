@@ -1,10 +1,15 @@
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
-import { Compass, SearchX, Store, Tag, icons } from "lucide-react";
+import { SearchX, Store } from "lucide-react";
 import { EmptyCard } from "@/shared/components/empty-card";
 import { SiteHeader } from "@/shared/components/site-header";
 import { SearchPill } from "@/shared/components/browse/search-pill";
-import { CategoryStrip, categoryItemClass } from "@/shared/components/browse/category-strip";
+import {
+  CATEGORY_STRIP_LIMIT,
+  CategoryStrip,
+  categoryItemClass,
+  iconComponent,
+} from "@/shared/components/browse/category-strip";
 import { SortDropdown } from "@/shared/components/browse/sort-dropdown";
 import { QuickChips, quickChipClass } from "@/shared/components/browse/quick-chips";
 import { PAGER_EDGE_CLASS, Pager, pagerPageClass } from "@/shared/components/browse/pager";
@@ -30,6 +35,7 @@ import {
   type RatingThreshold,
 } from "@/features/directory/domain/directory-search";
 import { directoryTitle } from "@/features/directory/domain/directory-title";
+import { resultsScope } from "@/features/directory/domain/results-scope";
 
 /**
  * Every listed business on the platform.
@@ -336,14 +342,6 @@ export function DirectoryPage() {
 }
 
 /**
- * How many categories the strip offers.
- *
- * The same page size the category browse uses, so the two ask for one set and
- * share a cache entry rather than fetching overlapping halves.
- */
-const CATEGORY_STRIP_LIMIT = 24;
-
-/**
  * The threshold the phone's rating chip offers.
  *
  * One of `RATING_THRESHOLDS` rather than a number of its own: a quick filter
@@ -352,19 +350,6 @@ const CATEGORY_STRIP_LIMIT = 24;
  * come back on when the pill was used instead.
  */
 const QUICK_MIN_RATING: RatingThreshold = 4.5;
-
-/**
- * Which `resultsScope` clause the summary ends with.
- *
- * Derived from `directoryTitle`'s resolved values rather than from the raw
- * search, so the heading and the line under it can never disagree — the title
- * falls back to the plainer form while the category query is still in flight,
- * and this falls back with it instead of interpolating an empty name.
- */
-function resultsScope(values: { category?: string; city?: string }): string {
-  if (values.category) return values.city ? "categoryCity" : "category";
-  return values.city ? "city" : "all";
-}
 
 /**
  * The header's search, wired to this page's URL. `SearchPill` owns the fields,
@@ -468,18 +453,4 @@ function QuickChip({
       </Link>
     </li>
   );
-}
-
-/**
- * A Lucide name from the database, resolved to the component.
- *
- * Looked up rather than imported one by one: the set lives in a table an
- * administrator edits, so the code cannot know it at build time. An unknown or
- * missing name falls back to a tag rather than rendering nothing — a strip with
- * a hole in it reads as a broken row, not as a category without an icon.
- */
-function iconComponent(name: string | null, isAll: boolean) {
-  if (isAll) return Compass;
-  if (!name) return Tag;
-  return icons[name as keyof typeof icons] ?? Tag;
 }

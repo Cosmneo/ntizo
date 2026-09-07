@@ -1,10 +1,14 @@
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 import { SlidersHorizontal, X } from "lucide-react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import { LOCALES } from "@ntizo/shared";
-import { FilterBar, FilterPill } from "@/shared/components/browse/filter-pill";
-import { FilterSheet } from "@/shared/components/browse/filter-sheet";
+import {
+  FilterBar,
+  FilterPill,
+  PILL_CLEAR_CLASS,
+} from "@/shared/components/browse/filter-pill";
+import { FilterSheet, SheetGroup } from "@/shared/components/browse/filter-sheet";
 import {
   FloatingControls,
   floatingControlClass,
@@ -151,10 +155,6 @@ export function chooseServiceSort(
 function appliedCount(current: BrowseSearch): number {
   return browseFilterChips(current).filter((c) => c.key !== "q").length;
 }
-
-/** The small link that sits on a filled pill and takes just that filter off. */
-const PILL_CLEAR_CLASS =
-  "grid h-[18px] w-[18px] place-items-center rounded-full text-[var(--color-navy-on)] transition-colors hover:bg-white/20";
 
 function PillClear({ search, label }: { search: BrowseSearch; label: string }) {
   const { t } = useTranslation("directory");
@@ -431,37 +431,6 @@ export function MobileServiceFilters({
         )}
       </FilterSheet>
     </>
-  );
-}
-
-/**
- * One headed group inside the sheet.
- *
- * A heading and its rows, not a `<details>`: the pills collapse because six
- * open groups do not fit on a toolbar, and the sheet is a screen with room
- * for all of them. Making the reader open each one here would be one tap per
- * filter for nothing.
- */
-function SheetGroup({
-  label,
-  hint,
-  children,
-}: {
-  label: string;
-  /** A line under the heading, where the label alone would overclaim. */
-  hint?: string;
-  children: ReactNode;
-}) {
-  return (
-    <section className="border-t border-[var(--color-border)] py-4 first:border-t-0 first:pt-0">
-      <h3 className="text-xs font-semibold tracking-[0.05em] text-[var(--color-muted-foreground)] uppercase">
-        {label}
-      </h3>
-      {hint && (
-        <p className="type-caption mt-2 text-[var(--color-muted-foreground)]">{hint}</p>
-      )}
-      <div className="mt-3 grid">{children}</div>
-    </section>
   );
 }
 

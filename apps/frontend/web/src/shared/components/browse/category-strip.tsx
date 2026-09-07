@@ -1,9 +1,37 @@
 import { useRef, type ReactNode } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Compass, Tag, icons } from "lucide-react";
 import { cn } from "@ntizo/frontend-ui";
 
 /** How far one press of an arrow moves the strip. */
 const SCROLL_STEP = 320;
+
+/**
+ * How many categories the strip offers.
+ *
+ * The same page size the category browse uses, so the two ask for one set and
+ * share a cache entry rather than fetching overlapping halves.
+ *
+ * Here rather than in each page, where both carried the identical constant:
+ * it is a fact about this strip, not about either route.
+ */
+export const CATEGORY_STRIP_LIMIT = 24;
+
+/**
+ * A Lucide name from the database, resolved to the component.
+ *
+ * Looked up rather than imported one by one: the set lives in a table an
+ * administrator edits, so the code cannot know it at build time. An unknown or
+ * missing name falls back to a tag rather than rendering nothing — a strip with
+ * a hole in it reads as a broken row, not as a category without an icon.
+ *
+ * `isAll` is the strip's own leading item — "Everything", which is not a row
+ * in that table and has no icon name to look up.
+ */
+export function iconComponent(name: string | null, isAll: boolean) {
+  if (isAll) return Compass;
+  if (!name) return Tag;
+  return icons[name as keyof typeof icons] ?? Tag;
+}
 
 /**
  * The categories, as a band under the header — icon-over-label items with an

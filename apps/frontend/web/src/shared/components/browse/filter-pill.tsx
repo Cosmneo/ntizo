@@ -98,6 +98,18 @@ export function FilterPill({
 }
 
 /**
+ * The small link that sits on a filled pill and takes just that filter off.
+ *
+ * The pill's own styling — it is sized to the pill's `pr-9`, and it wears the
+ * navy fill's `--color-navy-on` because that is the ground it sits on — so it
+ * lives with the pill rather than with either page's copy of it. The `<Link>`
+ * itself stays the page's: only the page knows the route and the search it
+ * goes back to. See `FilterPill`'s `clear` for why it is outside the summary.
+ */
+export const PILL_CLEAR_CLASS =
+  "grid h-[18px] w-[18px] place-items-center rounded-full text-[var(--color-navy-on)] transition-colors hover:bg-white/20";
+
+/**
  * The row the pills sit in, above the results and under the heading.
  *
  * **The desktop's only.** A toolbar of six popovers does not fit a thumb: below
