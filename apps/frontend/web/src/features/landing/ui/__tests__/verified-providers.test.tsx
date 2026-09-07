@@ -96,9 +96,11 @@ describe("VerifiedProviders", () => {
   it("omits the price line for a business that publishes nothing priced", async () => {
     await renderProviders([provider({ fromAmountMinor: null, fromCurrency: null })]);
     await screen.findByText("Oficina do Zeca");
-    // Asserted on the currency, not on a "from" label: this card prints no
-    // such label, so a query for one passes whether or not a price rendered.
+    // Asserted on the currency and on the "from" word together: the card
+    // prints both or neither, so either one appearing alone would still be a
+    // bug a query for just the currency could miss.
     expect(screen.queryByText(/MZN/)).toBeNull();
+    expect(screen.queryByText("from")).toBeNull();
   });
 
   it("does not appear when nobody is verified yet", async () => {

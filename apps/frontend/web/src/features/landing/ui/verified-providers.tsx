@@ -21,6 +21,16 @@ export const LANDING_PROVIDERS = 3;
  * providers; services have their own section now, so this one can say what it
  * actually means. Both halves of its claim come off the row: a score customers
  * gave, and a verification an administrator performed.
+ *
+ * Drawn on the same bordered, photo-on-top card `PopularServiceCard`
+ * introduced for the section above — the client saw that shape live and
+ * asked for this one to match it exactly rather than keep its old borderless
+ * tile. The two cards fill the same four slots (an eyebrow, a title, a meta
+ * line, a bottom row) with different facts: where a service names its
+ * provider in the eyebrow and the service in the title, a provider names its
+ * trade and place in the eyebrow and the business itself in the title, with
+ * the verification seal riding beside the name instead of beside a provider
+ * byline that no longer exists here.
  */
 export function VerifiedProviders() {
   const { t } = useTranslation("landing"); // t:VerifiedProviders
@@ -45,13 +55,23 @@ export function VerifiedProviders() {
         {isLoading
           ? Array.from({ length: LANDING_PROVIDERS }, (_, i) => (
               <li key={i}>
-                <Skeleton className="aspect-[16/10] w-full rounded-[var(--radius-card)]" />
-                <Skeleton className="mt-2.5 h-[18px] w-2/3" />
-                <Skeleton className="mt-1.5 h-[15px] w-1/2" />
+                {/* The same shape as the card it stands in for, down to the
+                    class values — see `PopularServices`' own skeleton, which
+                    this is copied from so neither loading row reflows when
+                    its real card replaces it. */}
+                <div className="overflow-hidden rounded-[var(--radius-card)] border border-[var(--color-border)]">
+                  <Skeleton className="aspect-[16/10] w-full rounded-none" />
+                  <div className="grid gap-2 p-4">
+                    <Skeleton className="h-[13px] w-1/3" />
+                    <Skeleton className="h-[17px] w-4/5" />
+                    <Skeleton className="mt-2 h-[15px] w-2/3" />
+                  </div>
+                </div>
               </li>
             ))
           : items.map((p) => {
               const where = [p.district, p.city].filter(Boolean).join(", ");
+              const trade = p.categories[0]?.name ?? null;
               const priced = p.fromAmountMinor !== null && p.fromCurrency !== null;
               // The background is the provider's own photograph only, never
               // the logo — `provider-row.tsx` gets this right and this card
@@ -61,8 +81,8 @@ export function VerifiedProviders() {
               const photo = p.photoUrls[0] ?? null;
               return (
                 <li key={p.id}>
-                  <article className="group relative">
-                    <div className="relative aspect-[16/10] overflow-hidden rounded-[var(--radius-card)] bg-[var(--color-navy-surface)]">
+                  <article className="group relative flex h-full flex-col overflow-hidden rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-card-foreground)]">
+                    <div className="relative aspect-[16/10] w-full overflow-hidden bg-[var(--color-muted)]">
                       <BrandImage
                         src={photo}
                         alt=""
@@ -95,8 +115,15 @@ export function VerifiedProviders() {
                         </span>
                       ) : null}
                     </div>
-                    <div className="grid gap-[3px] pt-2.5">
-                      <h3 className="flex items-center gap-1.5 text-base font-bold group-hover:underline group-hover:underline-offset-[3px]">
+                    <div className="flex flex-1 flex-col gap-1 p-4">
+                      {(trade || where) && (
+                        <p className="flex flex-wrap items-center gap-1 text-[12.5px] text-[var(--color-muted-foreground)]">
+                          {trade && <span className="whitespace-nowrap">{trade}</span>}
+                          {trade && where && <span aria-hidden="true">·</span>}
+                          {where && <span className="whitespace-nowrap">{where}</span>}
+                        </p>
+                      )}
+                      <h3 className="line-clamp-2 text-[15.5px] font-bold leading-snug text-[var(--color-foreground)] group-hover:underline group-hover:decoration-[1.5px] group-hover:underline-offset-[3px] group-focus-within:underline">
                         <Link
                           to="/providers/$slug"
                           params={{ slug: p.slug }}
@@ -105,51 +132,65 @@ export function VerifiedProviders() {
                           {p.name}
                         </Link>
                         {p.verified ? (
+                          // `inline-grid`, not the service card's own `grid`:
+                          // that badge sits inside a flex row, this one sits
+                          // inside a line-clamped heading's normal text flow,
+                          // where a block-level badge would force a line
+                          // break before the name. `align-middle` on an
+                          // inline badge beside running text is the same
+                          // trick `collection-card.tsx` already uses.
                           <span
-                            className="grid h-[15px] w-[15px] shrink-0 place-items-center rounded-full bg-[var(--color-navy-surface)]"
+                            className="ml-1.5 inline-grid h-[14px] w-[14px] shrink-0 place-items-center rounded-full bg-[var(--color-navy-surface)] align-middle"
                             aria-label={t("badgeVerified")}
                           >
-                            <Check className="h-2.5 w-2.5 text-[var(--color-navy-on)]" strokeWidth={3.4} aria-hidden="true" />
+                            <Check
+                              className="h-2.5 w-2.5 text-[var(--color-navy-on)]"
+                              strokeWidth={3.4}
+                              aria-hidden="true"
+                            />
                           </span>
                         ) : null}
                       </h3>
-                      <p className="flex items-center gap-1.5 text-[13.5px] text-[var(--color-muted-foreground)]">
-                        {p.categories[0]?.name}
-                        {where ? <span>· {where}</span> : null}
-                        {p.ratingAverage !== null ? (
-                          <span className="ml-auto">
-                            {/* The same shared mark the directory row prints,
-                                with the accessible label it carries and this
-                                markup was missing: the digits alone read as
-                                "4.8 (12)" to a screen reader, with no unit and
-                                no clue what the number in parentheses is. */}
-                            <RatingMark
-                              average={p.ratingAverage}
-                              count={p.reviewCount}
-                              locale={locale}
-                              label={td("providerRatingLabel", {
-                                score: formatRating(p.ratingAverage, locale),
-                                count: p.reviewCount,
-                              })}
-                            />
-                          </span>
-                        ) : (
-                          // The same word `ServiceTile` uses for the same
-                          // condition: a provider with no rating yet is "New"
-                          // in Popular services and should read the same way
-                          // here, ~600px away, rather than "No reviews yet".
-                          <span className="ml-auto shrink-0 text-[13px] text-[var(--color-muted-foreground)]">
+                      {p.serviceCount > 0 && (
+                        <p className="text-[13px] text-[var(--color-muted-foreground)]">
+                          {td("providerServiceCount", { count: p.serviceCount })}
+                        </p>
+                      )}
+                      <div className="mt-auto flex items-baseline justify-between gap-3 pt-2.5">
+                        {p.ratingAverage === null ? (
+                          // Not a zero: a provider nobody has reviewed yet is
+                          // new, the same rule the browse card follows for
+                          // the same reason.
+                          <span className="shrink-0 text-[13px] text-[var(--color-muted-foreground)]">
                             {td("ratingNew")}
                           </span>
+                        ) : (
+                          // The same shared mark the directory row prints,
+                          // with the accessible label it carries: the digits
+                          // alone read as "4.8 (12)" to a screen reader, with
+                          // no unit and no clue what the number in
+                          // parentheses is.
+                          <RatingMark
+                            average={p.ratingAverage}
+                            count={p.reviewCount}
+                            locale={locale}
+                            label={td("providerRatingLabel", {
+                              score: formatRating(p.ratingAverage, locale),
+                              count: p.reviewCount,
+                            })}
+                          />
                         )}
-                      </p>
-                      {priced ? (
-                        <p className="mt-0.5 text-[13.5px] text-[var(--color-muted-foreground)]">
-                          <b className="text-[15px] font-bold text-[var(--color-headline)]">
-                            {formatHeadlinePrice(p.fromAmountMinor!, p.fromCurrency!, locale)}
+                        {priced ? (
+                          <b className="text-right text-[15.5px] font-bold text-[var(--color-headline)]">
+                            <span className="mr-[3px] text-[12.5px] font-medium text-[var(--color-muted-foreground)]">
+                              {td("priceFromPrefix")}
+                            </span>
+                            <span className="tabular-nums">
+                              {formatHeadlinePrice(p.fromAmountMinor!, p.fromCurrency!, locale)}
+                            </span>
                           </b>
-                        </p>
-                      ) : null}
+                        ) : null}
+                      </div>
                     </div>
                   </article>
                 </li>
