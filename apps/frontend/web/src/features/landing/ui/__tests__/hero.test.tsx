@@ -111,4 +111,27 @@ describe("Hero", () => {
     // Never a bare `grid`, which would beat `hidden` and draw it anyway.
     expect(collage.className.split(/\s+/)).not.toContain("grid");
   });
+
+  /**
+   * The hole the collage left behind.
+   *
+   * Every section on this page is separated from the one above it by the
+   * 56px of its own `pt-14` and nothing else — except this one, which also
+   * carried `pb-14`. On a wide screen that balances the collage sitting
+   * beside the text; on a phone, with the collage gone, it stacked on the
+   * next section's `pt-14` and put 112px of white between "Pagamento por
+   * M-Pesa" and "Explorar por categoria". Measured at 390px on the deployed
+   * page before this changed: the trust list ended at y=543 and the heading
+   * began at y=655.
+   *
+   * So the padding is `lg:` only, and the phone falls back to the same
+   * rhythm as every other junction on the page.
+   */
+  it("does not stack its own bottom padding on the next section's, on a phone", async () => {
+    await renderHero();
+    const section = document.querySelector("section")!;
+
+    expect(section.className).toContain("lg:pb-14");
+    expect(section.className.split(/\s+/)).not.toContain("pb-14");
+  });
 });

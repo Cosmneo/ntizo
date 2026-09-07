@@ -116,18 +116,19 @@ export function Footer() {
               </SocialIcon>
             </div>
           </div>
-          <div style={{ textAlign: "right" }}>
+          {/* The alignment is a breakpoint's business, so it is in classes
+              rather than in the inline styles the rest of this file leans on.
+              The strip is a row from `sm` up, socials at one end and payments
+              at the other, so the block right-aligns to meet the edge. Below
+              `sm` the strip stacks `items-start` and the inline
+              `text-align: right` no breakpoint could reach was still firing:
+              the label sat left and the chip was pushed to the far side of
+              it, which is what a reader sees as a chip belonging to nothing. */}
+          <div className="text-left sm:text-right">
             <div style={{ fontSize: 13, color: MUTED, marginBottom: 12 }}>
               {t("footer.acceptedPayments")}
             </div>
-            <div
-              style={{
-                display: "flex",
-                gap: 10,
-                justifyContent: "flex-end",
-                flexWrap: "wrap",
-              }}
-            >
+            <div className="flex flex-wrap justify-start gap-2.5 sm:justify-end">
               {/* One chip, because one method charges. e-Mola, Visa and
                   Mastercard stood here until 2026-09-02, advertising methods
                   the checkout refuses — see the FAQ's "que métodos aceitam".
