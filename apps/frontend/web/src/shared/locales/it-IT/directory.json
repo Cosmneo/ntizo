@@ -89,6 +89,7 @@
   "saveToListTitle": "Salva in una lista",
   "saveToListSavedIn": "Salvato in {{name}}",
   "saveToListHowToUnsave": "Deseleziona tutte le liste per non salvarlo più",
+  "saveToListListsError": "Non siamo riusciti a controllare in quali liste si trova al momento.",
   "saveToListUnsaved": "Non è più salvato.",
   "saveToListSaveAgain": "Seleziona una lista per salvarlo di nuovo.",
   "saveToListSearch": "Trova una lista…",

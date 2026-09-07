@@ -89,6 +89,7 @@
   "saveToListTitle": "Guardar en una lista",
   "saveToListSavedIn": "Guardado en {{name}}",
   "saveToListHowToUnsave": "Desmarca todas las listas para dejar de guardarlo",
+  "saveToListListsError": "No hemos podido comprobar en qué listas está ahora mismo.",
   "saveToListUnsaved": "Ya no está guardado.",
   "saveToListSaveAgain": "Marca una lista para guardarlo de nuevo.",
   "saveToListSearch": "Buscar una lista…",

@@ -8,7 +8,7 @@ import {
   createRoute,
   createRouter,
 } from "@tanstack/react-router";
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type { FavouriteList } from "@/features/favourites/domain/types";
 import * as client from "@/shared/lib/graphql/session-graphql";
 import { SaveToListDialog } from "../save-to-list-dialog";
@@ -78,16 +78,38 @@ const LISTING = {
  * already answered one — and a mocked hook asserting it was called is a test
  * of the mock.
  */
-function installFakeServer(options: { lists?: FavouriteList[]; listsFor?: string[] } = {}) {
+function installFakeServer(
+  options: {
+    lists?: FavouriteList[];
+    listsFor?: string[];
+    /**
+     * Holds `favouriteListsFor` open until the test releases it — the window
+     * in which the dialog knows the listing is saved but not where. It is the
+     * ordinary case on a filled-heart press, since the lists are cached and
+     * this question never is.
+     */
+    hold?: { release: () => void };
+    /** Refuses `favouriteListsFor`, so the membership never arrives at all. */
+    refuseListsFor?: boolean;
+  } = {},
+) {
   const lists = [...(options.lists ?? THREE_LISTS)];
   let membership = options.listsFor ?? [];
+
+  const held = new Promise<void>((resolve) => {
+    if (options.hold) options.hold.release = resolve;
+  });
 
   return vi.spyOn(client, "sessionGraphql").mockImplementation(async (query, variables) => {
     const text = String(query);
     const input = (variables?.input ?? {}) as { listIds?: string[]; name?: string };
 
     if (text.includes("favouriteListMine")) return { favouriteListMine: lists } as never;
-    if (text.includes("favouriteListsFor")) return { favouriteListsFor: membership } as never;
+    if (text.includes("favouriteListsFor")) {
+      if (options.refuseListsFor) throw new Error("UNAUTHENTICATED");
+      if (options.hold) await held;
+      return { favouriteListsFor: membership } as never;
+    }
     if (text.includes("favouriteSetLists")) {
       membership = input.listIds ?? [];
       return { favouriteSetLists: { listIds: membership } } as never;
@@ -407,6 +429,85 @@ describe("SaveToListDialog", () => {
     expect(tickBox(/Favourites/)).not.toBeChecked();
   });
 
+  describe("while nobody yet knows which lists hold it", () => {
+    it("never writes a membership built out of the answer it is waiting for", async () => {
+      // The failure this window causes if `undefined` is read as `[]`: a tick
+      // sends `setLists(target, [thatOne])` and silently drops every other
+      // list the listing was in. Nothing may be written until the answer is
+      // in hand, and then the write carries the lot.
+      const hold = { release: () => {} };
+      const spy = installFakeServer({ listsFor: ["l-casa"], hold });
+      renderDialog();
+
+      const casa = await screen.findByRole("checkbox", { name: /Casa nova/ });
+      expect(casa).toBeDisabled();
+      fireEvent.click(casa);
+      fireEvent.click(screen.getByRole("checkbox", { name: /Urgente/ }));
+      await settle();
+      expect(savedMemberships(spy)).toHaveLength(0);
+
+      hold.release();
+      await waitFor(() => expect(tickBox(/Casa nova/)).toBeChecked());
+
+      fireEvent.click(tickBox(/Urgente/));
+      await waitFor(() => expect(savedMemberships(spy)).toHaveLength(1));
+      expect(savedMemberships(spy)[0]).toEqual(["l-casa", "l-urgente"]);
+    });
+
+    it("does not tell a saved listing it is no longer saved", async () => {
+      // Every row is unticked in this window because the answer has not
+      // arrived — not because the listing is in no list. The footer's
+      // sentence and the header's grey line are both claims this dialog
+      // cannot make yet.
+      const hold = { release: () => {} };
+      installFakeServer({ listsFor: ["l-casa"], hold });
+      renderDialog();
+
+      await screen.findByRole("checkbox", { name: /Casa nova/ });
+      expect(screen.queryByText(/no longer saved/i)).not.toBeInTheDocument();
+      expect(screen.queryByText("Untick every list to stop saving it")).not.toBeInTheDocument();
+      // What it does say is the one thing the filled heart already proved.
+      // Scoped to the dialog: the harness's own heart is labelled "Saved".
+      expect(within(screen.getByRole("dialog")).getByText("Saved")).toBeInTheDocument();
+
+      hold.release();
+      await waitFor(() => expect(screen.getByText("Saved in Casa nova")).toBeInTheDocument());
+    });
+
+    it("offers no new list either, since it would be filed into the same empty guess", async () => {
+      const hold = { release: () => {} };
+      installFakeServer({ listsFor: ["l-casa"], hold });
+      renderDialog();
+
+      await screen.findByRole("checkbox", { name: /Casa nova/ });
+      expect(screen.getByRole("button", { name: "Create new list" })).toBeDisabled();
+
+      hold.release();
+      await waitFor(() =>
+        expect(screen.getByRole("button", { name: "Create new list" })).toBeEnabled(),
+      );
+    });
+
+    it("says so, and stays inert, when the question is refused outright", async () => {
+      // A refused query never resolves into a membership, so the window is
+      // permanent. Saying nothing would leave a dialog whose boxes cannot be
+      // pressed and whose reader is told nothing about why.
+      const spy = installFakeServer({ refuseListsFor: true });
+      renderDialog();
+
+      expect(
+        await screen.findByText("We couldn't check which lists this is in right now."),
+      ).toBeInTheDocument();
+      fireEvent.click(tickBox(/Casa nova/));
+      await settle();
+
+      expect(savedMemberships(spy)).toHaveLength(0);
+      expect(screen.queryByText(/no longer saved/i)).not.toBeInTheDocument();
+      // Done still closes it — the reader is not trapped by a failed question.
+      expect(screen.getByRole("button", { name: "Done" })).toBeEnabled();
+    });
+  });
+
   it("closes on Escape and returns focus to the heart", async () => {
     // Standard dialog behaviour, and the heart is where the reader was: a
     // dialog that leaves focus behind it drops a keyboard reader at the top
@@ -430,7 +531,7 @@ describe("SaveToListDialog", () => {
     // back out to the heart makes that claim false. Shift+Tab off the first
     // control is the direction that leaves, so it is the one asserted.
     installFakeServer();
-    renderDialog({ startOpen: false });
+    renderDialog({ savedListIds: ["l-default"], startOpen: false });
 
     fireEvent.click(await screen.findByRole("button", { name: "Saved" }));
     const dialog = await screen.findByRole("dialog");

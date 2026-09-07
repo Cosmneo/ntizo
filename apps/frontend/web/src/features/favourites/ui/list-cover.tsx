@@ -60,9 +60,15 @@ export function ListCover({
     // of the same tint the unfilled cells show rather than by a border that
     // would only exist on some of the four edges.
     <span className={cn(box, "grid grid-cols-2 grid-rows-2 gap-px")}>
-      {urls.slice(0, FAVOURITE_COVER_TILES).map((url) => (
+      {urls.slice(0, FAVOURITE_COVER_TILES).map((url, index) => (
         <img
-          key={url}
+          // The index too, not the url alone: two listings saved to the same
+          // list can share a photograph — a provider's own picture standing in
+          // for two of its services — and a duplicate key is a React warning
+          // over a mosaic that then drops a tile. The order is the server's
+          // and this list is never reordered on the client, which is the
+          // condition an index key asks for.
+          key={`${index}-${url}`}
           src={url}
           alt=""
           role="presentation"

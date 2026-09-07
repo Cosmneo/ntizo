@@ -89,6 +89,7 @@
   "saveToListTitle": "Bewaren in een lijst",
   "saveToListSavedIn": "Bewaard in {{name}}",
   "saveToListHowToUnsave": "Vink alle lijsten uit om het niet meer te bewaren",
+  "saveToListListsError": "We konden nu niet nagaan in welke lijsten dit staat.",
   "saveToListUnsaved": "Niet meer bewaard.",
   "saveToListSaveAgain": "Vink een lijst aan om het weer te bewaren.",
   "saveToListSearch": "Een lijst zoeken…",

@@ -89,6 +89,7 @@
   "saveToListTitle": "In einer Liste merken",
   "saveToListSavedIn": "In {{name}} gemerkt",
   "saveToListHowToUnsave": "Alle Listen abwählen, um es nicht mehr zu merken",
+  "saveToListListsError": "Wir konnten gerade nicht prüfen, in welchen Listen das steht.",
   "saveToListUnsaved": "Nicht mehr gemerkt.",
   "saveToListSaveAgain": "Wählen Sie eine Liste, um es wieder zu merken.",
   "saveToListSearch": "Liste finden…",

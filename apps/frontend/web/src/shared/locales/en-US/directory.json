@@ -89,6 +89,7 @@
   "saveToListTitle": "Save to a list",
   "saveToListSavedIn": "Saved in {{name}}",
   "saveToListHowToUnsave": "Untick every list to stop saving it",
+  "saveToListListsError": "We couldn't check which lists this is in right now.",
   "saveToListUnsaved": "No longer saved.",
   "saveToListSaveAgain": "Tick a list to save it again.",
   "saveToListSearch": "Find a list…",

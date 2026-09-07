@@ -89,6 +89,7 @@
   "saveToListTitle": "Enregistrer dans une liste",
   "saveToListSavedIn": "Enregistré dans {{name}}",
   "saveToListHowToUnsave": "Décochez toutes les listes pour ne plus l'enregistrer",
+  "saveToListListsError": "Nous n'avons pas pu vérifier dans quelles listes il se trouve pour le moment.",
   "saveToListUnsaved": "Plus enregistré.",
   "saveToListSaveAgain": "Cochez une liste pour l'enregistrer à nouveau.",
   "saveToListSearch": "Trouver une liste…",

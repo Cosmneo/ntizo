@@ -42,7 +42,23 @@ export function useListsFor(
     listIds: query.data,
     /** `isLoading`, so a disabled query is never reported as loading. See `useMyLists`. */
     loading: query.isLoading,
-    /** `undefined` when there is nothing wrong. See `favouritesErrorCode`. */
+    /**
+     * Whether the answer is never coming.
+     *
+     * Separate from `errorCode`, and the caller that has to keep its ticks
+     * inert until the membership lands must read *this* one: a network
+     * failure is not a `GraphqlError`, so `favouritesErrorCode` returns
+     * `undefined` for it by contract — which is indistinguishable from "no
+     * error yet" and would leave such a dialog silently waiting forever.
+     */
+    failed: query.isError,
+    /**
+     * `undefined` when there is nothing wrong, **and also** when what went
+     * wrong carried no code — see `favouritesErrorCode`. It is here for a
+     * caller that wants to tell an expired session (`"UNAUTHENTICATED"`)
+     * apart from everything else; `failed` is the one to branch on for
+     * whether an answer exists at all.
+     */
     errorCode: favouritesErrorCode(query.error),
   };
 }

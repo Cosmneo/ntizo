@@ -135,12 +135,15 @@ export function FavouriteButton({
       // "Save" by a heart that is already filled.
       aria-label={t(saved ? "favouriteSaved" : "favouriteSave")}
       aria-pressed={saved}
-      // Both, because this button does two things and `aria-pressed` alone
-      // promises only one of them: a press files the listing *and* opens the
+      // `aria-pressed` alone promises only half of what a press does when
+      // there is a dialog behind it: it files the listing *and* opens the
       // dialog that says where, and a press on an already-filled heart opens
-      // that dialog without toggling anything at all. `aria-haspopup` is what
-      // stops the toggle being the whole promise.
-      aria-haspopup="dialog"
+      // that dialog without toggling anything at all.
+      //
+      // Conditional, because `onSaved` is optional: a heart with no handler
+      // opens nothing, and promising a dialog that never arrives is the same
+      // broken promise in the other direction.
+      {...(onSaved ? { "aria-haspopup": "dialog" as const } : {})}
       /**
        * The one thing the fill cannot say: that the round trip is still out.
        *

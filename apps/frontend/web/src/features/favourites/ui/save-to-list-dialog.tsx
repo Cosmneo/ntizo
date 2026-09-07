@@ -125,7 +125,28 @@ export function SaveToListDialog({
    * with the server's older one.
    */
   const [picked, setPicked] = useState<string[] | null>(null);
-  const selected = picked ?? savedListIds ?? asked.listIds ?? [];
+
+  /**
+   * The membership, or `undefined` while nobody yet knows it — and the
+   * distinction is load-bearing, which is why there is no `?? []` on the end
+   * of this line.
+   *
+   * `useListsFor` answers `undefined` until the round trip lands, precisely
+   * because an empty array means "in no list" — the one thing a filled heart
+   * cannot mean. Defaulting it here would undo that guarantee and hand every
+   * reader of `selected` below a confident, wrong answer: the footer would
+   * say "No longer saved" about a saved listing, and the first tick would
+   * send a `setLists` that silently dropped every other list it was in.
+   *
+   * The window is not exotic. `useMyLists` is warm from the first open and
+   * refetched by every write's prefix invalidation, while `listsFor` is
+   * always cold for a newly opened target — so rows-before-membership is the
+   * normal ordering from the second filled-heart press onward.
+   */
+  const known = picked ?? savedListIds ?? asked.listIds;
+  const selected = known ?? [];
+  /** Nothing may be written from a membership nobody knows yet. */
+  const unknown = known === undefined;
 
   function choose(next: string[]) {
     setPicked(next);
@@ -134,6 +155,10 @@ export function SaveToListDialog({
   }
 
   function toggle(id: string) {
+    // Belt and braces: the rows are inert while the membership is unknown
+    // (see `unknown` above), and a label click that got past that must not
+    // write a membership built out of an empty guess.
+    if (unknown) return;
     choose(selected.includes(id) ? selected.filter((held) => held !== id) : [...selected, id]);
   }
 
@@ -153,21 +178,38 @@ export function SaveToListDialog({
   const panel = useRef<HTMLDivElement>(null);
   useModalFocus(panel, open && !isMobile, () => onOpenChange(false));
 
-  const note =
-    selected.length > 0 ? (
-      savedIn && (
-        <p className="mt-1.5 flex items-center gap-1.5 text-[13px] font-semibold text-[var(--color-success)]">
-          <Check aria-hidden="true" strokeWidth={2.6} className="h-3.5 w-3.5" />
-          {t("saveToListSavedIn", { name: listDisplayName(savedIn, t) })}
-        </p>
-      )
-    ) : (
-      // The same slot, so the panel does not jump a line taller the moment
-      // the last tick comes off.
-      <p className="mt-1.5 text-[13px] text-[var(--color-muted-foreground)]">
-        {t("saveToListHowToUnsave")}
-      </p>
-    );
+  /**
+   * The one line in the header, and the four things it can truthfully say.
+   *
+   * Ordered by what is actually known. The two grey lines never appear while
+   * the membership is in flight: a header telling somebody to untick
+   * everything, over a listing whose heart is filled and whose lists have not
+   * arrived, is the one sentence this dialog exists not to print.
+   */
+  const note = asked.failed ? (
+    // `failed`, not `errorCode`: a network failure carries no code at all
+    // (`favouritesErrorCode` returns `undefined` for anything that is not a
+    // `GraphqlError`), and that is exactly the case that would otherwise
+    // leave this dialog waiting in silence for an answer that is not coming.
+    <p className="mt-1.5 text-[13px] text-[var(--color-muted-foreground)]">
+      {t("saveToListListsError")}
+    </p>
+  ) : unknown || selected.length > 0 ? (
+    <p className="mt-1.5 flex items-center gap-1.5 text-[13px] font-semibold text-[var(--color-success)]">
+      <Check aria-hidden="true" strokeWidth={2.6} className="h-3.5 w-3.5" />
+      {/* Which list it is in is a second fact, and it arrives second — with
+          the lists on a first open, and with `favouriteListsFor` on a filled
+          heart. Until then the line says only what the filled heart already
+          said, which is true throughout. */}
+      {savedIn ? t("saveToListSavedIn", { name: listDisplayName(savedIn, t) }) : t("favouriteSaved")}
+    </p>
+  ) : (
+    // The same slot, so the panel does not jump a line taller the moment
+    // the last tick comes off.
+    <p className="mt-1.5 text-[13px] text-[var(--color-muted-foreground)]">
+      {t("saveToListHowToUnsave")}
+    </p>
+  );
 
   const search = lists.length > SEARCH_VISIBLE_ABOVE && (
     <div className="mx-3 mb-2 flex items-center gap-2 rounded-[10px] border border-[var(--color-border-strong)] px-3 py-2">
@@ -224,12 +266,19 @@ export function SaveToListDialog({
   );
 
   const rows = (
-    <div className="min-h-0 flex-1 overflow-y-auto px-3">
+    // `aria-busy` while the ticks are still being fetched: the rows are on
+    // screen and the boxes are not yet answerable, which is exactly what that
+    // attribute is for.
+    <div aria-busy={asked.loading} className="min-h-0 flex-1 overflow-y-auto px-3">
       {shown.map((list) => (
         <ListRow
           key={list.id}
           list={list}
           checked={selected.includes(list.id)}
+          // Inert, not merely unticked. An empty box that can be pressed
+          // while the membership is in flight is a box that sends the wrong
+          // membership.
+          disabled={unknown}
           onToggle={() => toggle(list.id)}
         />
       ))}
@@ -237,7 +286,10 @@ export function SaveToListDialog({
         <button
           type="button"
           onClick={naming.start}
-          className="flex w-full items-center gap-3 rounded-[11px] px-2.5 py-2.5 text-left text-[14px] font-semibold text-[var(--color-headline)] hover:bg-[var(--color-muted)]"
+          // A list created in that same window would be ticked into an empty
+          // membership, which is the same write with the same lists dropped.
+          disabled={unknown}
+          className="flex w-full items-center gap-3 rounded-[11px] px-2.5 py-2.5 text-left text-[14px] font-semibold text-[var(--color-headline)] hover:bg-[var(--color-muted)] disabled:opacity-50"
         >
           <span
             aria-hidden="true"
@@ -252,8 +304,20 @@ export function SaveToListDialog({
   );
 
   const footer = (
-    <div className="flex items-center gap-3 border-t border-[var(--color-border)] px-[22px] py-3.5">
-      {selected.length === 0 && (
+    <div
+      className={cn(
+        "flex border-t border-[var(--color-border)] px-[22px] py-3.5",
+        // Stacked on the phone, because the Done button is full width there
+        // and a full-width button beside a paragraph in one row pushes the
+        // row past the sheet. The mockup never draws the two together — its
+        // phone sheet has no unticked state — but a reader can reach it.
+        isMobile ? "flex-col items-stretch gap-2.5" : "flex-row items-center gap-3",
+      )}
+    >
+      {/* Never while the membership is unknown: `selected` is an empty array
+          in that window and this sentence would be a claim about a listing
+          whose lists have not arrived. */}
+      {!unknown && selected.length === 0 && (
         // Plain words about a thing already done, not a confirmation. The
         // mockup's amber is the bold half's job here: amber text at 12.5px
         // fails contrast on white, so the sentence that matters is carried by
@@ -268,10 +332,10 @@ export function SaveToListDialog({
         type="button"
         onClick={() => onOpenChange(false)}
         className={cn(
-          "ml-auto shrink-0 rounded-full bg-[var(--color-navy-surface)] px-5.5 py-2.5 text-[14px] font-semibold text-[var(--color-navy-on)]",
-          // Full width at the thumb on a phone: the sheet has no second
-          // action to sit beside.
-          isMobile && "w-full",
+          "rounded-full bg-[var(--color-navy-surface)] px-5.5 py-2.5 text-[14px] font-semibold text-[var(--color-navy-on)]",
+          // Full width at the thumb on a phone, where the footer is a column;
+          // pushed to the right of the row on a wide screen.
+          isMobile ? "w-full" : "ml-auto shrink-0",
         )}
       >
         {t("saveToListDone")}
@@ -378,16 +442,24 @@ export function SaveToListDialog({
 function ListRow({
   list,
   checked,
+  disabled = false,
   onToggle,
 }: {
   list: FavouriteList;
   checked: boolean;
+  /** True while nobody knows the membership yet — see `unknown` in the dialog. */
+  disabled?: boolean;
   onToggle: () => void;
 }) {
   const { t } = useTranslation("directory");
 
   return (
-    <label className="flex cursor-pointer items-center gap-3 rounded-[11px] px-2.5 py-2.5 hover:bg-[var(--color-muted)]">
+    <label
+      className={cn(
+        "flex items-center gap-3 rounded-[11px] px-2.5 py-2.5",
+        disabled ? "cursor-default opacity-60" : "cursor-pointer hover:bg-[var(--color-muted)]",
+      )}
+    >
       <ListCover urls={list.coverUrls} empty={list.itemCount === 0} />
       <span className="min-w-0 flex-1">
         <b className="block truncate text-[14px] font-semibold text-[var(--color-foreground)]">
@@ -400,6 +472,7 @@ function ListRow({
       </span>
       <Checkbox
         checked={checked}
+        disabled={disabled}
         onChange={onToggle}
         className={cn(
           "h-5 w-5 rounded-[6px] border-[1.6px] border-[var(--color-border-strong)]",
@@ -500,7 +573,7 @@ const FOCUSABLE =
  * `SheetContent` already does and `DialogContent` does not.
  *
  * Written here rather than added to the kit's `Dialog` because that primitive
- * has six other callers, each supplying its own `role="dialog"` today
+ * has seven other callers, each supplying its own `role="dialog"` today
  * (`detail-gallery.tsx` is the pattern), and giving it a name and a trap is a
  * change to all seven at once. This is the same effect `SheetContent` runs,
  * kept beside the one dialog that needs it until the kit has that pass.
