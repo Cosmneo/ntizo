@@ -152,7 +152,7 @@ describe("DirectoryPage", () => {
 
   it("heads the page with the term when one is typed", async () => {
     // The term is what the reader asked for; the category they are in is
-    // already stated, underlined, by the strip above.
+    // already stated by the chip lit in the strip above.
     renderPage("/providers?q=estúdio", { items: [provider()], total: 1 });
     expect(await screen.findByRole("heading", { level: 1 })).toHaveTextContent("estúdio");
   });

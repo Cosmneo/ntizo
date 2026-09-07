@@ -165,7 +165,7 @@ describe("ServicesBrowsePage", () => {
 
   it("heads the page with what was typed, which outranks the category", async () => {
     // The term is what the reader asked for; the category they are in is
-    // already stated, underlined, by the strip above. Ranking the category
+    // already stated by the chip lit in the strip above. Ranking the category
     // first meant the heading answered a question nobody had asked.
     renderPage("/services?q=corte&city=Maputo&category=hair", {
       items: [service()],

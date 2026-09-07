@@ -34,22 +34,27 @@ export function iconComponent(name: string | null, isAll: boolean) {
 }
 
 /**
- * The categories, as a band under the header — icon-over-label items with an
- * underline for the chosen one, rather than the rail's row of bordered pills.
+ * The categories, as one scrolling row of chips under the search bar.
  *
- * Navigation between whole result sets — the same weight as the site header
- * above it — rather than one control among several inside the results. The
- * facets narrow a list; this changes which list.
+ * Navigation between whole result sets rather than one control among several
+ * inside the results: the facets narrow a list, this changes which list. What
+ * says so is the position — first thing under the search, above the heading —
+ * not a vocabulary of its own. The row used to be icon-over-label items with
+ * a 2px underline on the chosen one, which is a tab bar, and a tab bar was a
+ * fifth shape on a page that already had chips, pills, a dropdown and a
+ * search; reviewed on dev it read as a strip borrowed from another product.
+ * Chips in the filter pills' style say the same thing in the site's own
+ * words — see `categoryItemClass`.
  *
- * It scrolls sideways rather than wrapping: a band that grows to two rows
+ * It scrolls sideways rather than wrapping: a row that grows to two lines
  * pushes the results down by a different amount at every screen width, and the
  * categories past the fold are the rarer ones.
  *
- * White with a bottom hairline, not the rail's tinted ground: the search that
- * used to live in a card straddling this band's top edge is now the site's own
- * `ServiceSearch` bar, drawn above this strip rather than across it, so there
- * is no card left either to disappear into on white or to leave clearance for
- * — the padding above the items is symmetric (see the scroller below).
+ * No band and no hairline of its own. The chips carry their own borders and
+ * their own height, so there is nothing left for a ground or a rule to
+ * separate — and a hairline here would draw a second line a few pixels under
+ * the header's own. All this element contributes is the space above it and
+ * the positioning the fades and arrows are measured against.
  *
  * The fades and the arrows are the difference between a scroll container and a
  * finished one: without them the row simply ends mid-item, which reads as a
@@ -60,10 +65,7 @@ export function CategoryStrip({ label, children }: { label: string; children: Re
   const nudge = (by: number) => scroller.current?.scrollBy({ left: by, behavior: "smooth" });
 
   return (
-    <nav
-      aria-label={label}
-      className="relative border-b border-[var(--color-border)] bg-[var(--color-background)]"
-    >
+    <nav aria-label={label} className="relative mt-4">
       {/* The positioned layer the fades and arrows are measured against,
           `page-shell` wide so they land at the edge of the *items*, not the
           edge of the screen — on a wide monitor those are two different
@@ -76,8 +78,10 @@ export function CategoryStrip({ label, children }: { label: string; children: Re
           that size sitting above the items would eat every click on the row
           it is only meant to decorate. Each `StripArrow` opts back in for
           itself. `inset-0` rather than an inset top: unlike the rail, this
-          band's padding is symmetric (see the scroller below), so the layer
-          can simply fill the nav to stay centred on the item row. */}
+          row's padding is symmetric (see the scroller below), so the layer
+          can simply fill the nav to stay centred on the chips — a 36px chip
+          row inside 4px of padding each side, which puts `top-1/2` on the
+          chips' own centre line and the arrows level with them. */}
       <div className="page-shell pointer-events-none absolute inset-0">
         <Fade side="left" />
         <Fade side="right" />
@@ -93,11 +97,11 @@ export function CategoryStrip({ label, children }: { label: string; children: Re
           to clear — below it there's nothing to give way to, so the row stays
           flush with the content column, exactly as on a phone.
 
-          `pt-3.5` is the band's only padding: each item closes its own
-          bottom with `pb-3` and a 2px bottom border (see `categoryItemClass`),
-          so the scroller needs no matching bottom utility of its own — unlike
-          the rail, nothing above this band needs extra top clearance either,
-          so the split is symmetric rather than the rail's `pt-10`/`pb-4`.
+          `py-1` is the whole of the row's padding, and it is symmetric: a
+          chip is a closed shape 36px tall that carries its own height and its
+          own border (see `categoryItemClass`), so all the scroller owes it is
+          a little room for the focus ring. The space that separates this row
+          from the search above it is the nav's own `mt-4`, not padding here.
 
           `lg:justify-center-safe`, not `lg:justify-center`: a short category
           list should sit centred under the page rather than hugging the left
@@ -117,7 +121,7 @@ export function CategoryStrip({ label, children }: { label: string; children: Re
       <div
         ref={scroller}
         data-testid="strip-scroller"
-        className="page-shell flex gap-2 overflow-x-auto pt-3.5 sm:px-14 lg:justify-center-safe [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="page-shell flex gap-2 overflow-x-auto py-1 sm:px-14 lg:justify-center-safe [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {children}
       </div>
@@ -169,19 +173,27 @@ function StripArrow({ side, onClick }: { side: "left" | "right"; onClick: () => 
 }
 
 /**
- * One category item: an icon over a label, with an underline for the chosen
- * one.
+ * One category chip: a small icon beside its name, in the filter pills' own
+ * shape — 36px tall, hairline border, navy fill when it is the one in force.
  *
- * The chosen state changes colour and the underline only — never the border
- * width, the padding, the gap or the weight. An item that grows shifts every
- * item after it, and the whole row jumps sideways as the selection moves;
+ * The same vocabulary as `quickChipClass` and `FilterPill` on purpose. These
+ * are all rows of choices over a list, and drawing this one as an
+ * icon-over-label tab bar made the browse pages look assembled from two
+ * different products.
+ *
+ * The chosen state changes the colours only — never the height, the border
+ * width, the padding, the gap or the weight. A chip that grows shifts every
+ * chip after it, and the whole row jumps sideways as the selection moves;
  * bold glyphs are wider than medium ones in every non-monospace face, so
- * `font-semibold` on the chosen item was that same jump by another route.
+ * `font-semibold` on the chosen chip would be that same jump by another
+ * route. The resting chip borders in `--color-border` rather than the quick
+ * chips' `--color-border-strong`: this row is longer and sits higher up the
+ * page, and twenty-four strong hairlines under the search read as a fence.
  */
 export function categoryItemClass(active: boolean): string {
   const base =
-    "flex shrink-0 flex-col items-center gap-[7px] whitespace-nowrap border-b-2 pb-3 text-[12.5px] font-medium transition-colors";
+    "inline-flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-3.5 text-[14px] font-medium transition-colors";
   return active
-    ? `${base} border-[var(--color-headline)] text-[var(--color-headline)]`
-    : `${base} border-transparent text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]`;
+    ? `${base} border-[var(--color-navy-surface)] bg-[var(--color-navy-surface)] text-[var(--color-navy-on)]`
+    : `${base} border-[var(--color-border)] text-[var(--color-foreground)] hover:bg-[var(--color-muted)]`;
 }

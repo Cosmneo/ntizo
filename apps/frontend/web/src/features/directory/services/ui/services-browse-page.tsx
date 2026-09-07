@@ -363,7 +363,7 @@ const DEFAULT_CURRENCY = "MZN";
  */
 const QUICK_MAX_PRICE = 1000;
 
-/** One category, as an item in the strip: its icon over its name. */
+/** One category, as a chip in the strip: its icon beside its name. */
 function StripItem({
   search,
   label,
@@ -387,7 +387,7 @@ function StripItem({
       search={search}
       className={categoryItemClass(active)}
     >
-      <Icon className="h-6 w-6" strokeWidth={1.5} aria-hidden="true" />
+      <Icon className="h-[15px] w-[15px]" aria-hidden="true" />
       <span>{label}</span>
     </Link>
   );
