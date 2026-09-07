@@ -103,6 +103,9 @@
       "upcoming": "Próximas",
       "history": "Histórico"
     },
+    "filterTitle": "Filtrar reservas",
+    "showLabel": "Mostrar",
+    "memberLabel": "Profissional",
     "searchPlaceholder": "Pesquisar cliente ou serviço",
     "memberFilterAll": "Todos os profissionais",
     "memberAnyone": "Qualquer pessoa",
@@ -113,7 +116,6 @@
       "price": "Preço",
       "status": "Estado"
     },
-    "shownOf": "A mostrar {{shown}} de {{total}}",
     "loadMore": "Mais",
     "respondIn": "Responder em {{time}}",
     "respondBy": "Responder até {{time}}",

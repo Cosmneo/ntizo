@@ -103,6 +103,9 @@
       "upcoming": "Upcoming",
       "history": "History"
     },
+    "filterTitle": "Filter bookings",
+    "showLabel": "Show",
+    "memberLabel": "Professional",
     "searchPlaceholder": "Search customer or service",
     "memberFilterAll": "All professionals",
     "memberAnyone": "Anyone",
@@ -113,7 +116,6 @@
       "price": "Price",
       "status": "Status"
     },
-    "shownOf": "Showing {{shown}} of {{total}}",
     "loadMore": "More",
     "respondIn": "Respond in {{time}}",
     "respondBy": "Respond by {{time}}",

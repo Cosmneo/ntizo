@@ -103,6 +103,9 @@
       "upcoming": "In arrivo",
       "history": "Cronologia"
     },
+    "filterTitle": "Filtra prenotazioni",
+    "showLabel": "Mostra",
+    "memberLabel": "Professionista",
     "searchPlaceholder": "Cerca cliente o servizio",
     "memberFilterAll": "Tutti i professionisti",
     "memberAnyone": "Chiunque",
@@ -113,7 +116,6 @@
       "price": "Prezzo",
       "status": "Stato"
     },
-    "shownOf": "{{shown}} di {{total}} mostrate",
     "loadMore": "Altro",
     "respondIn": "Rispondere tra {{time}}",
     "respondBy": "Rispondere entro {{time}}",

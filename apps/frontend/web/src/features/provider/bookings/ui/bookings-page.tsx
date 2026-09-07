@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { CalendarCheck } from "lucide-react";
-import { Button, cn } from "@ntizo/frontend-ui";
+import { Button } from "@ntizo/frontend-ui";
 import type {
   ProviderBookingDTO,
   ProviderBookingPageDTO,
@@ -10,18 +10,17 @@ import type {
 import { CollectionCard } from "@/shared/components/collection-card";
 import { usePageHeader } from "@/shared/lib/page-header";
 import { useActiveProvider } from "@/features/provider/viewmodel/use-active-provider";
-import {
-  PROVIDER_BOOKINGS_PAGE_SIZE,
-  PROVIDER_TABS,
-  type ProviderTab,
-} from "../domain/status";
+import { PROVIDER_BOOKINGS_PAGE_SIZE, type ProviderTab } from "../domain/status";
 import { useProviderBookings } from "../viewmodel/use-provider-bookings";
 import { bookingColumns, bookingRow } from "./booking-row";
+import { BookingsFilterSheet, DEFAULT_PROVIDER_TAB, bookingFilterCount } from "./bookings-filters";
 
 /**
  * The workspace's bookings, one tab at a time. Three tabs by what the
  * provider has to do — answer, prepare, look back — rather than a filter
- * over ten statuses that are the system's vocabulary, not theirs.
+ * over ten statuses that are the system's vocabulary, not theirs. The tab
+ * and the professional are picked in the same filter panel every other list
+ * opens from its card's Filter button, and both stay in the URL.
  *
  * The rows are `CollectionCard`'s: a table from `md`, stacked cards below,
  * the same shape the services and members pages draw. Each one is built by
@@ -37,8 +36,9 @@ export function BookingsPage() {
   const { activeProvider } = useActiveProvider();
   const navigate = useNavigate();
   const search = useSearch({ strict: false }) as { tab?: ProviderTab; member?: string };
-  const tab: ProviderTab = search.tab ?? "requests";
+  const tab: ProviderTab = search.tab ?? DEFAULT_PROVIDER_TAB;
   const memberId = search.member ?? null;
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   usePageHeader(t("bookings.title"), t("bookings.subtitle"));
 
@@ -152,67 +152,16 @@ export function BookingsPage() {
   if (!activeProvider) return null;
   const slug = activeProvider.slug;
 
-  const setTab = (next: ProviderTab) =>
+  const filters = { tab, memberId };
+  const setFilters = (next: { tab: ProviderTab; memberId: string | null }) =>
     void navigate({
       to: "/provider/$slug/bookings",
       params: { slug },
-      search: { tab: next, member: memberId ?? undefined },
-    });
-  const setMember = (next: string | null) =>
-    void navigate({
-      to: "/provider/$slug/bookings",
-      params: { slug },
-      search: { tab, member: next ?? undefined },
+      search: { tab: next.tab, member: next.memberId ?? undefined },
     });
 
   return (
     <div className="mx-auto grid max-w-6xl gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div
-          role="tablist"
-          aria-label={t("bookings.title")}
-          className="inline-flex rounded-full bg-[var(--color-muted)] p-1"
-        >
-          {PROVIDER_TABS.map((key) => (
-            <button
-              key={key}
-              type="button"
-              role="tab"
-              aria-selected={tab === key}
-              onClick={() => setTab(key)}
-              className={cn(
-                "rounded-full px-4 py-2 text-sm font-semibold transition-colors",
-                tab === key
-                  ? "bg-[var(--color-primary)] text-[var(--color-primary-foreground)]"
-                  : "text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]",
-              )}
-            >
-              {t(`bookings.tab.${key}`)}
-            </button>
-          ))}
-        </div>
-
-        {/* Only when the workspace has more than one person: an individual
-            provider has nobody to narrow to. Native `select`, styled as the
-            kit's field — a kit `Select` with one option is not worth its
-            keyboard model here. */}
-        {answered && answered.members.length > 1 && (
-          <select
-            aria-label={t("bookings.memberFilterAll")}
-            value={memberId ?? ""}
-            onChange={(e) => setMember(e.target.value || null)}
-            className="type-body h-10 rounded-[var(--radius-field)] border border-[var(--color-input)] bg-[var(--color-background)] px-3"
-          >
-            <option value="">{t("bookings.memberFilterAll")}</option>
-            {answered.members.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.firstName}
-              </option>
-            ))}
-          </select>
-        )}
-      </div>
-
       {query.isError && (
         <p role="alert" className="type-body text-[var(--color-destructive)]">
           {t("bookings.loadError")}{" "}
@@ -237,6 +186,8 @@ export function BookingsPage() {
         search={typed}
         onSearchChange={setTyped}
         searchPlaceholder={t("bookings.searchPlaceholder")}
+        onOpenFilters={() => setFiltersOpen(true)}
+        activeFilterCount={bookingFilterCount(filters)}
         columns={bookingColumns(t)}
         emptyTitle={t(`bookings.empty.${tab}.title`)}
         emptyText={t(`bookings.empty.${tab}.body`)}
@@ -247,23 +198,28 @@ export function BookingsPage() {
         rows={visible.map((b) => bookingRow(b, { slug, locale, now, t }))}
       />
 
-      {answered && (
-        <div className="flex items-center justify-between">
-          <span className="type-caption text-[var(--color-muted-foreground)]">
-            {t("bookings.shownOf", { shown: visible.length, total: answered.total })}
-          </span>
-          {answered.nextOffset !== null && (
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() =>
-                setOffset(answered.nextOffset ?? offset + PROVIDER_BOOKINGS_PAGE_SIZE)
-              }
-            >
-              {t("bookings.loadMore")}
-            </Button>
-          )}
-        </div>
+      <BookingsFilterSheet
+        open={filtersOpen}
+        onOpenChange={setFiltersOpen}
+        filters={filters}
+        // The roster from the last page answered — the panel offers the
+        // professional only once the workspace is known to have more than one.
+        members={answered?.members ?? []}
+        onChange={setFilters}
+      />
+
+      {/* The count lives in the card's own header now; only the way to the
+          next page is left under it. */}
+      {answered && answered.nextOffset !== null && (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="justify-self-center"
+          onClick={() => setOffset(answered.nextOffset ?? offset + PROVIDER_BOOKINGS_PAGE_SIZE)}
+        >
+          {t("bookings.loadMore")}
+        </Button>
       )}
     </div>
   );

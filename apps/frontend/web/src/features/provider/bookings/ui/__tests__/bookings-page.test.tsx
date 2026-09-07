@@ -204,9 +204,9 @@ function renderBookings(at: string, answer: Answer = pageFixture()) {
       useSearch({ strict: false });
       useLayoutEffect(() => {
         frames.push({
-          tab:
-            document.querySelector('[role="tab"][aria-selected="true"]')?.textContent ??
-            "",
+          // The card's eyebrow names the tab now that the tab row is gone —
+          // the first tracked-caps caption on the page is the card's.
+          tab: document.querySelector('[class*="tracking-[0.14em]"]')?.textContent ?? "",
           rows: Array.from(document.querySelectorAll("table a")).map(
             (a) => a.textContent ?? "",
           ),
@@ -254,6 +254,18 @@ async function row(customer: string) {
 }
 
 /**
+ * Picks a tab through the shared filter panel — the only way to one now — and
+ * closes the panel again, so the page underneath is reachable by role.
+ */
+async function pickTab(label: string) {
+  await userEvent.click(screen.getByRole("button", { name: /^filtrar/i }));
+  const panel = await screen.findByRole("dialog", { name: "Filtrar reservas" });
+  await userEvent.click(within(panel).getByRole("button", { name: "Mostrar" }));
+  await userEvent.click(within(panel).getByRole("option", { name: label }));
+  await userEvent.keyboard("{Escape}");
+}
+
+/**
  * The locale is pinned, not inherited: every assertion here reads Portuguese
  * copy and the suite's default resolves to English (`test/setup.ts` says so).
  */
@@ -279,7 +291,9 @@ describe("BookingsPage", () => {
     const { router } = renderBookings("/provider/estudio/bookings");
     await row("Ana");
 
-    await userEvent.click(screen.getByRole("tab", { name: /histórico/i }));
+    // Nothing loose above the card: no tab row, no member dropdown.
+    expect(screen.queryByRole("tablist")).not.toBeInTheDocument();
+    await pickTab("Histórico");
 
     await waitFor(() =>
       expect(router.state.location.search).toMatchObject({ tab: "history" }),
@@ -327,7 +341,8 @@ describe("BookingsPage", () => {
     expect(await table.findByText("Carla")).toBeInTheDocument();
     expect(table.getByText("Ana")).toBeInTheDocument();
     expect(table.getByText("Bruno")).toBeInTheDocument();
-    expect(screen.getByText("A mostrar 3 de 3")).toBeInTheDocument();
+    // The count is the card's own header, not a line under the list.
+    expect(screen.getByText("3 de 3 mostradas")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Mais" })).not.toBeInTheDocument();
   });
 
@@ -408,13 +423,13 @@ describe("BookingsPage", () => {
     // has no data on the render the tab changes in, so it could not have shown
     // the previous one's rows even with the reset an effect late.
     await row("Ana");
-    await userEvent.click(screen.getByRole("tab", { name: "Histórico" }));
+    await pickTab("Histórico");
     await row("Dina");
-    await userEvent.click(screen.getByRole("tab", { name: "Pedidos" }));
+    await pickTab("Pedidos");
     await row("Ana");
 
     const before = frames.length;
-    await userEvent.click(screen.getByRole("tab", { name: "Histórico" }));
+    await pickTab("Histórico");
 
     await row("Dina");
     const table = within(await screen.findByRole("table"));
