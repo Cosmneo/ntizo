@@ -1,4 +1,6 @@
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { LayoutGrid, SearchX } from "lucide-react";
 import { EmptyCard } from "@/shared/components/empty-card";
@@ -25,6 +27,7 @@ import { useBrowseServices } from "@/features/directory/services/viewmodel/use-b
 // the query rather than the tile.
 import { useFavouriteMarks } from "@/features/favourites/viewmodel/use-favourite-marks";
 import { FavouriteButton } from "@/features/favourites/ui/favourite-button";
+import { SaveToListDialog } from "@/features/favourites/ui/save-to-list-dialog";
 import { ServiceTile } from "@/features/directory/services/ui/service-tile";
 import {
   MobileServiceFilters,
@@ -32,8 +35,14 @@ import {
   chooseServiceSort,
   serviceSortOptions,
 } from "@/features/directory/services/ui/service-filters";
-import { formatHeadlinePrice } from "@/features/directory/services/domain/service-card";
-import { BROWSE_PAGE_SIZE } from "@/features/directory/services/domain/types";
+import {
+  formatHeadlinePrice,
+  servicePriceLine,
+} from "@/features/directory/services/domain/service-card";
+import {
+  BROWSE_PAGE_SIZE,
+  type ServiceDTO,
+} from "@/features/directory/services/domain/types";
 import {
   browseSearch,
   type BrowseSearch,
@@ -117,6 +126,20 @@ export function ServicesBrowsePage() {
   const marks = useFavouriteMarks(
     "service",
     page.items.map((item) => item.id),
+  );
+  /**
+   * Which listing the save-to-a-list dialog is about, and what its heart's own
+   * save answered with. `null` is closed.
+   *
+   * The whole DTO rather than an id: the dialog puts the listing on screen —
+   * the photograph, the name and the price — and looking it back up by id
+   * would be this page searching for a row it is already holding.
+   *
+   * Held here and not in the tile, for the same reason the marks query is:
+   * one dialog for the page, never one mounted per result.
+   */
+  const [filing, setFiling] = useState<{ service: ServiceDTO; listIds?: string[] } | null>(
+    null,
   );
   const navigate = useNavigate();
   // A plain query, unlike the services: this is a control, not the content a
@@ -318,6 +341,14 @@ export function ServicesBrowsePage() {
                         targetType="service"
                         targetId={service.id}
                         saved={marks.isMarked(service.id)}
+                        // Fires when the save answers, never on the press:
+                        // the lists come from the mutation's own data, so the
+                        // dialog opens already knowing which are ticked. A
+                        // press on an already-filled heart brings none, and
+                        // the dialog asks for itself.
+                        onSaved={({ listIds }) =>
+                          setFiling({ service, ...(listIds ? { listIds } : {}) })
+                        }
                       />
                     }
                   />
@@ -383,8 +414,45 @@ export function ServicesBrowsePage() {
       </main>
 
       <MobileServiceFilters current={current} total={page.total} />
+
+      {/* Mounted only while it is open, so its focus trap and the return of
+          focus to the heart run on mount and unmount rather than off a prop. */}
+      {filing && (
+        <SaveToListDialog
+          open
+          onOpenChange={(open) => !open && setFiling(null)}
+          targetType="service"
+          targetId={filing.service.id}
+          listing={serviceListing(filing.service, t, locale)}
+          {...(filing.listIds ? { savedListIds: filing.listIds } : {})}
+        />
+      )}
     </>
   );
+}
+
+/**
+ * What the dialog draws down its left panel: this service, said the way the
+ * tile beside it says it.
+ *
+ * Here rather than in the dialog, which is handed a listing and knows nothing
+ * about services: the price is a `ServicePriceLine`, whose amount is either
+ * money to format in the reader's locale or a phrase to translate, and that
+ * branch belongs where the DTO does. It reads `servicePriceLine` — the same
+ * function `ServiceTile` prints from — so the dialog and the tile behind it
+ * can never come to disagree about what this listing costs.
+ */
+function serviceListing(service: ServiceDTO, t: TFunction, locale: string) {
+  const line = servicePriceLine(service);
+  return {
+    imageUrl: service.imageUrls[0] ?? null,
+    name: service.name,
+    byline: service.providerName,
+    price:
+      line.amount.kind === "words"
+        ? t(line.amount.key)
+        : formatHeadlinePrice(line.amount.amountMinor, line.amount.currency, locale),
+  };
 }
 
 /**

@@ -591,13 +591,29 @@ describe("DirectoryPage", () => {
       session.data = null;
     });
 
-    /** Answers the two documents this page can send, and refuses anything else by name. */
+    /** Answers the documents this page can send, and refuses anything else by name. */
     function fakeServer(marked: string[] = []) {
       return vi.spyOn(client, "sessionGraphql").mockImplementation(async (query) => {
         const text = String(query);
         if (text.includes("favouriteMarked")) return { favouriteMarked: marked } as never;
         // The header's own `useCurrentUser`, which every page renders.
         if (text.includes("userMe")) return { userMe: null } as never;
+        if (text.includes("favouriteQuickSave")) {
+          return { favouriteQuickSave: { listIds: ["l-default"] } } as never;
+        }
+        if (text.includes("favouriteListMine")) {
+          return {
+            favouriteListMine: [
+              {
+                id: "l-default",
+                name: null,
+                isDefault: true,
+                itemCount: 1,
+                coverUrls: [],
+              },
+            ],
+          } as never;
+        }
         throw new Error(`the page asked something this fake server does not answer: ${text}`);
       });
     }
@@ -638,6 +654,29 @@ describe("DirectoryPage", () => {
       const saved = await screen.findByRole("button", { name: "Saved" });
       expect(saved.closest("article")).toHaveTextContent("Salão Nyeleti");
       expect(screen.getAllByRole("button", { name: "Save" })).toHaveLength(1);
+    });
+
+    it("opens the save-to-a-list dialog on the business whose heart was pressed", async () => {
+      // The page holds the dialog's state, so the one thing that can only go
+      // wrong here is *which* row it opens on.
+      signIn();
+      fakeServer();
+      renderPage("/providers", {
+        items: [
+          provider({ id: "a", name: "Estúdio Mavalane", slug: "a" }),
+          provider({ id: "b", name: "Salão Nyeleti", slug: "b" }),
+        ],
+        total: 2,
+      });
+
+      const hearts = await screen.findAllByRole("button", { name: "Save" });
+      fireEvent.click(hearts[1]!);
+
+      const dialog = await screen.findByRole("dialog", { name: "Save to a list" });
+      expect(within(dialog).getByText("Salão Nyeleti")).toBeInTheDocument();
+      expect(within(dialog).queryByText("Estúdio Mavalane")).not.toBeInTheDocument();
+      // Ticked from the save's own answer, with no second round trip.
+      expect(await within(dialog).findByRole("checkbox", { name: /Favourites/ })).toBeChecked();
     });
 
     it("asks nothing at all of a signed-out reader, and still draws the heart", async () => {

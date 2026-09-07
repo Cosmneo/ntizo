@@ -67,14 +67,21 @@ export function FavouriteButton({
   /** From the page's one marks query. */
   saved: boolean;
   /**
-   * Opens the save-to-a-list dialog, on both meanings of a press. Optional
-   * while that dialog does not exist yet: without it the heart still saves,
-   * which is the whole of what a quick save is.
+   * Opens `SaveToListDialog`, on both meanings of a press.
+   *
+   * Optional, and stays optional: without it the heart still saves, which is
+   * the whole of what a quick save is — a surface that wants the mark and not
+   * the filing (a compact rail, say) leaves it off rather than passing a
+   * handler that does nothing.
+   *
+   * It fires when the save *answers*, never on the press itself: `listIds`
+   * comes from the mutation's data and cannot exist before the server has
+   * said what they are.
    */
   onSaved?: (result: FavouriteSaveResult) => void;
 }) {
   const { t } = useTranslation("directory");
-  const { quickSave, listIds } = useQuickSave();
+  const { quickSave, listIds, saving } = useQuickSave();
   const { signedIn, goToSignIn } = useSignInGate();
 
   /**
@@ -128,6 +135,25 @@ export function FavouriteButton({
       // "Save" by a heart that is already filled.
       aria-label={t(saved ? "favouriteSaved" : "favouriteSave")}
       aria-pressed={saved}
+      // Both, because this button does two things and `aria-pressed` alone
+      // promises only one of them: a press files the listing *and* opens the
+      // dialog that says where, and a press on an already-filled heart opens
+      // that dialog without toggling anything at all. `aria-haspopup` is what
+      // stops the toggle being the whole promise.
+      aria-haspopup="dialog"
+      /**
+       * The one thing the fill cannot say: that the round trip is still out.
+       *
+       * Deliberately *not* a spinner. The optimistic fill is the answer to
+       * the press — `patchMarks` exists so the heart never waits — and
+       * replacing it with a spinner would trade a certain answer for an
+       * uncertain one, then put the fill back a beat later. What is left
+       * unsaid on a slow connection is only that a dialog is on its way, and
+       * that is worth announcing without redrawing anything: a second visual
+       * state on the only chrome the listings refresh allows on a result
+       * costs more than the gap it covers.
+       */
+      aria-busy={saving}
       onClick={press}
       className={cn(
         // `z-[3]` is what puts it above the title link's `::after`, which

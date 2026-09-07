@@ -139,6 +139,42 @@ describe("FavouriteButton", () => {
     expect(await screen.findByRole("button")).toHaveAttribute("aria-pressed", "true");
   });
 
+  it("says it opens a dialog as well as toggling, because it does both", async () => {
+    // `aria-pressed` alone promises a toggle this button does not perform:
+    // activating a saved heart opens the save-to-a-list dialog rather than
+    // unpressing anything. `aria-haspopup` is what completes the promise.
+    installFakeServer();
+    renderButton(<FavouriteButton targetType="service" targetId="s1" saved onSaved={vi.fn()} />);
+
+    expect(await screen.findByRole("button")).toHaveAttribute("aria-haspopup", "dialog");
+  });
+
+  it("says a save is still out, without redrawing the heart that already answered", async () => {
+    // The optimistic fill is the answer to the press; what it cannot say is
+    // that the round trip — and the dialog behind it — is still in flight.
+    // A spinner would take the certain answer away to say so.
+    let answer: (value: unknown) => void = () => {};
+    vi.spyOn(client, "sessionGraphql").mockImplementation((query) =>
+      String(query).includes("favouriteQuickSave")
+        ? new Promise((resolve) => {
+            answer = resolve;
+          })
+        : Promise.resolve({ favouriteMarked: [] } as never),
+    );
+
+    renderButton(<FavouriteButton targetType="service" targetId="s1" saved={false} />);
+    const heart = await screen.findByRole("button", { name: "Save" });
+    expect(heart).toHaveAttribute("aria-busy", "false");
+
+    fireEvent.click(heart);
+    await waitFor(() => expect(heart).toHaveAttribute("aria-busy", "true"));
+
+    await act(async () => {
+      answer({ favouriteQuickSave: { listIds: ["l-default"] } });
+    });
+    await waitFor(() => expect(heart).toHaveAttribute("aria-busy", "false"));
+  });
+
   it("is not pressed when the listing is not saved", async () => {
     installFakeServer();
     renderButton(<FavouriteButton targetType="service" targetId="s1" saved={false} />);
