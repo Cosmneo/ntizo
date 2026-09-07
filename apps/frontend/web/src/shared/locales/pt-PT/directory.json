@@ -109,6 +109,10 @@
   "providerFrom": "a partir de",
   "providerOpen": "Ver negócio",
   "filterCity": "Cidade",
+  "filterCategory": "Categoria",
+  "filterCategorySearchLabel": "Procurar categorias",
+  "filterCategorySearchPlaceholder": "Procurar categorias",
+  "filterCategoryNoMatch": "Nenhuma categoria corresponde a “{{term}}”",
   "filterCityHint": "Os serviços à distância aparecem em todas as cidades.",
   "filterRating": "Avaliação",
   "filterRatingHint": "Só negócios já avaliados por clientes.",
@@ -236,14 +240,12 @@
   "titleServicesTermCity": "{{term}} em {{city}}",
   "titleProvidersTerm": "{{term}}",
   "titleProvidersTermCity": "{{term}} em {{city}}",
-
   "priceToAgree": "Preço a combinar",
   "priceQuoteHint": "Peça um orçamento",
   "priceOptionCount_one": "{{count}} opção",
   "priceOptionCount_other": "{{count}} opções",
   "priceFromPrefix": "desde",
   "pricePerHourUnit": "/h",
-
   "ratingNew": "Novo",
   "providerKindSentence": {
     "individual": "{{category}} em {{place}}",
@@ -252,14 +254,10 @@
   "providerServicesMore": "mais {{count}}",
   "providerOpenBusiness": "Ver negócio",
   "providerOpenPerson": "Ver perfil",
-
-  "categoryStripLabel": "Categorias",
-
   "filterPillRemove": "Remover {{filter}}",
   "filterSheetApply_one": "Ver {{count}} resultado",
   "filterSheetApply_other": "Ver {{count}} resultados",
   "sortTrigger": "Ordenar:",
-
   "quickChipMaxPrice": "Até {{amount}}",
   "quickChipsLabel": "Filtros rápidos"
 }

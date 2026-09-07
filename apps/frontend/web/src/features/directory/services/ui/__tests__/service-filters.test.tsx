@@ -22,6 +22,27 @@ vi.mock("@/features/directory/services/viewmodel/use-browse-services", () => ({
   ],
 }));
 
+/**
+ * The category filter reads the same list the pages do. Stubbed here for the
+ * same reason the cities are: this suite renders the bar on its own, outside
+ * the query client the real page provides.
+ *
+ * Nine of them, which is under `OPTION_SEARCH_THRESHOLD` — the searchable case
+ * has its own test that pushes the list past it.
+ */
+vi.mock("@/features/landing/viewmodel/use-categories", () => ({
+  CATEGORY_FILTER_LIMIT: 48,
+  useCategoryPreview: () => ({
+    data: {
+      items: [
+        { id: "1", code: "plumbing", name: "Canalização", icon: null, imageUrl: null },
+        { id: "2", code: "electrical", name: "Electricidade", icon: null, imageUrl: null },
+        { id: "3", code: "cleaning", name: "Limpeza de casa", icon: null, imageUrl: null },
+      ],
+    },
+  }),
+}));
+
 const { MobileServiceFilters, ServiceFilters } = await import("../service-filters");
 
 async function renderIn(node: ReactNode) {

@@ -109,6 +109,10 @@
   "providerFrom": "desde",
   "providerOpen": "Ver negocio",
   "filterCity": "Ciudad",
+  "filterCategory": "Categoría",
+  "filterCategorySearchLabel": "Buscar categorías",
+  "filterCategorySearchPlaceholder": "Buscar categorías",
+  "filterCategoryNoMatch": "Ninguna categoría coincide con «{{term}}»",
   "filterCityHint": "Los servicios a distancia aparecen en todas las ciudades.",
   "filterRating": "Valoración",
   "filterRatingHint": "Solo negocios que los clientes ya han valorado.",
@@ -192,8 +196,20 @@
   "chipRating": "{{score}}+ estrellas",
   "chipVerified": "Solo verificados",
   "filtersClearAll": "Borrar todo",
-  "sortOption": { "default": "Sugeridos", "newest": "Más recientes", "price": "Precio", "rating": "Mejor valorados", "reviews": "Más valorados", "name": "Nombre (A–Z)" },
-  "resultsScope": { "all": "en todas las categorías", "category": "en {{category}}", "city": "en {{city}}", "categoryCity": "en {{category}}, {{city}}" },
+  "sortOption": {
+    "default": "Sugeridos",
+    "newest": "Más recientes",
+    "price": "Precio",
+    "rating": "Mejor valorados",
+    "reviews": "Más valorados",
+    "name": "Nombre (A–Z)"
+  },
+  "resultsScope": {
+    "all": "en todas las categorías",
+    "category": "en {{category}}",
+    "city": "en {{city}}",
+    "categoryCity": "en {{category}}, {{city}}"
+  },
   "searchFieldProviderEmpty": "Nombre del negocio o profesional…",
   "pagerLabel": "Páginas",
   "factCategory": "Categoría",
@@ -224,14 +240,12 @@
   "titleServicesTermCity": "{{term}} en {{city}}",
   "titleProvidersTerm": "{{term}}",
   "titleProvidersTermCity": "{{term}} en {{city}}",
-
   "priceToAgree": "Precio a convenir",
   "priceQuoteHint": "Pide un presupuesto",
   "priceOptionCount_one": "{{count}} opción",
   "priceOptionCount_other": "{{count}} opciones",
   "priceFromPrefix": "desde",
   "pricePerHourUnit": "/h",
-
   "ratingNew": "Nuevo",
   "providerKindSentence": {
     "individual": "{{category}} en {{place}}",
@@ -240,14 +254,10 @@
   "providerServicesMore": "{{count}} más",
   "providerOpenBusiness": "Ver negocio",
   "providerOpenPerson": "Ver perfil",
-
-  "categoryStripLabel": "Categorías",
-
   "filterPillRemove": "Quitar {{filter}}",
   "filterSheetApply_one": "Ver {{count}} resultado",
   "filterSheetApply_other": "Ver {{count}} resultados",
   "sortTrigger": "Ordenar:",
-
   "quickChipMaxPrice": "Hasta {{amount}}",
   "quickChipsLabel": "Filtros rápidos"
 }

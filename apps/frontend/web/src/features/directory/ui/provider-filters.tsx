@@ -14,6 +14,7 @@ import {
 } from "@/shared/components/browse/floating-controls";
 import { SortDropdown, type SortDropdownOption } from "@/shared/components/browse/sort-dropdown";
 import { FacetBox, FacetCount, facetOptionClass } from "@/shared/components/browse/facet-panel";
+import { SearchableOptions } from "@/shared/components/browse/searchable-options";
 import { EXACT_MATCH } from "@/shared/components/browse/active-match";
 import { formatRating } from "@/shared/domain/rating";
 import {
@@ -28,18 +29,24 @@ import {
   type FilterChip,
 } from "@/features/directory/domain/directory-chips";
 import { useProviderCities } from "@/features/directory/viewmodel/use-directory";
+import {
+  CATEGORY_FILTER_LIMIT,
+  useCategoryPreview,
+} from "@/features/landing/viewmodel/use-categories";
 import { DirectoryPriceFilter } from "@/features/directory/ui/directory-price-filter";
 
 /**
  * Everything the pill bar can narrow, taken off at once — but not what was
  * typed.
  *
- * Exactly the set `directoryFilterChips` lists other than `q`, and for the
- * same reasons the category and the sort are kept: the **category is kept**,
- * because the strip above the results is still showing it and clearing
- * something visible from a control somewhere else reads as a bug; the
- * **sort is kept**, because an order is not a narrowing and clearing filters
- * should not also reorder what is left.
+ * The set `directoryFilterChips` lists other than `q`, plus the category. The
+ * **category goes** now that it is a pill on this bar: it used to be kept,
+ * because the strip above the results went on showing it and clearing
+ * something visible from a control somewhere else reads as a bug — but the
+ * control and the category are the same control today, and a "Clear all" that
+ * left one of its own pills filled would be the bug instead. The **sort is
+ * kept**, because an order is not a narrowing and clearing filters should not
+ * also reorder what is left.
  *
  * **The term is kept too.** It lives in the search bar under the header,
  * which shows it and has its own way of emptying it; a "Clear all" under a
@@ -52,6 +59,9 @@ import { DirectoryPriceFilter } from "@/features/directory/ui/directory-price-fi
  */
 export function clearedDirectorySearch(current: DirectorySearch): DirectorySearch {
   return directorySearch(current, {
+    // The category came off the strip above the results and onto this bar, so
+    // "clear all" owes it the same clearing as every other filter beside it.
+    category: undefined,
     city: undefined,
     providerType: undefined,
     minRating: undefined,
@@ -118,7 +128,13 @@ export function chooseProviderSort(
  * take it off. See R18.
  */
 function appliedCount(current: DirectorySearch): number {
-  return directoryFilterChips(current).filter((c) => c.key !== "q").length;
+  // The chips are the results' own summary and carry no category — the
+  // heading above them already names it, and a chip would say it twice. The
+  // count is the phone's "Filters (n)" badge, though, and a category is one of
+  // the things it now counts.
+  return (
+    directoryFilterChips(current).filter((c) => c.key !== "q").length + (current.category ? 1 : 0)
+  );
 }
 
 function PillClear({ search, label }: { search: DirectorySearch; label: string }) {
@@ -207,6 +223,7 @@ function ClearAll({ current, onNavigate }: { current: DirectorySearch; onNavigat
 export function ProviderFilters({ current }: { current: DirectorySearch }) {
   const { t } = useTranslation("directory");
   const cities = useProviderCities();
+  const categories = useCategoryPreview(CATEGORY_FILTER_LIMIT).data?.items ?? [];
   const chips = directoryFilterChips(current);
 
   const ratingChip = chipFor(chips, "minRating");
@@ -215,6 +232,12 @@ export function ProviderFilters({ current }: { current: DirectorySearch }) {
   const verifiedChip = chipFor(chips, "verified");
   const cityChip = chipFor(chips, "city");
 
+  // The name, not the code, because the pill fills with what was chosen. It
+  // is undefined until the categories land, exactly as the heading's own name
+  // is — one request answers both, so they fill together.
+  const categoryName = categories.find((c) => c.code === current.category)?.name;
+
+  const categoryLabel = t("filterCategory");
   const ratingLabel = t("filterRating");
   const priceLabel = t("filterPrice");
   const kindLabel = t("filterProviderKind");
@@ -223,6 +246,25 @@ export function ProviderFilters({ current }: { current: DirectorySearch }) {
 
   return (
     <FilterBar>
+      {/* First, because it is the widest narrowing on the bar: every other
+          pill divides a set this one has already chosen. It is also where the
+          strip that used to carry the categories sat — above the results and
+          before everything else. */}
+      <FilterPill
+        label={categoryLabel}
+        active={categoryName}
+        clear={
+          current.category ? (
+            <PillClear
+              search={directorySearch(current, { category: undefined, offset: undefined })}
+              label={categoryLabel}
+            />
+          ) : undefined
+        }
+      >
+        <CategoryOptions current={current} />
+      </FilterPill>
+
       <FilterPill
         label={ratingLabel}
         active={ratingChip ? t(ratingChip.label.key, ratingChip.label.values ?? {}) : undefined}
@@ -357,6 +399,12 @@ export function MobileProviderFilters({
         apply={t("filterSheetApply", { count: total })}
         onApply={() => setOpen(false)}
       >
+        {/* The phone's only way to a category now that the strip is gone, so
+            it leads the sheet the way the pill leads the bar. */}
+        <SheetGroup label={t("filterCategory")}>
+          <CategoryOptions current={current} />
+        </SheetGroup>
+
         <SheetGroup label={t("filterRating")}>
           <RatingOptions current={current} />
         </SheetGroup>
@@ -434,6 +482,47 @@ function VerifiedOption({ current }: { current: DirectorySearch }) {
       // `verified: false` is never written — see `directorySearch`, which
       // drops it. Turning the filter off is turning the parameter off.
       toSearch={(v) => directorySearch(current, { verified: v != null, offset: undefined })}
+    />
+  );
+}
+
+/**
+ * The categories, as the bar's first group.
+ *
+ * Every category in one request rather than a page of them: `SearchableOptions`
+ * matches against what it holds, so a category left out of the response is one
+ * a reader can type the name of and be told does not exist. See
+ * `CATEGORY_FILTER_LIMIT`.
+ */
+function CategoryOptions({ current }: { current: DirectorySearch }) {
+  const { t } = useTranslation("directory");
+  const categories = useCategoryPreview(CATEGORY_FILTER_LIMIT).data?.items ?? [];
+
+  return (
+    <SearchableOptions
+      searchLabel={t("filterCategorySearchLabel")}
+      searchPlaceholder={t("filterCategorySearchPlaceholder")}
+      noMatchLabel={(term) => t("filterCategoryNoMatch", { term })}
+      lead={
+        <FacetOption
+          label={t("providersAllCategories")}
+          active={!current.category}
+          value=""
+          toSearch={() => directorySearch(current, { category: undefined, offset: undefined })}
+        />
+      }
+      options={categories.map((c) => ({
+        key: c.id,
+        label: c.name,
+        node: (
+          <FacetOption
+            label={c.name}
+            active={current.category === c.code}
+            value={c.code}
+            toSearch={(category) => directorySearch(current, { category, offset: undefined })}
+          />
+        ),
+      }))}
     />
   );
 }

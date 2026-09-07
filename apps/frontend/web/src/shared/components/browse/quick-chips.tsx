@@ -11,7 +11,7 @@ import type { ReactNode } from "react";
  * instead of wrapping onto a second row and pushing the first result down by a
  * different amount at every screen width.
  *
- * The fade at the right edge does the same job `CategoryStrip`'s does — the
+ * The fade at the right edge tells the reader this is a scroll container — the
  * row reads as a scroll container that ends mid-item on purpose, not as a
  * clipping bug — through a `mask-image` rather than an overlay span: this row
  * carries no positioned layer of its own for arrows to sit on, so one utility
@@ -34,7 +34,7 @@ export function QuickChips({ label, children }: { label: string; children: React
  *
  * Only the colour tokens move between the two states — never the padding or
  * the type size — so a chip going from off to on never resizes and shifts
- * every chip after it sideways, the same rule `categoryItemClass` follows.
+ * every chip after it sideways, the same rule `pagerPageClass` follows.
  *
  * `whitespace-nowrap` is what actually keeps the row one row. `shrink-0` on
  * this link is not enough on its own: the flex item is the `<li>` the page

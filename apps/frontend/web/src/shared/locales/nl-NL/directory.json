@@ -109,6 +109,10 @@
   "providerFrom": "vanaf",
   "providerOpen": "Bedrijf bekijken",
   "filterCity": "Stad",
+  "filterCategory": "Categorie",
+  "filterCategorySearchLabel": "Categorieën zoeken",
+  "filterCategorySearchPlaceholder": "Categorieën zoeken",
+  "filterCategoryNoMatch": "Geen categorie komt overeen met ‘{{term}}’",
   "filterCityHint": "Diensten op afstand verschijnen bij elke stad.",
   "filterRating": "Beoordeling",
   "filterRatingHint": "Alleen bedrijven die klanten al beoordeeld hebben.",
@@ -192,8 +196,20 @@
   "chipRating": "{{score}}+ sterren",
   "chipVerified": "Alleen geverifieerd",
   "filtersClearAll": "Alles wissen",
-  "sortOption": { "default": "Aanbevolen", "newest": "Nieuwste", "price": "Prijs", "rating": "Best beoordeeld", "reviews": "Meest beoordeeld", "name": "Naam (A–Z)" },
-  "resultsScope": { "all": "in alle categorieën", "category": "voor {{category}}", "city": "in {{city}}", "categoryCity": "voor {{category}} in {{city}}" },
+  "sortOption": {
+    "default": "Aanbevolen",
+    "newest": "Nieuwste",
+    "price": "Prijs",
+    "rating": "Best beoordeeld",
+    "reviews": "Meest beoordeeld",
+    "name": "Naam (A–Z)"
+  },
+  "resultsScope": {
+    "all": "in alle categorieën",
+    "category": "voor {{category}}",
+    "city": "in {{city}}",
+    "categoryCity": "voor {{category}} in {{city}}"
+  },
   "searchFieldProviderEmpty": "Naam van het bedrijf of de vakman…",
   "pagerLabel": "Pagina's",
   "factCategory": "Categorie",
@@ -224,14 +240,12 @@
   "titleServicesTermCity": "{{term}} in {{city}}",
   "titleProvidersTerm": "{{term}}",
   "titleProvidersTermCity": "{{term}} in {{city}}",
-
   "priceToAgree": "Prijs in overleg",
   "priceQuoteHint": "Vraag een offerte aan",
   "priceOptionCount_one": "{{count}} optie",
   "priceOptionCount_other": "{{count}} opties",
   "priceFromPrefix": "vanaf",
   "pricePerHourUnit": "/uur",
-
   "ratingNew": "Nieuw",
   "providerKindSentence": {
     "individual": "{{category}} in {{place}}",
@@ -240,14 +254,10 @@
   "providerServicesMore": "nog {{count}} meer",
   "providerOpenBusiness": "Bedrijf bekijken",
   "providerOpenPerson": "Profiel bekijken",
-
-  "categoryStripLabel": "Categorieën",
-
   "filterPillRemove": "{{filter}} verwijderen",
   "filterSheetApply_one": "Toon {{count}} resultaat",
   "filterSheetApply_other": "Toon {{count}} resultaten",
   "sortTrigger": "Sorteren:",
-
   "quickChipMaxPrice": "Tot {{amount}}",
   "quickChipsLabel": "Snelle filters"
 }

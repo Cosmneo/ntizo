@@ -49,6 +49,7 @@ vi.mock("@/features/directory/viewmodel/use-directory", () => ({
 }));
 
 vi.mock("@/features/landing/viewmodel/use-categories", () => ({
+  CATEGORY_FILTER_LIMIT: 48,
   useCategoryPreview: () => ({
     data: { items: [{ id: "c1", code: "hair", name: "Hair & beauty", icon: "Scissors" }] },
   }),
@@ -167,7 +168,7 @@ describe("DirectoryPage", () => {
     expect(screen.queryByText("in all categories")).not.toBeInTheDocument();
   });
 
-  it("puts the heading under the strip, and names the place in the summary's scope", async () => {
+  it("heads the page and names the place in the summary's scope", async () => {
     // The hero is gone: the `h1` is the first thing inside `main`, under the
     // category strip, rather than sitting in a tinted band above it.
     renderPage("/providers?city=Maputo", { items: [provider()], total: 1 });
@@ -181,7 +182,7 @@ describe("DirectoryPage", () => {
 
   it("heads the page with the term when one is typed", async () => {
     // The term is what the reader asked for; the category they are in is
-    // already stated by the chip lit in the strip above.
+    // already stated by the filled category pill below.
     renderPage("/providers?q=estúdio", { items: [provider()], total: 1 });
     expect(await screen.findByRole("heading", { level: 1 })).toHaveTextContent("estúdio");
   });

@@ -6,12 +6,6 @@ import { SearchX, Store } from "lucide-react";
 import type { ProviderPublicDTO } from "@ntizo/shared";
 import { EmptyCard } from "@/shared/components/empty-card";
 import { SiteHeader } from "@/shared/components/site-header";
-import {
-  CATEGORY_STRIP_LIMIT,
-  CategoryStrip,
-  categoryItemClass,
-  iconComponent,
-} from "@/shared/components/browse/category-strip";
 import { SortDropdown } from "@/shared/components/browse/sort-dropdown";
 import { QuickChips, quickChipClass } from "@/shared/components/browse/quick-chips";
 import { PAGER_EDGE_CLASS, Pager, pagerPageClass } from "@/shared/components/browse/pager";
@@ -22,7 +16,10 @@ import { formatHeadlinePrice } from "@/features/directory/services/domain/servic
 // Reached through its viewmodel rather than its repository — `ui` may not
 // touch `data`, and going through the hook reuses the cache the home page has
 // usually already filled.
-import { useCategoryPreview } from "@/features/landing/viewmodel/use-categories";
+import {
+  CATEGORY_FILTER_LIMIT,
+  useCategoryPreview,
+} from "@/features/landing/viewmodel/use-categories";
 import { useDirectory } from "@/features/directory/viewmodel/use-directory";
 // One question about the hearts for the whole page, and the control that
 // answers it — see the `useFavouriteMarks` call below for why the page owns
@@ -90,12 +87,11 @@ import { resultsScope, scopeValues } from "@/features/directory/domain/results-s
  * down a grid of results is the photographs, the ratings and the prices,
  * not twenty identical calls to action.
  *
- * **Nothing straddles the strip.** Header, then strip, then `main`: three
- * bands stacked, none of them overlapping the next — the search band that
- * used to sit between the first two is inside the header now. The card that
- * once sat in a well across the strip's top edge is gone, so the strip is a
- * single positioned layer with no paint-order split — anything reintroduced
- * there on a negative margin would be painted over by it.
+ * **Two bands, and nothing straddles them.** Header, then `main`: the search
+ * band that used to sit between them is inside the header, and the category
+ * strip that used to run under it is a pill on the filter bar. Neither band
+ * overlaps the next, so there is no paint-order split — anything reintroduced
+ * between them on a negative margin would be painted over.
  *
  * **The phone is not this page shrunk.** The pills give way to four one-tap
  * chips above the results and one navy capsule at the thumb holding the
@@ -153,7 +149,7 @@ export function DirectoryPage() {
   const navigate = useNavigate();
   // A plain query, unlike the listings: this is a control, not the content a
   // crawler came for, so it may arrive a beat later.
-  const categories = useCategoryPreview(CATEGORY_STRIP_LIMIT).data?.items ?? [];
+  const categories = useCategoryPreview(CATEGORY_FILTER_LIMIT).data?.items ?? [];
   const categoryName = categories.find((c) => c.code === category)?.name ?? null;
 
   const title = directoryTitle(current, categoryName);
@@ -200,24 +196,6 @@ export function DirectoryPage() {
         }}
       />
 
-      <CategoryStrip label={t("categoryStripLabel")}>
-        <StripItem
-          search={directorySearch(current, { category: undefined, offset: undefined })}
-          label={t("providersAllCategories")}
-          icon={null}
-          isAll
-          active={!category}
-        />
-        {categories.map((c) => (
-          <StripItem
-            key={c.id}
-            search={directorySearch(current, { category: c.code, offset: undefined })}
-            label={c.name}
-            icon={c.icon}
-            active={category === c.code}
-          />
-        ))}
-      </CategoryStrip>
 
       <main className="page-shell pb-14">
         <div className="flex items-end justify-between gap-5 pt-6 pb-3.5">
@@ -484,36 +462,6 @@ function providerListing(provider: ProviderPublicDTO, t: TFunction, locale: stri
         }
       : {}),
   };
-}
-
-/** One category, as a chip in the strip: its icon beside its name. */
-function StripItem({
-  search,
-  label,
-  icon,
-  isAll = false,
-  active,
-}: {
-  /** Already built by `directorySearch`, which omits the category rather than emptying it. */
-  search: DirectorySearch;
-  label: string;
-  /** A Lucide name from the category's own `icon` column, or null. */
-  icon: string | null;
-  isAll?: boolean;
-  active: boolean;
-}) {
-  const Icon = iconComponent(icon, isAll);
-  return (
-    <Link
-      to="/providers"
-      activeOptions={EXACT_MATCH}
-      search={search}
-      className={categoryItemClass(active)}
-    >
-      <Icon className="h-[15px] w-[15px]" aria-hidden="true" />
-      <span>{label}</span>
-    </Link>
-  );
 }
 
 /**

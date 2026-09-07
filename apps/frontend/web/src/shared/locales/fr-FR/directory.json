@@ -109,6 +109,10 @@
   "providerFrom": "à partir de",
   "providerOpen": "Voir l'établissement",
   "filterCity": "Ville",
+  "filterCategory": "Catégorie",
+  "filterCategorySearchLabel": "Rechercher des catégories",
+  "filterCategorySearchPlaceholder": "Rechercher des catégories",
+  "filterCategoryNoMatch": "Aucune catégorie ne correspond à « {{term}} »",
   "filterCityHint": "Les services à distance apparaissent dans toutes les villes.",
   "filterRating": "Note",
   "filterRatingHint": "Uniquement les établissements déjà évalués par des clients.",
@@ -192,8 +196,20 @@
   "chipRating": "{{score}}+ étoiles",
   "chipVerified": "Vérifiés uniquement",
   "filtersClearAll": "Tout effacer",
-  "sortOption": { "default": "Suggérés", "newest": "Plus récents", "price": "Prix", "rating": "Mieux notés", "reviews": "Plus d'avis", "name": "Nom (A–Z)" },
-  "resultsScope": { "all": "dans toutes les catégories", "category": "en {{category}}", "city": "à {{city}}", "categoryCity": "en {{category}}, à {{city}}" },
+  "sortOption": {
+    "default": "Suggérés",
+    "newest": "Plus récents",
+    "price": "Prix",
+    "rating": "Mieux notés",
+    "reviews": "Plus d'avis",
+    "name": "Nom (A–Z)"
+  },
+  "resultsScope": {
+    "all": "dans toutes les catégories",
+    "category": "en {{category}}",
+    "city": "à {{city}}",
+    "categoryCity": "en {{category}}, à {{city}}"
+  },
   "searchFieldProviderEmpty": "Nom de l'entreprise ou du professionnel…",
   "pagerLabel": "Pages",
   "factCategory": "Catégorie",
@@ -224,14 +240,12 @@
   "titleServicesTermCity": "Résultats pour {{term}} à {{city}}",
   "titleProvidersTerm": "Résultats pour {{term}}",
   "titleProvidersTermCity": "Résultats pour {{term}} à {{city}}",
-
   "priceToAgree": "Prix à convenir",
   "priceQuoteHint": "Demandez un devis",
   "priceOptionCount_one": "{{count}} option",
   "priceOptionCount_other": "{{count}} options",
   "priceFromPrefix": "à partir de",
   "pricePerHourUnit": "/h",
-
   "ratingNew": "Nouveau",
   "providerKindSentence": {
     "individual": "{{category}} à {{place}}",
@@ -240,14 +254,10 @@
   "providerServicesMore": "{{count}} de plus",
   "providerOpenBusiness": "Voir l'établissement",
   "providerOpenPerson": "Voir le profil",
-
-  "categoryStripLabel": "Catégories",
-
   "filterPillRemove": "Retirer {{filter}}",
   "filterSheetApply_one": "Voir {{count}} résultat",
   "filterSheetApply_other": "Voir {{count}} résultats",
   "sortTrigger": "Trier :",
-
   "quickChipMaxPrice": "Jusqu’à {{amount}}",
   "quickChipsLabel": "Filtres rapides"
 }

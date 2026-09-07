@@ -74,7 +74,7 @@ export function FilterPill({
             // `font-medium` is in the base, not in the branches: an applied
             // pill that turned semibold grew, and the pill after it moved.
             // Only the colours say which one is on — the same rule
-            // `categoryItemClass`, `quickChipClass` and `pagerPageClass` keep.
+            // `quickChipClass` and `pagerPageClass` keep.
             "flex h-[38px] cursor-pointer list-none items-center gap-[7px] rounded-full border px-3.5 text-[13.5px] font-medium transition-colors [&::-webkit-details-marker]:hidden",
             on
               ? "border-[var(--color-navy-surface)] bg-[var(--color-navy-surface)] text-[var(--color-navy-on)]"

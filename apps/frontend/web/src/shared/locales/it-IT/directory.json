@@ -109,6 +109,10 @@
   "providerFrom": "da",
   "providerOpen": "Vedi attività",
   "filterCity": "Città",
+  "filterCategory": "Categoria",
+  "filterCategorySearchLabel": "Cerca categorie",
+  "filterCategorySearchPlaceholder": "Cerca categorie",
+  "filterCategoryNoMatch": "Nessuna categoria corrisponde a «{{term}}»",
   "filterCityHint": "I servizi a distanza compaiono in tutte le città.",
   "filterRating": "Valutazione",
   "filterRatingHint": "Solo attività già recensite dai clienti.",
@@ -192,8 +196,20 @@
   "chipRating": "{{score}}+ stelle",
   "chipVerified": "Solo verificati",
   "filtersClearAll": "Cancella tutto",
-  "sortOption": { "default": "Consigliati", "newest": "Più recenti", "price": "Prezzo", "rating": "Più votati", "reviews": "Più recensiti", "name": "Nome (A–Z)" },
-  "resultsScope": { "all": "in tutte le categorie", "category": "in {{category}}", "city": "a {{city}}", "categoryCity": "in {{category}}, a {{city}}" },
+  "sortOption": {
+    "default": "Consigliati",
+    "newest": "Più recenti",
+    "price": "Prezzo",
+    "rating": "Più votati",
+    "reviews": "Più recensiti",
+    "name": "Nome (A–Z)"
+  },
+  "resultsScope": {
+    "all": "in tutte le categorie",
+    "category": "in {{category}}",
+    "city": "a {{city}}",
+    "categoryCity": "in {{category}}, a {{city}}"
+  },
   "searchFieldProviderEmpty": "Nome dell'attività o del professionista…",
   "pagerLabel": "Pagine",
   "factCategory": "Categoria",
@@ -224,14 +240,12 @@
   "titleServicesTermCity": "{{term}} a {{city}}",
   "titleProvidersTerm": "{{term}}",
   "titleProvidersTermCity": "{{term}} a {{city}}",
-
   "priceToAgree": "Prezzo da concordare",
   "priceQuoteHint": "Chiedi un preventivo",
   "priceOptionCount_one": "{{count}} opzione",
   "priceOptionCount_other": "{{count}} opzioni",
   "priceFromPrefix": "da",
   "pricePerHourUnit": "/h",
-
   "ratingNew": "Nuovo",
   "providerKindSentence": {
     "individual": "{{category}} a {{place}}",
@@ -240,14 +254,10 @@
   "providerServicesMore": "altri {{count}}",
   "providerOpenBusiness": "Vedi attività",
   "providerOpenPerson": "Vedi profilo",
-
-  "categoryStripLabel": "Categorie",
-
   "filterPillRemove": "Rimuovi {{filter}}",
   "filterSheetApply_one": "Mostra {{count}} risultato",
   "filterSheetApply_other": "Mostra {{count}} risultati",
   "sortTrigger": "Ordina:",
-
   "quickChipMaxPrice": "Fino a {{amount}}",
   "quickChipsLabel": "Filtri rapidi"
 }

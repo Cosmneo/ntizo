@@ -44,6 +44,7 @@ vi.mock("@/features/directory/services/viewmodel/use-browse-services", () => ({
 }));
 
 vi.mock("@/features/landing/viewmodel/use-categories", () => ({
+  CATEGORY_FILTER_LIMIT: 48,
   useCategoryPreview: () => ({
     data: { items: [{ id: "c1", code: "hair", name: "Hair & beauty", icon: "Scissors" }] },
   }),
@@ -194,7 +195,7 @@ describe("ServicesBrowsePage", () => {
 
   it("heads the page with what was typed, which outranks the category", async () => {
     // The term is what the reader asked for; the category they are in is
-    // already stated by the chip lit in the strip above. Ranking the category
+    // already stated by the filled category pill below. Ranking the category
     // first meant the heading answered a question nobody had asked.
     renderPage("/services?q=corte&city=Maputo&category=hair", {
       items: [service()],
