@@ -197,11 +197,12 @@ describe("ServicesBrowsePage", () => {
     expect(screen.queryByRole("button", { name: /book/i })).toBeNull();
   });
 
-  it("separates the phone's rows with a hairline the list draws, not the tile", async () => {
-    // `divide-y` draws between children and never above the first, which is
-    // the mockup's `.m-row:first-child{border-top:0}` for free — so unlike
-    // `/providers`, no tile has to be told it is first. From `sm` the grid's
-    // own white space separates them again and the hairline goes.
+  it("separates every card by a gap, at every width, and draws no hairline between them", async () => {
+    // The card is a bordered object with its own edge, unlike the borderless
+    // tile it replaces: a `divide-y` hairline between two boxes that already
+    // draw their own border would be a second separation doing the first
+    // one's job, so the grid gap is the only separation at any breakpoint,
+    // including the phone's single column.
     const { container } = renderPage("/services", {
       items: [service()],
       nextOffset: null,
@@ -209,9 +210,11 @@ describe("ServicesBrowsePage", () => {
     });
     await screen.findByRole("link", { name: "Corte de cabelo" });
     const list = container.querySelector("article")!.closest("ul")!;
-    expect(list.className).toContain("divide-y");
-    expect(list.className).toContain("sm:divide-y-0");
     expect(list.className).toContain("grid-cols-1");
+    expect(list.className).toContain("gap-x-6");
+    expect(list.className).toContain("gap-y-8");
+    expect(list.className.split(/\s+/)).not.toContain("gap-0");
+    expect(list.className).not.toMatch(/\bdivide-y\b/);
   });
 
   it("does not tell somebody who filtered that the platform is empty", async () => {

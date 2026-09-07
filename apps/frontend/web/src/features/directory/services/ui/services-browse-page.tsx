@@ -20,7 +20,7 @@ import { EXACT_MATCH } from "@/shared/components/browse/active-match";
 // usually already filled.
 import { useCategoryPreview } from "@/features/landing/viewmodel/use-categories";
 import { useBrowseServices } from "@/features/directory/services/viewmodel/use-browse-services";
-import { ServiceTile } from "@/features/directory/services/ui/service-tile";
+import { ServiceCard } from "@/shared/components/browse/service-card";
 import {
   MobileServiceFilters,
   ServiceFilters,
@@ -57,9 +57,9 @@ import { resultsScope, scopeValues } from "@/features/directory/domain/results-s
  * always puts it — the header's nav pill, the header's sign-in, the search
  * bar's button — and no further down the page than that.
  * Everything below is headline navy, ink, grey and the amber star, which is
- * why the tiles carry no border, no shadow and no button of their own: what
- * the eye should land on down a column of results is the photographs and the
- * prices, not twenty-four identical calls to action.
+ * why the cards carry no button of their own: what the eye should land on
+ * down a grid of results is the photographs and the prices, not twenty-four
+ * identical calls to action.
  *
  * **Nothing straddles the strip.** Header, then search bar, then strip, then
  * `main`: four bands stacked, none of them overlapping the next. The card
@@ -278,21 +278,19 @@ export function ServicesBrowsePage() {
           )
         ) : (
           <>
-            {/* Four across at `lg`, two at `sm`. The row gap is larger than
-                the column gap on purpose: the tiles carry no border, so what
-                separates one row from the next is the space itself, and equal
-                gaps read as a grid of unrelated things rather than as rows.
-
-                Below `sm` the tiles become hairline rows, so the separation
-                changes with them: no gap at all, and a `divide-y` hairline
-                between the list's own children. `divide-y` draws between
-                children and not above the first, which is exactly the rule
-                the mockup's `.m-row:first-child{border-top:0}` states — so
-                unlike `/providers`, no row has to be told it is first. */}
-            <ul className="grid list-none grid-cols-1 gap-0 divide-y divide-[var(--color-border)] p-0 sm:grid-cols-2 sm:gap-x-6 sm:gap-y-8 sm:divide-y-0 md:grid-cols-3 lg:grid-cols-4">
+            {/* Four across at `lg`, two at `sm`, one below it. The card is a
+                bordered object with its own edge, so — unlike the borderless
+                tile it replaces — it is separated from its neighbours by a
+                gap at every width, never a hairline: a divider between two
+                boxes that already draw their own border would be a third
+                separation doing the one job the gap already does. The row
+                gap is larger than the column gap on purpose, so equal gaps
+                do not read as a grid of unrelated things rather than as
+                rows. */}
+            <ul className="grid list-none grid-cols-1 gap-x-6 gap-y-8 p-0 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
               {page.items.map((service) => (
                 <li key={service.id}>
-                  <ServiceTile service={service} locale={locale} />
+                  <ServiceCard service={service} locale={locale} />
                 </li>
               ))}
             </ul>

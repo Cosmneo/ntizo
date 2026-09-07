@@ -21,7 +21,7 @@ import { formatRating } from "@/shared/domain/rating";
 // usually already filled.
 import { useCategoryPreview } from "@/features/landing/viewmodel/use-categories";
 import { useDirectory } from "@/features/directory/viewmodel/use-directory";
-import { ProviderRow } from "@/features/directory/ui/provider-row";
+import { ProviderCard } from "@/shared/components/browse/provider-card";
 import {
   MobileProviderFilters,
   ProviderFilters,
@@ -45,8 +45,8 @@ import { resultsScope, scopeValues } from "@/features/directory/domain/results-s
  * in the nav.
  *
  * Deliberately the twin of `ServicesBrowsePage`: the same shells in the same
- * order, differing in exactly four things — the filters it draws, the copy it
- * counts with, a `<ul>` of rows in place of a grid of tiles, and a pager that
+ * order, the same grid of cards underneath, differing in exactly three
+ * things — the filters it draws, the copy it counts with, and a pager that
  * steps by the page size because `providerPageReadModel` carries a total and
  * no `nextOffset`. The two had already drifted once — one grew a row of sort
  * links and the other a five-item dropdown, and each carried its own copy of
@@ -54,10 +54,12 @@ import { resultsScope, scopeValues } from "@/features/directory/domain/results-s
  * to learn the other. If the two page files differ in anything else, one of
  * them is wrong.
  *
- * What the *result* says does differ, and should: a service sells one job, a
- * business is something somebody is deciding whether to trust — which is why
- * a business gets a row with its services and their prices in it rather than
- * the tile a service gets. See `ProviderRow`.
+ * The result itself is the shared `ProviderCard` — the one card `/services`
+ * also draws, in the provider shape rather than the service one. A row this
+ * page drew before had room for a business's own description and up to
+ * three of its services with their prices; the card has room for neither,
+ * and both drop with it. See `ProviderCard`'s own doc comment for exactly
+ * what else a row could say that a card cannot.
  *
  * Four levels of narrowing, deliberately not the same shape. The search bar
  * under the header asks the opening question — the landing hero's own
@@ -74,9 +76,9 @@ import { resultsScope, scopeValues } from "@/features/directory/domain/results-s
  * always puts it — the header's nav pill, the header's sign-in, the search
  * bar's button — and no further down the page than that.
  * Everything below is headline navy, ink, grey and the amber star, which is
- * why the rows carry no border, no shadow and no button of their own: what
- * the eye should land on down a column of results is the photographs, the
- * ratings and the prices, not twenty identical calls to action.
+ * why the cards carry no button of their own: what the eye should land on
+ * down a grid of results is the photographs, the ratings and the prices,
+ * not twenty identical calls to action.
  *
  * **Nothing straddles the strip.** Header, then search bar, then strip, then
  * `main`: four bands stacked, none of them overlapping the next. The card
@@ -292,16 +294,17 @@ export function DirectoryPage() {
           )
         ) : (
           <>
-            {/* No gap of its own: a row draws the hairline that separates it
-                from the one above, and space between them as well would be
-                two separations doing one job. The first row is told it is
-                first rather than working it out from a `first:` variant —
-                inside `<li>` every article is its parent's first child, so
-                the variant stripped the hairline from all of them. */}
-            <ul className="grid list-none p-0">
-              {page.items.map((provider, index) => (
+            {/* The same grid `/services` lays its cards in — four across at
+                `lg`, two at `sm`, one below it — because the two pages are
+                meant to be twins and a provider is now drawn on the same
+                bordered card a service is. The gap is the only separation
+                a card needs: it already draws its own border, so a hairline
+                between two bordered boxes would be a second separation
+                doing the first one's job. */}
+            <ul className="grid list-none grid-cols-1 gap-x-6 gap-y-8 p-0 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+              {page.items.map((provider) => (
                 <li key={provider.id}>
-                  <ProviderRow provider={provider} locale={locale} first={index === 0} />
+                  <ProviderCard provider={provider} locale={locale} />
                 </li>
               ))}
             </ul>

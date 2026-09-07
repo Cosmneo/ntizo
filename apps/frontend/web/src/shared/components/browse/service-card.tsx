@@ -11,22 +11,21 @@ import {
 import type { ServiceDTO } from "@/features/directory/services/domain/types";
 
 /**
- * One published service, on the home page's own product card.
+ * One published service — the single card the whole site shows for it.
  *
- * The client's reference for this card is a bordered product tile —
- * photograph on top, flush to the edge, then a padded body — which is a
- * different shape from `/services`' own borderless `ServiceTile`. That page's
- * design was approved separately and stays untouched; this card exists
- * because the two pages are now allowed to disagree about a service's shape
- * without either one reimplementing what it means to price one.
+ * A bordered product tile — photograph on top, flush to the edge, then a
+ * padded body — first approved on the home page and now the only shape a
+ * service is drawn in: the home page's "popular services" rail, `/services`'
+ * grid and any future list all import this one component rather than each
+ * keeping its own idea of what a service looks like.
  *
  * Every fact still comes from the shared domain: `servicePriceLine` decides
  * what the price area shows (a fixed amount, an hourly one, a "from" and its
  * count of options, or the words a quote service prints in place of a price),
- * and `RatingMark`/`ratingNew` are the same mark and the same "New" label the
- * browse card uses, from the `directory` namespace both cards share.
+ * and `RatingMark`/`ratingNew` are the same mark and the same "New" label
+ * every caller shares, from the `directory` namespace.
  */
-export function PopularServiceCard({ service, locale }: { service: ServiceDTO; locale: string }) {
+export function ServiceCard({ service, locale }: { service: ServiceDTO; locale: string }) {
   const { t } = useTranslation("directory");
   const line = servicePriceLine(service);
   const metaText = line.meta ? t(line.meta.key, line.meta.values ?? {}) : null;
@@ -68,7 +67,7 @@ export function PopularServiceCard({ service, locale }: { service: ServiceDTO; l
         <div className="mt-auto flex items-baseline justify-between gap-3 pt-2.5">
           {service.providerRatingAverage === null ? (
             // Not a zero: a provider nobody has reviewed yet is new, the same
-            // rule the browse card follows for the same reason.
+            // rule every caller of this card follows for the same reason.
             <span className="shrink-0 text-[13px] text-[var(--color-muted-foreground)]">
               {t("ratingNew")}
             </span>

@@ -170,43 +170,24 @@ describe("DirectoryPage", () => {
     expect(await screen.findByRole("heading", { level: 1 })).toHaveTextContent("estúdio");
   });
 
-  it("shows what each business sells, with prices, inside the row", async () => {
-    // The one thing the page this replaces could not say. Scoped to the chip:
-    // the fixture's own `fromAmountMinor` is 80_000 too, so the side rail's
-    // "from" price prints the identical string.
-    renderPage("/providers", {
-      items: [
-        provider({
-          services: [
-            { name: "Corte com barba", amountMinor: 80_000, currency: "MZN", pricingMode: "fixed" },
-          ],
-        }),
-      ],
-      total: 1,
-    });
-    expect(await screen.findByText("Corte com barba")).toBeInTheDocument();
-    // `formatHeadlinePrice(80_000, "MZN", "en-US")` renders "MZN 800" — the
-    // currency leads in this locale, not the amount.
-    expect(screen.getByText("Corte com barba").closest("li")).toHaveTextContent("MZN 800");
-  });
+  // `ProviderRow` used to show up to three of a business's services with
+  // their prices, and its own description paragraph, in a rail a card has no
+  // room for — both dropped with the row itself. See `ProviderCard`'s own
+  // doc comment.
 
-  it("draws no button on a row at all — the row is the link", async () => {
+  it("draws no button on a card at all — the card is the link", async () => {
     // A blue "View business" repeated twenty times down a page competes with
     // every price on it and with the one button that matters, in the search
     // bar.
-    // The destination is said inside the row's one link, as the tail of its
-    // own accessible name, rather than as a second control to step past or —
-    // as it was before — a sentence loose in the side column that a screen
-    // reader met after the price, belonging to nothing.
     renderPage("/providers", { items: [provider()], total: 1 });
-    const row = await screen.findByRole("link", { name: /Estúdio Mavalane/ });
+    await screen.findByRole("link", { name: /Estúdio Mavalane/ });
     expect(screen.getAllByRole("link", { name: /Estúdio Mavalane/ })).toHaveLength(1);
     expect(screen.queryByRole("button", { name: /View business/i })).toBeNull();
-
-    const destination = screen.getByText("View business");
-    expect(row).toContainElement(destination);
-    expect(destination.className).toContain("sr-only");
-    expect(row).toHaveAccessibleName("Estúdio Mavalane View business");
+    // `ProviderRow` closed its link with a screen-reader-only "View business"
+    // / "View profile" suffix on its accessible name; the card carries no
+    // such suffix, which is a real drop from the row and not merely a
+    // rename — see `provider-card.test.tsx`.
+    expect(screen.queryByText(/View business|View profile/)).toBeNull();
   });
 
   it("does not tell somebody who filtered that the platform is empty", async () => {
