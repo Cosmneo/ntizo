@@ -23,7 +23,6 @@ export function useLatestApplications() {
  */
 export function useNeedsYou(): {
   items: NeedsYouItem[];
-  loading: boolean;
   failed: boolean;
   retry: () => void;
 } {
@@ -39,7 +38,6 @@ export function useNeedsYou(): {
   );
   return {
     items,
-    loading: stats.isLoading || providers.isLoading || support.isLoading || contact.isLoading,
     // A count that could not be read is not a zero: the row must never say
     // "all clear" over a failed read, so the page shows its error line for any
     // of the four, and one retry asks all four again.

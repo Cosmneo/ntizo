@@ -4616,3 +4616,30 @@ stays unresolvable — there is no such concept in the review domain.
 
 **Trigger:** the next change to the platform zone's tab bar, or the first admin who asks why
 Bookings has no badge.
+
+## #204 — A failed read of a dashboard list shows its empty state
+
+The admin dashboard's "Latest applications" card and the provider Overview's "Recent bookings"
+card both feed `CollectionCard` `rows = data ?? []` and `loading = isLoading`; on `isError` the
+card draws "nothing yet" over a read that failed. The counts and the stats already have their
+error line (the admin's covers all four queue reads); the two list cards need the same honesty —
+an error state on `CollectionCard`, or the page's alert widened to the list's query.
+
+**Trigger:** the next change to either dashboard, or the first report of an empty list that was not empty.
+
+## #205 — Under the error line, the tiles still read zero
+
+Both dashboards fall back to `?? 0` for every tile while `isError` is true, so four confident
+zeros sit under the alert. A tile that cannot be read should say so (a dash, or the skeleton kept)
+rather than a number. `StatCard` could take an `unavailable` flag.
+
+**Trigger:** the next change to `StatCard` or either dashboard.
+
+## #206 — The providers list's URL keeps the arrival filter after the sheet changes it
+
+`/admin/providers?status=pending` seeds the list's status filter on arrival (the dashboard links
+there), but the filter sheet keeps its own state afterwards and the address bar goes on saying
+`pending`. Have the sheet write the URL through the route's search, so a reload and a shared link
+say what the screen shows.
+
+**Trigger:** the next change to the providers list's filters.

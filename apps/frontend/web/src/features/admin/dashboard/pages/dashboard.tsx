@@ -126,9 +126,9 @@ export function DashboardPage() {
         total={rows.length}
         loading={applications.isLoading}
         columns={[
-          { key: "business", label: t("overview.applicationsBusiness"), className: "pl-5" },
-          { key: "status", label: t("overview.applicationsStatus"), skeletonWidth: "w-20", skeletonShape: "badge" },
-          { key: "applied", label: t("overview.applicationsApplied"), align: "right", className: "pr-5", skeletonWidth: "w-24" },
+          { key: "business", label: t("providersBusiness"), className: "pl-5" },
+          { key: "status", label: t("providersStatus"), skeletonWidth: "w-20", skeletonShape: "badge" },
+          { key: "applied", label: t("providersApplied"), align: "right", className: "pr-5", skeletonWidth: "w-24" },
         ]}
         rows={rows.map((provider) => ({
           key: provider.id,

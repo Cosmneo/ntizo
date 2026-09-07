@@ -22,13 +22,13 @@
       "afternoon": "Goedemiddag, {{name}}",
       "evening": "Goedenavond, {{name}}"
     },
-    "subtitle": "Wat op u wacht, hoe de laatste 30 dagen gingen en wie zich heeft aangemeld.",
+    "subtitle": "Wat op je wacht, hoe de laatste 30 dagen gingen en wie zich heeft aangemeld.",
     "needsYou": {
       "disputed": "Geschillen om te beslissen",
       "disputedAction": "Beslissen",
       "providers": "Aanbieders ter beoordeling",
       "providersAction": "Beoordelen",
-      "support": "Open supportverzoeken",
+      "support": "Open ondersteuningsverzoeken",
       "supportAction": "Beantwoorden",
       "contact": "Open contactberichten",
       "contactAction": "Beantwoorden"
@@ -52,9 +52,6 @@
     "chartDayLabel": "{{date}} · aanvragen {{requests}} · bevestigd {{confirmed}}",
     "applicationsTitle": "Nieuwste aanmeldingen",
     "applicationsAll": "Alle aanbieders bekijken",
-    "applicationsBusiness": "Bedrijf",
-    "applicationsStatus": "Status",
-    "applicationsApplied": "Aangemeld",
     "applicationsEmptyTitle": "Nog geen aanmeldingen",
     "applicationsEmpty": "Bedrijven die de registratie afronden verschijnen hier.",
     "loadError": "De cijfers konden niet worden geladen.",
