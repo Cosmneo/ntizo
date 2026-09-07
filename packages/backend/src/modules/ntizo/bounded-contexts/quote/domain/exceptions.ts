@@ -28,6 +28,24 @@ export class QuoteTransitionError extends UnprocessableError {
   }
 }
 
+/** Refused because a restored row disagrees with a fact derived from its own other fields. Modelled on `BookingSnapshotInconsistentError`. */
+export class QuoteSnapshotInconsistentError extends UnprocessableError {
+  constructor(public readonly field: string, public readonly stored: unknown, public readonly expected: unknown) {
+    super({
+      message: `A quote's stored "${field}" is ${String(stored)}, but its other fields say it should be ${String(expected)}`,
+      code: "QUOTE_SNAPSHOT_INCONSISTENT",
+    });
+    this.name = "QuoteSnapshotInconsistentError";
+  }
+}
+
+export class QuoteNotOpenError extends UnprocessableError {
+  constructor() {
+    super({ message: "This quote is closed", code: "QUOTE_NOT_OPEN" });
+    this.name = "QuoteNotOpenError";
+  }
+}
+
 export type NotQuotableReason = "not_found" | "not_published" | "not_quote_mode" | "provider_not_active";
 
 export class QuoteServiceNotQuotableError extends UnprocessableError {
@@ -71,6 +89,13 @@ export class QuoteSlotOverlapError extends ConflictError {
   constructor() {
     super({ message: "A booking already occupies that time for this member", code: "QUOTE_SLOT_OVERLAP" });
     this.name = "QuoteSlotOverlapError";
+  }
+}
+
+export class QuotePriceInvalidError extends UnprocessableError {
+  constructor(public readonly priceMinor: number) {
+    super({ message: `${priceMinor} is not a positive whole number of minor units`, code: "QUOTE_PRICE_INVALID" });
+    this.name = "QuotePriceInvalidError";
   }
 }
 

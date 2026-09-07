@@ -41,6 +41,7 @@ export class QuoteWithdrawn extends BaseDomainEvent<Party> {
 }
 
 export type QuoteExpiredCause = "provider_did_not_respond" | "proposal_lapsed";
+export type QuoteSupersededCause = "revised" | "slot_taken";
 
 export class QuoteExpired extends BaseDomainEvent<Party & { cause: QuoteExpiredCause }> {
   constructor(payload: Party & { cause: QuoteExpiredCause }) {

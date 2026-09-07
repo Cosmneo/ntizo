@@ -3,8 +3,11 @@ import { Quote, type QuoteAddress } from "../domain/aggregates/quote.aggregate";
 import {
   QuoteAddressRequiredError,
   QuoteFieldBlankError,
+  QuoteNotOpenError,
   QuotePriceBelowMinimumError,
+  QuotePriceInvalidError,
   QuoteProposalLapsedError,
+  QuoteSnapshotInconsistentError,
   QuoteStartsInPastError,
   QuoteTransitionError,
 } from "../domain/exceptions";
@@ -50,6 +53,37 @@ describe("Quote.request", () => {
   });
 });
 
+describe("Quote.restore", () => {
+  it("re-runs the non-blank guards, e.g. refuses a blank providerId", () => {
+    const props = { ...requested().toProps(), providerId: "" };
+    expect(() => Quote.restore(props)).toThrow(QuoteFieldBlankError);
+  });
+
+  it("refuses a proposal whose endsAt disagrees with startsAt + durationMinutes", () => {
+    const proposed = requested().propose(proposeInput());
+    const props = {
+      ...proposed.toProps(),
+      proposals: proposed.proposals.map((p) => ({ ...p, endsAt: new Date(p.endsAt.getTime() + 60_000) })),
+    };
+    expect(() => Quote.restore(props)).toThrow(QuoteSnapshotInconsistentError);
+  });
+
+  it("refuses two live proposals", () => {
+    const proposed = requested().propose(proposeInput());
+    const live = proposed.liveProposal!;
+    const props = { ...proposed.toProps(), proposals: [live, { ...live, id: "prop-2" }] };
+    expect(() => Quote.restore(props)).toThrow(QuoteSnapshotInconsistentError);
+  });
+
+  it("restores a terminal quote cleanly: DECLINED, no clock, the closed fields set", () => {
+    const declined = requested().decline(NOW, "user-prov", "outside_area", "Só Maputo cidade");
+    const restored = Quote.restore(declined.toProps());
+    expect(restored).toMatchObject({
+      status: "DECLINED", expiresAt: null, closedReason: "outside_area", closedByUserId: "user-prov", declinedAt: NOW,
+    });
+  });
+});
+
 describe("Quote.propose", () => {
   it("moves REQUESTED to PROPOSED with one live proposal and the validity clock", () => {
     const q = requested().propose(proposeInput());
@@ -75,6 +109,12 @@ describe("Quote.propose", () => {
     const declined = requested().decline(NOW, "user-prov", "outside_area", null);
     expect(() => declined.propose(proposeInput())).toThrow(QuoteTransitionError);
   });
+
+  it("distinguishes a non-integer or non-positive price from one that is merely below the minimum", () => {
+    expect(() => requested().propose(proposeInput({ priceMinor: 9_800.5 }))).toThrow(QuotePriceInvalidError);
+    expect(() => requested().propose(proposeInput({ priceMinor: 0 }))).toThrow(QuotePriceInvalidError);
+    expect(() => requested().propose(proposeInput({ priceMinor: 4_999 }))).toThrow(QuotePriceBelowMinimumError);
+  });
 });
 
 describe("Quote.accept", () => {
@@ -98,12 +138,23 @@ describe("Quote.accept", () => {
     const q = requested({ address: null }).propose(proposeInput()).withAddress(ADDRESS).accept(NOW, "bk-1");
     expect(q.addressLine).toBe("Av. Julius Nyerere 1234");
   });
+
+  it("withAddress refuses once the quote is closed", () => {
+    const declined = requested().decline(NOW, "user-prov", "outside_area", null);
+    expect(() => declined.withAddress(ADDRESS)).toThrow(QuoteNotOpenError);
+  });
 });
 
 describe("closing", () => {
   it("decline works from REQUESTED and PROPOSED; reject only from PROPOSED; withdraw only from REQUESTED", () => {
-    expect(requested().decline(NOW, "u", "other", "nota").status).toBe("DECLINED");
-    expect(requested().propose(proposeInput()).decline(NOW, "u", "other", null).status).toBe("DECLINED");
+    const declinedFromRequested = requested().decline(NOW, "u", "other", "nota");
+    expect(declinedFromRequested).toMatchObject({
+      status: "DECLINED", declinedAt: NOW, closedByUserId: "u", closedReason: "other", expiresAt: null,
+    });
+    const declinedFromProposed = requested().propose(proposeInput()).decline(NOW, "u", "other", null);
+    expect(declinedFromProposed).toMatchObject({
+      status: "DECLINED", declinedAt: NOW, closedByUserId: "u", closedReason: "other", expiresAt: null,
+    });
     expect(() => requested().reject(NOW, "c", "too_expensive", null)).toThrow(QuoteTransitionError);
     expect(requested().propose(proposeInput()).reject(NOW, "c", "too_expensive", null).closedReason).toBe("too_expensive");
     expect(requested().withdraw(NOW, "c", null).closedReason).toBe("withdrawn");

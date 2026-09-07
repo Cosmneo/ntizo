@@ -1,18 +1,19 @@
 import { QuoteStatus } from "../../../../shared/infrastructure/database/quote/enums";
+import type { QuoteExpiredCause, QuoteSupersededCause } from "../events";
 import {
   QuoteAddressRequiredError,
   QuoteDateInvalidError,
   QuoteDurationInvalidError,
   QuoteFieldBlankError,
   QuoteNoLiveProposalError,
+  QuoteNotOpenError,
   QuotePriceBelowMinimumError,
+  QuotePriceInvalidError,
   QuoteProposalLapsedError,
+  QuoteSnapshotInconsistentError,
   QuoteStartsInPastError,
   QuoteTransitionError,
 } from "../exceptions";
-
-export type QuoteExpiredCause = "provider_did_not_respond" | "proposal_lapsed";
-export type QuoteSupersededCause = "revised" | "slot_taken";
 
 export interface QuoteAddress {
   label: string;
@@ -171,16 +172,37 @@ export class Quote {
     });
   }
 
-  /** Reconstitution from storage. Re-checks the one derived fact each proposal carries. */
+  /**
+   * Reconstitution from storage. Re-runs the same non-blank guards `request`
+   * does and re-checks each proposal's derived `endsAt`, but not the
+   * transition-level checks `request` makes: a restored quote may
+   * legitimately be terminal, with `expiresAt` null and the closed fields
+   * set, and `respondBy > requestedAt` has no meaning for it.
+   */
   static restore(props: QuoteProps): Quote {
     Quote.requireNonBlank(props.serviceId, "serviceId");
+    Quote.requireNonBlank(props.providerId, "providerId");
     Quote.requireNonBlank(props.customerId, "customerId");
+    Quote.requireNonBlank(props.threadId, "threadId");
+    Quote.requireNonBlank(props.locale, "locale");
+    Quote.requireNonBlank(props.description, "description");
+
+    for (const field of ["addressLabel", "addressLine", "addressCity"] as const) {
+      const value = props[field];
+      if (value != null) Quote.requireNonBlank(value, field);
+    }
+    if (props.addressDistrict != null) Quote.requireNonBlank(props.addressDistrict, "addressDistrict");
+    if (props.addressDirections != null) Quote.requireNonBlank(props.addressDirections, "addressDirections");
+
     for (const p of props.proposals) {
       const expectedEnd = new Date(p.startsAt.getTime() + p.durationMinutes * 60_000);
-      if (p.endsAt.getTime() !== expectedEnd.getTime()) throw new QuoteDateInvalidError("endsAt");
+      if (p.endsAt.getTime() !== expectedEnd.getTime()) {
+        throw new QuoteSnapshotInconsistentError("proposal.endsAt", p.endsAt.toISOString(), expectedEnd.toISOString());
+      }
     }
-    if (props.proposals.filter((p) => p.supersededAt === null).length > 1) {
-      throw new QuoteTransitionError(props.status, "two live proposals");
+    const liveCount = props.proposals.filter((p) => p.supersededAt === null).length;
+    if (liveCount > 1) {
+      throw new QuoteSnapshotInconsistentError("liveProposalCount", liveCount, "at most one live proposal");
     }
     return new Quote({ ...props, proposals: [...props.proposals] });
   }
@@ -205,7 +227,10 @@ export class Quote {
     Quote.requireNonBlank(input.providerMemberId, "providerMemberId");
     Quote.requireNonBlank(input.createdByUserId, "createdByUserId");
     Quote.requireNonBlank(input.currency, "currency");
-    if (!Number.isInteger(input.priceMinor) || input.priceMinor < input.minPriceMinor) {
+    if (!Number.isInteger(input.priceMinor) || input.priceMinor <= 0) {
+      throw new QuotePriceInvalidError(input.priceMinor);
+    }
+    if (input.priceMinor < input.minPriceMinor) {
       throw new QuotePriceBelowMinimumError(input.priceMinor, input.minPriceMinor);
     }
     if (!Number.isInteger(input.durationMinutes) || input.durationMinutes <= 0) {
@@ -244,7 +269,7 @@ export class Quote {
 
   /** Supplies the address at acceptance when the request did not ask for one. Only while open. */
   withAddress(address: QuoteAddress): Quote {
-    this.requireOpen(this.props.status);
+    if (!OPEN_STATUSES.includes(this.props.status)) throw new QuoteNotOpenError();
     Quote.requireAddress(address);
     return new Quote({
       ...this.props,
