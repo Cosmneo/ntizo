@@ -9,6 +9,7 @@ export const SERVICE_DETAIL_FIELDS = `
   categoryCode categoryName
   name description locationType bookingMode imageUrls isFallback
   options { id name amountMinor currency durationMinutes minMinutes stepMinutes pricingMode isDefault }
+  quoteForm { responseHours askDeadline askPhotos askLocation intro }
   performers { id firstName avatarUrl }`;
 
 const BY_ID = `

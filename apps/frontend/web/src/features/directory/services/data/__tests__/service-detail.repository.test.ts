@@ -44,4 +44,8 @@ describe("the service detail query", () => {
     expect(REQUESTED_FIELDS.has("providerId")).toBe(true);
     expect(REQUESTED_FIELDS.has("providerIdThatDoesNotExist")).toBe(false);
   });
+
+  it("asks for the quote form, which the request page and the service panel both read", () => {
+    expect(SERVICE_DETAIL_FIELDS).toContain("quoteForm { responseHours askDeadline askPhotos askLocation intro }");
+  });
 });
