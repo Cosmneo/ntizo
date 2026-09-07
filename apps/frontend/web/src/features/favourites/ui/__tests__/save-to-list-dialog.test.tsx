@@ -352,6 +352,23 @@ describe("SaveToListDialog", () => {
     expect(savedMemberships(spy)[0]).toEqual(["l-default", "l-new-3"]);
   });
 
+  it("drops a half-typed list name on Escape, and keeps the dialog open", async () => {
+    // Escape in a field means "abandon what I am typing". Letting it through
+    // to the dialog's own Escape would close the whole thing and lose both
+    // the name and the place the reader was filing from.
+    installFakeServer();
+    renderDialog({ savedListIds: ["l-default"] });
+
+    fireEvent.click(await screen.findByRole("button", { name: "Create new list" }));
+    const field = screen.getByRole("textbox", { name: /list name/i });
+    fireEvent.change(field, { target: { value: "Casa da praia" } });
+    fireEvent.keyDown(field, { key: "Escape" });
+
+    expect(screen.queryByRole("textbox", { name: /list name/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(tickBox(/Favourites/)).toBeInTheDocument();
+  });
+
   it("refuses to create a list with no name", async () => {
     // The server bounds the name at 1..60 characters and answers
     // VALIDATION_ERROR outside it. Stopping here is cheaper than a round trip

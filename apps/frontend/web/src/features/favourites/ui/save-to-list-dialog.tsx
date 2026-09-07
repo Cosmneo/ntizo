@@ -200,6 +200,16 @@ export function SaveToListDialog({
           ref={naming.field}
           value={naming.name}
           onChange={(event) => naming.setName(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key !== "Escape") return;
+            // The *native* event, because both shells listen for Escape on
+            // `document` and React's synthetic `stopPropagation` never
+            // reaches it. Escape in a half-typed name means "drop the name",
+            // not "close the dialog and lose the name and the filing with
+            // it".
+            event.nativeEvent.stopPropagation();
+            naming.cancel();
+          }}
           maxLength={FAVOURITE_LIST_NAME_MAX_LENGTH}
           className="flex-1 rounded-[10px] border-[1.5px] border-[var(--color-headline)] px-3 py-2 text-[14px] outline-none"
         />
@@ -464,6 +474,11 @@ function useNewList({
     setName,
     field,
     start: () => setOpen(true),
+    /** Abandon the name. The field closes empty, exactly as it does on a create. */
+    cancel: () => {
+      setOpen(false);
+      setName("");
+    },
     submit: (event: { preventDefault: () => void }) => {
       event.preventDefault();
       // The server trims and bounds this at 1..60 characters and refuses
