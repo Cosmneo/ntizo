@@ -166,37 +166,28 @@ describe("SiteHeader", () => {
   });
 
   /**
-   * The provider's door, and the two things that have to stay true about it.
+   * The provider's door is the footer's, not the header's.
    *
-   * It is opt-in: the footer's Company column carries the link on every page,
-   * and only the landing page — the one page whose second reader came to sell
-   * rather than to buy — asks the header for it as well. Every other surface
-   * that imports this header renders exactly the header it rendered before
-   * the prop existed.
+   * It spent one day among the destinations. The link is ~148px wide, which
+   * put the right-hand cluster over its track's equal share and pushed the
+   * search bar 148px left of the window's middle — on the home page alone,
+   * while every other page stayed centred. That is the "centring that failed"
+   * look the user had already rejected twice while this header was being
+   * built, and he asked for the link removed rather than keep it.
    *
-   * And it is a destination, not a block beside `HeaderActions`. That is
-   * where it used to sit, in the same cell as the account controls with no
-   * flex between them, so it stacked *above* them instead of standing beside
-   * them — the break this header was rebuilt to fix. Inside the `<nav>` it is
-   * one more flex item in the row it belongs to.
+   * So the header carries three destinations and no fourth. The footer's
+   * Company column carries `/become-provider` on every page, and the landing
+   * page's navy band is the provider's real invitation.
    */
-  it("opens the provider's door for the page that asks", async () => {
-    await renderHeader({ providerCta: true });
+  it("leaves the provider's door to the footer", async () => {
+    await renderHeader();
 
-    const door = screen.getByRole("link", { name: "Become a Provider" });
-    expect(door).toHaveAttribute("href", "/become-provider");
-    expect(screen.getByRole("navigation")).toContainElement(door);
-  });
-
-  it("wears the resting weight, never the lit one — it is no page's own", async () => {
-    // `current` names only the three destinations, so this link can never be
-    // the current one and must not borrow the treatment that says it is.
-    await renderHeader({ providerCta: true, current: "explore" });
-
-    const door = screen.getByRole("link", { name: "Become a Provider" });
-    expect(door.className).toContain("text-[var(--color-muted-foreground)]");
-    expect(door.className).not.toContain("text-[var(--color-headline)]");
-    expect(door.className).not.toContain("bg-[var(--color-primary)]");
+    expect(screen.queryByRole("link", { name: /become a provider/i })).toBeNull();
+    expect(
+      screen
+        .queryAllByRole("link")
+        .filter((link) => link.getAttribute("href") === "/become-provider"),
+    ).toHaveLength(0);
   });
 
   it("grows no door for the callers that did not ask", async () => {

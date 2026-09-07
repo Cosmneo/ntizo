@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   RouterProvider,
@@ -60,20 +60,26 @@ describe("Hero", () => {
   });
 
   /**
-   * The home page is the one page that opens a door for a provider in the
-   * chrome, because it is the one page whose second reader came to sell. The
-   * footer carries the same link everywhere, `footer.test.tsx` included.
+   * The home page's header opens no door for a provider, and that is the
+   * decision, not an omission.
    *
-   * A destination among the destinations, and no longer the block it was in
-   * the same cell as the account controls, where it stacked above them
-   * instead of standing beside them.
+   * The link lived here for a day. At ~148px it pushed the right-hand cluster
+   * past its track's equal share, and the middle track gave way — so the
+   * search bar sat 148px left of the window's middle on this page while every
+   * other page stayed centred, which is the failed-centring look the user had
+   * twice rejected. He asked for it removed.
+   *
+   * The provider still has two doors on this page: the footer's Company
+   * column (`footer.test.tsx`) and the navy band, which exists for nothing
+   * else.
    */
-  it("opens the provider's door among the header's destinations", async () => {
+  it("leaves the provider's door to the footer and the band", async () => {
     await renderHero();
 
-    const door = screen.getByRole("link", { name: "Become a Provider" });
-    expect(door).toHaveAttribute("href", "/become-provider");
-    expect(screen.getByRole("navigation")).toContainElement(door);
+    const inHeader = within(screen.getByRole("banner"))
+      .queryAllByRole("link")
+      .filter((link) => link.getAttribute("href") === "/become-provider");
+    expect(inHeader).toHaveLength(0);
   });
 
   // The collage stands in for photographs nobody has uploaded. A grey box

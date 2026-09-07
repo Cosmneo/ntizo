@@ -22,19 +22,19 @@ import { HeroCollage } from "@/features/landing/ui/hero-collage";
  * header on every page now, so a field under the subtitle would be the same
  * question asked twice in one screenful.
  *
- * The provider's door stays, and this is the one page that asks for it. The
- * footer's Company column carries the link on every page, but the home page is
- * the only one whose second reader arrives wanting to *sell* rather than to
- * buy, and asking them to scroll the whole page to find that out is asking too
- * much. It is a fourth bare word among the destinations now, not the block
- * beside `HeaderActions` it used to be — see `providerCta`.
+ * The provider's door is deliberately not in this header. It sat among the
+ * destinations for one day and cost the search bar its centring on this page
+ * alone — the "centring that failed" look the user had already rejected twice
+ * — so he asked for it removed. The footer's Company column carries
+ * `/become-provider` on every page, and the navy band further down this one is
+ * the provider's real invitation.
  */
 export function Hero() {
   const { t } = useTranslation("landing"); // t:Hero
 
   return (
     <>
-      <SiteHeader providerCta />
+      <SiteHeader />
       <section className="page-shell grid items-center gap-10 pb-14 pt-12 lg:grid-cols-[minmax(0,1fr)_580px] lg:gap-[72px]">
         <div>
           <h1 className="font-display max-w-[13ch] text-[clamp(2.4rem,5.2vw,3.6rem)] font-extrabold leading-[1.02] tracking-[-0.035em] text-[var(--color-headline)]">

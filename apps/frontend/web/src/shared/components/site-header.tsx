@@ -54,8 +54,9 @@ function navLinkClassName(active: boolean, overlay: boolean): string {
  * beside the account controls rather than in a column of their own: two
  * clusters and a field reads as a bar, where three separated groups read as
  * three. They are bare text — see `navLinkClassName` for why the capsule and
- * the icons went. The landing page adds a fourth, "Become a provider", by
- * asking for it; see `providerCta`.
+ * the icons went. There are three and only three: the provider's door lives
+ * in the footer's Company column, and a day spent in this row proved why —
+ * see the header test that now keeps it out.
  *
  * **The bar is centred in the window, and the middle track's width is what
  * centres it.** Two earlier versions both read as a centring that had
@@ -89,7 +90,6 @@ export function SiteHeader({
   overlay = false,
   current = "explore",
   search = {},
-  providerCta = false,
 }: {
   overlay?: boolean;
   /**
@@ -111,25 +111,6 @@ export function SiteHeader({
    * keeps the category, the filters, the city and the sort underneath it.
    */
   search?: ComponentProps<typeof ServiceSearch>;
-  /**
-   * Adds "Become a provider" to the destinations, as a fourth bare word.
-   *
-   * Opt-in, and only the landing page asks: the other surfaces that import
-   * this header did not, and the home page is the one page whose second
-   * reader is a provider rather than a customer. The footer's Company column
-   * carries the same link for everybody else, which is why this is a door and
-   * not a duplicate.
-   *
-   * Inside the `<nav>` rather than beside `HeaderActions`, which is where it
-   * used to sit: there it was a block in the same cell as the account
-   * controls and stacked *above* them instead of standing beside them. Here
-   * it is one more flex item in the row it belongs to, sharing the
-   * destinations' `gap-6` and their resting weight — a destination that is
-   * never the current one, so `navLinkClassName` is asked for the resting
-   * treatment outright rather than through `current`, which names only the
-   * three pages the header can be on.
-   */
-  providerCta?: boolean;
 }) {
   const { t } = useTranslation("landing");
 
@@ -186,27 +167,6 @@ export function SiteHeader({
                 {t(item.key)}
               </Link>
             ))}
-            {/* `xl`, one tier stricter than the destinations beside it, and
-                the tier is measured rather than chosen. This link is ~148px
-                wide, and the right-hand cluster's budget is the outer track's
-                equal share — 403px at the shell's full width. Adding it puts
-                the cluster over that share, so the middle track gives way
-                first, which is what it is built to do. At `lg` there is
-                nothing left to give: the bar is already at the 362px floor
-                the header set precisely so it stays typeable, and the link
-                drove it to 274px. From `xl` the bar keeps its full width and
-                pays only in centring — it sits 148px left of the window's
-                middle on this one page. The footer's Company column carries
-                the same door at every width, so nothing is unreachable
-                below `xl`; it is only less immediate. */}
-            {providerCta && (
-              <Link
-                to="/become-provider"
-                className={`${navLinkClassName(false, overlay)} hidden whitespace-nowrap xl:inline`}
-              >
-                {t("footer.becomeProvider")}
-              </Link>
-            )}
           </nav>
 
           {/* Only where the nav is. Below `lg` the cluster is the account
