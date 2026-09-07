@@ -1,10 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
   RouterProvider,
   createMemoryHistory,
   createRootRoute,
+  createRoute,
   createRouter,
 } from "@tanstack/react-router";
 import type { CurrentUserDTO } from "@/features/user/domain/current-user";
@@ -44,13 +45,26 @@ async function renderMenu(
     id: `p${i}`,
   }));
 
-  const root = createRootRoute({ component: () => <UserMenu /> });
+  const rootRoute = createRootRoute();
+  const home = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/",
+    component: () => <UserMenu />,
+  });
+  // A stub, so a click on "Quotes" has somewhere real to land — `Link`/
+  // `navigate` resolve their `to` against the router's own tree.
+  const quotes = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/quotes",
+    component: () => <p>quotes</p>,
+  });
   const router = createRouter({
-    routeTree: root,
+    routeTree: rootRoute.addChildren([home, quotes]),
     history: createMemoryHistory({ initialEntries: ["/"] }),
   });
   await router.load();
   render(<RouterProvider router={router} />);
+  return { router };
 }
 
 const ADMIN: Partial<CurrentUserDTO> = {
@@ -114,11 +128,21 @@ describe("UserMenu", () => {
     for (const label of [
       "My account",
       "My bookings",
+      "Quotes",
       "Messages",
       "Favourites",
     ]) {
       expect(screen.getByText(label)).toBeInTheDocument();
     }
+  });
+
+  it("takes the customer to their quotes", async () => {
+    // Between bookings and messages — the mockup's order, and the order the
+    // provider side puts the same two in.
+    const { router } = await renderMenu(CUSTOMER);
+    await openMenu();
+    await userEvent.click(screen.getByText("Quotes"));
+    await waitFor(() => expect(router.state.location.pathname).toBe("/quotes"));
   });
 
   it("identifies whose account it is", async () => {

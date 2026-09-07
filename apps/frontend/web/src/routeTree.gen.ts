@@ -58,6 +58,7 @@ import { Route as CustomerAccountSecurityRouteImport } from './routes/_customer/
 import { Route as CustomerBookingsIndexRouteImport } from './routes/_customer/bookings.index'
 import { Route as CustomerBookingsBookingIdRouteImport } from './routes/_customer/bookings.$bookingId'
 import { Route as CustomerQuoteServiceIdRouteImport } from './routes/_customer/quote.$serviceId'
+import { Route as CustomerQuotesIndexRouteImport } from './routes/_customer/quotes.index'
 import { Route as PublicAcceptInviteTokenRouteImport } from './routes/_public/accept-invite.$token'
 import { Route as AdminProvidersIndexRouteImport } from './routes/admin/providers.index'
 import { Route as AdminProvidersProviderIdRouteImport } from './routes/admin/providers.$providerId'
@@ -326,6 +327,11 @@ const CustomerQuoteServiceIdRoute = CustomerQuoteServiceIdRouteImport.update({
   path: '/quote/$serviceId',
   getParentRoute: () => CustomerRouteRoute,
 } as any)
+const CustomerQuotesIndexRoute = CustomerQuotesIndexRouteImport.update({
+  id: '/quotes/',
+  path: '/quotes/',
+  getParentRoute: () => CustomerRouteRoute,
+} as any)
 const PublicAcceptInviteTokenRoute = PublicAcceptInviteTokenRouteImport.update({
   id: '/accept-invite/$token',
   path: '/accept-invite/$token',
@@ -490,6 +496,7 @@ export interface FileRoutesByFullPath {
   '/provider/$slug/wallet': typeof ProviderSlugWalletRoute
   '/account/': typeof CustomerAccountIndexRoute
   '/bookings/': typeof CustomerBookingsIndexRoute
+  '/quotes/': typeof CustomerQuotesIndexRoute
   '/admin/providers/': typeof AdminProvidersIndexRoute
   '/admin/support/': typeof AdminSupportIndexRoute
   '/provider/$slug/bookings/$bookingId': typeof ProviderSlugBookingsBookingIdRoute
@@ -555,6 +562,7 @@ export interface FileRoutesByTo {
   '/provider/$slug/wallet': typeof ProviderSlugWalletRoute
   '/account': typeof CustomerAccountIndexRoute
   '/bookings': typeof CustomerBookingsIndexRoute
+  '/quotes': typeof CustomerQuotesIndexRoute
   '/admin/providers': typeof AdminProvidersIndexRoute
   '/admin/support': typeof AdminSupportIndexRoute
   '/provider/$slug/bookings/$bookingId': typeof ProviderSlugBookingsBookingIdRoute
@@ -626,6 +634,7 @@ export interface FileRoutesById {
   '/provider/$slug/wallet': typeof ProviderSlugWalletRoute
   '/_customer/account/': typeof CustomerAccountIndexRoute
   '/_customer/bookings/': typeof CustomerBookingsIndexRoute
+  '/_customer/quotes/': typeof CustomerQuotesIndexRoute
   '/admin/providers/': typeof AdminProvidersIndexRoute
   '/admin/support/': typeof AdminSupportIndexRoute
   '/provider/$slug/bookings/$bookingId': typeof ProviderSlugBookingsBookingIdRoute
@@ -696,6 +705,7 @@ export interface FileRouteTypes {
     | '/provider/$slug/wallet'
     | '/account/'
     | '/bookings/'
+    | '/quotes/'
     | '/admin/providers/'
     | '/admin/support/'
     | '/provider/$slug/bookings/$bookingId'
@@ -761,6 +771,7 @@ export interface FileRouteTypes {
     | '/provider/$slug/wallet'
     | '/account'
     | '/bookings'
+    | '/quotes'
     | '/admin/providers'
     | '/admin/support'
     | '/provider/$slug/bookings/$bookingId'
@@ -831,6 +842,7 @@ export interface FileRouteTypes {
     | '/provider/$slug/wallet'
     | '/_customer/account/'
     | '/_customer/bookings/'
+    | '/_customer/quotes/'
     | '/admin/providers/'
     | '/admin/support/'
     | '/provider/$slug/bookings/$bookingId'
@@ -1209,6 +1221,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CustomerQuoteServiceIdRouteImport
       parentRoute: typeof CustomerRouteRoute
     }
+    '/_customer/quotes/': {
+      id: '/_customer/quotes/'
+      path: '/quotes'
+      fullPath: '/quotes/'
+      preLoaderRoute: typeof CustomerQuotesIndexRouteImport
+      parentRoute: typeof CustomerRouteRoute
+    }
     '/_public/accept-invite/$token': {
       id: '/_public/accept-invite/$token'
       path: '/accept-invite/$token'
@@ -1376,6 +1395,7 @@ interface CustomerRouteRouteChildren {
   CustomerBookingsBookingIdRoute: typeof CustomerBookingsBookingIdRoute
   CustomerQuoteServiceIdRoute: typeof CustomerQuoteServiceIdRoute
   CustomerBookingsIndexRoute: typeof CustomerBookingsIndexRoute
+  CustomerQuotesIndexRoute: typeof CustomerQuotesIndexRoute
 }
 
 const CustomerRouteRouteChildren: CustomerRouteRouteChildren = {
@@ -1386,6 +1406,7 @@ const CustomerRouteRouteChildren: CustomerRouteRouteChildren = {
   CustomerBookingsBookingIdRoute: CustomerBookingsBookingIdRoute,
   CustomerQuoteServiceIdRoute: CustomerQuoteServiceIdRoute,
   CustomerBookingsIndexRoute: CustomerBookingsIndexRoute,
+  CustomerQuotesIndexRoute: CustomerQuotesIndexRoute,
 }
 
 const CustomerRouteRouteWithChildren = CustomerRouteRoute._addFileChildren(
