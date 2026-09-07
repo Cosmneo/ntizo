@@ -42,7 +42,14 @@ export function ProviderHero({ provider }: { provider: ProviderPublicDTO }) {
   const kind = provider.type === "organization" ? t("typeOrganization") : t("typeIndividual");
 
   return (
-    <header className="min-w-0">
+    // `mt-10` because this block always follows something: the collage, in the
+    // left column above it, or — for the majority of providers with no
+    // photographs — the breadcrumb, past a `DetailGallery` that rendered
+    // nothing. Either way the gap is the 40px the page's grid used to supply
+    // as its own top padding, and it is stated here for the same reason
+    // `ServiceDetailPage` states it on its header: the distance belongs to the
+    // heading that opens the column, not to the picture that may not exist.
+    <header className="mt-10 min-w-0">
       <p className="type-body text-[var(--color-muted-foreground)]">
         {[kind, ...provider.categories.map((c) => c.name)].join(" · ")}
       </p>
