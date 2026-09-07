@@ -4,9 +4,15 @@ import { AboutPage } from "../about-page";
 import { CareersPage } from "../careers-page";
 import { renderCompanyPage } from "./render-company-page";
 
-/** The strip's links, as hrefs, in order. */
+/**
+ * The strip's links, as hrefs, in order.
+ *
+ * Scoped by `closest("section")`, not by the heading's parent: the heading is
+ * `SectionHead`'s now, which wraps it a div deep, so the parent held no links
+ * at all and this returned an empty list rather than failing loudly.
+ */
 function stripHrefs() {
-  const strip = screen.getByRole("heading", { name: /see also/i }).parentElement!;
+  const strip = screen.getByRole("heading", { name: /see also/i }).closest("section")!;
   return Array.from(strip.querySelectorAll("a")).map((a) => a.getAttribute("href"));
 }
 

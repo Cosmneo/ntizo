@@ -28,7 +28,7 @@ export function HelpPage() {
   const [openId, setOpenId] = useState<string | null>(null);
 
   return (
-    <CompanyPage page="help" eyebrow={t("page.eyebrow")} title={t("page.title")} lede={t("page.lede")}>
+    <CompanyPage page="help" title={t("page.title")} lede={t("page.lede")}>
       <div className="grid gap-10">
         {FAQ_CATEGORIES.map((category) => (
           <section key={category.id} id={category.id} className="grid gap-3 scroll-mt-24">
@@ -47,13 +47,13 @@ export function HelpPage() {
           <button
             type="button"
             onClick={() => help.composeNew()}
-            className="type-body-medium justify-self-start rounded-full bg-[var(--color-primary)] px-5 py-2.5 text-[var(--color-primary-foreground)]"
+            className="type-body-medium justify-self-start rounded-full bg-[var(--color-navy-surface)] px-5 py-2.5 text-[var(--color-navy-on)]"
           >
             {t("page.contactAction")}
           </button>
           <p className="type-caption text-[var(--color-muted-foreground)]">
             {t("page.contactEmailPrefix")}{" "}
-            <a href={`mailto:${CONTACT.support}`} className="text-[var(--color-primary)] hover:underline">
+            <a href={`mailto:${CONTACT.support}`} className="text-[var(--color-headline)] underline decoration-[var(--color-border-strong)] underline-offset-4">
               {CONTACT.support}
             </a>
             .

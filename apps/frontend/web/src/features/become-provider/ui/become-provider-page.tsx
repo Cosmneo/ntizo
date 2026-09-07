@@ -6,6 +6,7 @@ import { SiteHeader } from "@/shared/components/site-header";
 import { Footer } from "@/features/landing/ui/footer";
 import { SectionHead } from "@/features/landing/ui/section-head";
 import { CONTACT } from "@/shared/lib/contact";
+import { CARD_SURFACE_CLASS } from "@/shared/components/card-surface";
 
 /**
  * The public case for becoming a provider.
@@ -194,7 +195,7 @@ function Paths({ t }: { t: T }) {
         {paths.map((key) => (
           <article
             key={key}
-            className="rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-card)] p-5 text-[var(--color-card-foreground)]"
+            className={CARD_SURFACE_CLASS}
           >
             <h3 className="font-display text-[20px] font-bold tracking-[-0.01em] text-[var(--color-headline)]">
               {t(`path.${key}.title`)}
@@ -231,9 +232,14 @@ function Pricing({ t }: { t: T }) {
   return (
     <section className="page-shell pb-16">
       <SectionHead title={t("pricingTitle")} />
-      <p className="max-w-[62ch] text-[17px] leading-relaxed text-[var(--color-foreground)]">
-        {t("pricingBody")}
-      </p>
+      {/* One card, full width, because there is one thing to say. A heading
+          and a loose paragraph on a page where every other block sits on a
+          card reads as the one section that failed to load. */}
+      <div className={`${CARD_SURFACE_CLASS} md:p-7`}>
+        <p className="max-w-[62ch] text-[17px] leading-relaxed text-[var(--color-foreground)]">
+          {t("pricingBody")}
+        </p>
+      </div>
     </section>
   );
 }
@@ -264,7 +270,7 @@ function Steps({ t }: { t: T }) {
         {steps.map((key, i) => (
           <li
             key={key}
-            className="rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-card)] p-5 text-[var(--color-card-foreground)]"
+            className={CARD_SURFACE_CLASS}
           >
             <span
               aria-hidden="true"
@@ -305,7 +311,7 @@ function Requirements({ t }: { t: T }) {
         {items.map((key) => (
           <article
             key={key}
-            className="rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-card)] p-5 text-[var(--color-card-foreground)]"
+            className={CARD_SURFACE_CLASS}
           >
             <h3 className="font-display text-[16.5px] font-bold text-[var(--color-headline)]">
               {t(`requirement.${key}.title`)}
