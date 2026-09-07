@@ -2,12 +2,12 @@ import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 
 const threads = vi.fn();
-const adminProviders = vi.fn();
+const providerCounts = vi.fn();
 vi.mock("@/features/messaging/viewmodel/use-provider-threads", () => ({
   useProviderThreads: (id: string) => threads(id),
 }));
 vi.mock("@/features/admin/providers/viewmodel/use-admin-providers", () => ({
-  useAdminProviders: (f: unknown) => adminProviders(f),
+  useProviderStatusCounts: () => providerCounts(),
 }));
 vi.mock("@/features/provider/bookings/viewmodel/use-provider-bookings", () => ({
   useAwaitingCount: () => 3,
@@ -35,14 +35,13 @@ describe("ConsoleCountsProvider", () => {
   });
 
   it("counts the pending applications, for the platform", () => {
-    adminProviders.mockReturnValue({ data: [{ id: "a" }, { id: "b" }, { id: "c" }] });
+    providerCounts.mockReturnValue({ data: { pending: 3, active: 9, rejected: 0, suspended: 1, archived: 0 } });
     render(<ConsoleCountsProvider zone="platform"><Probe /></ConsoleCountsProvider>);
     expect(screen.getByTestId("counts")).toHaveTextContent('{"pendingProviders":3}');
-    expect(adminProviders).toHaveBeenCalledWith({ status: "pending" });
   });
 
-  it("reports nothing for the platform while the list is loading", () => {
-    adminProviders.mockReturnValue({ data: undefined });
+  it("reports nothing for the platform while the counts are loading", () => {
+    providerCounts.mockReturnValue({ data: undefined });
     render(<ConsoleCountsProvider zone="platform"><Probe /></ConsoleCountsProvider>);
     expect(screen.getByTestId("counts")).toHaveTextContent("{}");
   });
