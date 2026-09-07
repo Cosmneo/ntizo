@@ -1,6 +1,7 @@
 import { ChevronDown } from "lucide-react";
 import { cn } from "@ntizo/frontend-ui";
 import type { FaqEntry } from "@/features/help-center/domain/faq";
+import { CARD_EDGE_CLASS } from "@/shared/components/card-surface";
 
 /**
  * Questions that open one at a time.
@@ -23,25 +24,30 @@ export function FaqAccordion({
   onToggle: (id: string) => void;
 }) {
   return (
-    <ul className="grid list-none gap-2 p-0">
+    <ul className="grid list-none gap-3 p-0">
       {entries.map((entry) => {
         const open = entry.id === openId;
         return (
-          <li key={entry.id} className="rounded-[var(--radius-card)] border border-[var(--color-border)]">
+          // The site's card, minus its padding — the button below fills the
+          // row, so the padding is the button's or the reader finds a dead
+          // margin inside a control that looks pressable.
+          <li key={entry.id} className={CARD_EDGE_CLASS}>
             <button
               type="button"
               aria-expanded={open}
               onClick={() => onToggle(entry.id)}
-              className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
+              className="flex w-full items-center justify-between gap-3 px-5 py-4 text-left"
             >
-              <span className="type-body-medium">{entry.question}</span>
+              <span className="type-body-medium font-semibold text-[var(--color-headline)]">
+                {entry.question}
+              </span>
               <ChevronDown
                 aria-hidden="true"
                 className={cn("h-4 w-4 shrink-0 transition-transform", open && "rotate-180")}
               />
             </button>
             {open && (
-              <p className="type-body px-4 pb-4 text-[var(--color-muted-foreground)]">{entry.answer}</p>
+              <p className="type-body px-5 pb-5 text-[var(--color-foreground)]">{entry.answer}</p>
             )}
           </li>
         );

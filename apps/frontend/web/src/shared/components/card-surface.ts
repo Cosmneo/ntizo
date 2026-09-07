@@ -1,4 +1,22 @@
 /**
+ * The card every block on the public pages is drawn on — its edge and its
+ * ground, without the padding.
+ *
+ * Split from `CARD_SURFACE_CLASS` for the cases that own their own padding
+ * because something inside them has to fill the card: the FAQ's rows, where
+ * the whole header is a button and the padding belongs to the button, not to
+ * the row around it. A card whose padding sits on the wrapper gives that
+ * button a dead margin the reader can press and nothing happens.
+ *
+ * **`bg-[var(--color-card)]` matters more than it looks.** On a white page the
+ * card's ground and the page's are the same colour and the border is doing all
+ * the work — but in dark mode the two part company, and a card left
+ * transparent there reads as a rectangle drawn on nothing.
+ */
+export const CARD_EDGE_CLASS =
+  "rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-card-foreground)]";
+
+/**
  * The card every block on the public pages is drawn on.
  *
  * A class rather than a component, for the same reason `facetOptionClass` and
@@ -14,10 +32,7 @@
  * page; `--color-card`, which is white in light mode and a raised surface in
  * dark, rather than a literal.
  *
- * **`bg-[var(--color-card)]` matters more than it looks.** On a white page the
- * card's ground and the page's are the same colour and the border is doing all
- * the work — but in dark mode the two part company, and a card left
- * transparent there reads as a rectangle drawn on nothing.
+ * Roomier cards append their own padding (`${CARD_SURFACE_CLASS} md:p-8`) —
+ * the later class wins, so the `p-5` here is a floor, not a fight.
  */
-export const CARD_SURFACE_CLASS =
-  "rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-card)] p-5 text-[var(--color-card-foreground)]";
+export const CARD_SURFACE_CLASS = `${CARD_EDGE_CLASS} p-5`;
