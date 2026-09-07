@@ -143,6 +143,7 @@ export function createBookingReadHandlers(mod: BookingReadModule) {
       requireAdmin(ctx);
       return uc.listForAdmin.execute({
         tab: args.input.tab,
+        search: args.input.search,
         limit: args.input.limit ?? 20,
         offset: args.input.offset ?? 0,
         // The edge's instant, so `unclosed` is a question about now rather

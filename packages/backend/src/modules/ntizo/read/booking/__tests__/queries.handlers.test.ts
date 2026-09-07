@@ -156,9 +156,9 @@ describe("booking.needsAttentionForAdmin", () => {
   it("passes a page the caller asked for through unchanged", async () => {
     const { module, listForAdmin } = makeModule();
 
-    await handlerFor(module).handler({ tab: "unclosed", limit: 5, offset: 10 }, adminCtx());
+    await handlerFor(module).handler({ tab: "unclosed", limit: 5, offset: 10, search: "Nuño" }, adminCtx());
 
-    expect(listForAdmin.calls[0]).toMatchObject({ tab: "unclosed", limit: 5, offset: 10 });
+    expect(listForAdmin.calls[0]).toMatchObject({ tab: "unclosed", limit: 5, offset: 10, search: "Nuño" });
   });
 
   /**

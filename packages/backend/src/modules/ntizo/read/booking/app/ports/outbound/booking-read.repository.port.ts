@@ -208,6 +208,8 @@ export interface AdminBookingFilter {
   tab: AdminBookingTab;
   /** Injected, never `new Date()` in the query — a test has to be able to say what "overdue" means. */
   now: Date;
+  /** Over the workspace's name, the customer's first name and the service, accents aside. Blank is no search. */
+  search?: string | undefined;
 }
 
 /**

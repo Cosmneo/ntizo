@@ -116,6 +116,9 @@ export const listAdminBookings = defineQuery({
   input: zodSchema(
     z.object({
       tab: z.enum(ADMIN_BOOKING_TABS),
+      // Bounded, like every other free-text filter here: the string ends up in
+      // a LIKE pattern.
+      search: z.string().trim().max(120).optional(),
       limit: z.number().int().min(1).max(50).optional(),
       offset: z.number().int().min(0).optional(),
     }),
