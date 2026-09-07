@@ -56,6 +56,25 @@ describe("SearchPill", () => {
     expect(form.getByRole("button", { name: /service/i })).toHaveFocus();
   });
 
+  /**
+   * The header this pill sits in is `sticky … z-20`, which is a stacking
+   * context: rendered inline, the sheet's `z-[60]` panel only outranked things
+   * *inside* the header, and the page's floating control (`z-30`) and the
+   * customer bottom bar (`z-40`) painted straight over it. Escaping to
+   * `document.body` is the whole fix, so the test asserts where the dialog
+   * lands rather than a z-index nothing computes under jsdom.
+   */
+  it("renders the phone sheet outside the pill, in the document body", async () => {
+    const { container } = render(
+      <SearchPill {...baseProps} term="" city="Maputo" onApply={vi.fn()} />,
+    );
+    await userEvent.click(screen.getByRole("button", { name: /change your search/i }));
+
+    const dialog = screen.getByRole("dialog");
+    expect(container.contains(dialog)).toBe(false);
+    expect(document.body.contains(dialog)).toBe(true);
+  });
+
   it("puts the URL back into both fields when it changes underneath", () => {
     const { rerender } = render(
       <SearchPill {...baseProps} term="corte" city="Maputo" onApply={vi.fn()} />,

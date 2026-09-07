@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState } from "react";
 import type { FormEvent } from "react";
+import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { Search } from "lucide-react";
 import { CitySelect, Sheet, SheetContent, SheetHeader, SheetTitle } from "@ntizo/frontend-ui";
@@ -257,61 +258,79 @@ export function SearchPill({
       {/* Real controls, both of them, rather than the pill's click-to-open
           fields: the sheet is the whole screen, so there is nothing to save
           by collapsing them and nothing left on the pill to shift when they
-          expand. */}
-      <Sheet open={sheet} onOpenChange={setSheet}>
-        <SheetContent
-          side="bottom"
-          labelledBy={sheetTitleId}
-          className="max-h-[85svh] overflow-y-auto rounded-t-[var(--radius-card)] p-5"
-        >
-          <div>
-            <SheetHeader>
-              <SheetTitle id={sheetTitleId}>{t("mobileSearchTitle")}</SheetTitle>
-            </SheetHeader>
+          expand.
 
-            {/* A real form with a real submit, so the on-screen keyboard
-                offers "go" from the text field and Enter reaches the button —
-                the same reason the desktop form is one. */}
-            <form
-              onSubmit={(event) => {
-                event.preventDefault();
-                apply();
-              }}
-              className="mt-4 grid gap-2.5"
+          Through a portal into `document.body`, because this pill lives
+          inside `SiteHeader`, whose search variant is `sticky top-0 z-20`. A
+          positioned ancestor with a z-index is a stacking context, so the
+          sheet's own `z-50` backdrop and `z-[60]` panel only ever counted
+          *within* the header — and the header as a whole sits at 20, under
+          the floating filter control (30) and the customer bottom bar (40),
+          both of which painted straight over the open sheet. The kit's
+          `Sheet` renders inline by design; the page-level filter sheet has no
+          such problem only because it is rendered in the page body.
+
+          Mounted only while `sheet` is true, so `document` is never touched
+          on the server: the state starts false and nothing but a click sets
+          it. */}
+      {sheet &&
+        createPortal(
+          <Sheet open={sheet} onOpenChange={setSheet}>
+            <SheetContent
+              side="bottom"
+              labelledBy={sheetTitleId}
+              className="max-h-[85svh] overflow-y-auto rounded-t-[var(--radius-card)] p-5"
             >
-              <label className="grid gap-1.5">
-                <span className="type-caption font-semibold">{termLabel}</span>
-                <input
-                  type="search"
-                  value={term}
-                  onChange={(e) => setTerm(e.target.value)}
-                  placeholder={termPlaceholder}
-                  className="type-body w-full min-w-0 rounded-[var(--radius-card-sm)] border border-[var(--color-border)] bg-[var(--color-background)] px-4 py-3 outline-none focus:border-[var(--color-primary)]"
-                />
-              </label>
+              <div>
+                <SheetHeader>
+                  <SheetTitle id={sheetTitleId}>{t("mobileSearchTitle")}</SheetTitle>
+                </SheetHeader>
 
-              <label className="grid gap-1.5">
-                <span className="type-caption font-semibold">{cityLabel}</span>
-                <CitySelect
-                  value={city}
-                  onChange={setCity}
-                  cities={cityOptions}
-                  placeholder={cityPlaceholder}
-                  toggleLabel={t("searchFieldCityToggle")}
-                  noResultsText={t("searchFieldCityNoResults")}
-                />
-              </label>
+                {/* A real form with a real submit, so the on-screen keyboard
+                    offers "go" from the text field and Enter reaches the button —
+                    the same reason the desktop form is one. */}
+                <form
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    apply();
+                  }}
+                  className="mt-4 grid gap-2.5"
+                >
+                  <label className="grid gap-1.5">
+                    <span className="type-caption font-semibold">{termLabel}</span>
+                    <input
+                      type="search"
+                      value={term}
+                      onChange={(e) => setTerm(e.target.value)}
+                      placeholder={termPlaceholder}
+                      className="type-body w-full min-w-0 rounded-[var(--radius-card-sm)] border border-[var(--color-border)] bg-[var(--color-background)] px-4 py-3 outline-none focus:border-[var(--color-primary)]"
+                    />
+                  </label>
 
-              <button
-                type="submit"
-                className="font-rounded mt-1 inline-flex w-full items-center justify-center gap-2 rounded-[var(--radius-card-sm)] bg-[var(--color-primary)] px-4 py-3.5 text-[15px] font-semibold text-[var(--color-primary-foreground)] transition-colors hover:bg-[var(--color-primary-deep)]"
-              >
-                {t("mobileSearchApply")}
-              </button>
-            </form>
-          </div>
-        </SheetContent>
-      </Sheet>
+                  <label className="grid gap-1.5">
+                    <span className="type-caption font-semibold">{cityLabel}</span>
+                    <CitySelect
+                      value={city}
+                      onChange={setCity}
+                      cities={cityOptions}
+                      placeholder={cityPlaceholder}
+                      toggleLabel={t("searchFieldCityToggle")}
+                      noResultsText={t("searchFieldCityNoResults")}
+                    />
+                  </label>
+
+                  <button
+                    type="submit"
+                    className="font-rounded mt-1 inline-flex w-full items-center justify-center gap-2 rounded-[var(--radius-card-sm)] bg-[var(--color-primary)] px-4 py-3.5 text-[15px] font-semibold text-[var(--color-primary-foreground)] transition-colors hover:bg-[var(--color-primary-deep)]"
+                  >
+                    {t("mobileSearchApply")}
+                  </button>
+                </form>
+              </div>
+            </SheetContent>
+          </Sheet>,
+          document.body,
+        )}
     </>
   );
 }
