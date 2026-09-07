@@ -59,6 +59,12 @@ import {
   createContactReadHandlers,
 } from "@ntizo/backend/modules/ntizo/read/contact";
 import { bootstrapContact } from "@ntizo/backend/modules/ntizo/bounded-contexts/contact";
+import { createFavouriteWriteHandlers } from "@ntizo/backend/modules/ntizo/write/favourite";
+import {
+  bootstrapFavouriteRead,
+  createFavouriteReadHandlers,
+} from "@ntizo/backend/modules/ntizo/read/favourite";
+import { bootstrapFavourite } from "@ntizo/backend/modules/ntizo/bounded-contexts/favourite";
 import { createBookingWriteHandlers } from "@ntizo/backend/modules/ntizo/write/booking";
 import { bootstrapBooking } from "@ntizo/backend/modules/ntizo/bounded-contexts/booking";
 import { createUserWriteHandlers } from "@ntizo/backend/modules/ntizo/write/user";
@@ -109,6 +115,8 @@ export function buildPrivateGraphQLFields(): {
   const reviewRead = bootstrapReviewRead();
   const contact = bootstrapContact();
   const contactRead = bootstrapContactRead();
+  const favourite = bootstrapFavourite();
+  const favouriteRead = bootstrapFavouriteRead();
   // The eight notification fields are already in `privateGraphqlSchema` —
   // read/schema.ts and write/schema.ts merge them in. A field declared in
   // the schema with no handler behind it resolves to nothing, so leaving
@@ -173,6 +181,7 @@ export function buildPrivateGraphQLFields(): {
       ...createSupportReadHandlers({ supportRead }),
       ...createReviewReadHandlers(reviewRead.useCases),
       ...createContactReadHandlers(contactRead.useCases),
+      ...createFavouriteReadHandlers({ favouriteRead }),
       ...createCommunicationWriteHandlers({ communication }),
       ...createSupportWriteHandlers({ communication }),
       ...createProviderWriteHandlers({ provider, workflows }),
@@ -180,6 +189,7 @@ export function buildPrivateGraphQLFields(): {
       ...createSchedulingWriteHandlers({ scheduling }),
       ...createReviewWriteHandlers({ review }),
       ...createContactWriteHandlers({ contact }),
+      ...createFavouriteWriteHandlers({ favourite }),
       ...createBookingWriteHandlers({ booking }),
       ...createBookingReadHandlers({ bookingRead }),
       ...createNotificationWriteHandlers({ notification }),
