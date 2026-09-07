@@ -46,6 +46,23 @@ export function zoneOwnsChrome(pathname: string): boolean {
   return first !== undefined && OWN_CHROME.includes(first);
 }
 
+/**
+ * Whether this path draws the browse pages' floating filter capsule.
+ *
+ * Only the two list pages themselves, and only as an exact match: a business's
+ * own page is `/providers/$slug` and draws no capsule, so a prefix test would
+ * raise the help launcher on every profile on the site for no reason.
+ *
+ * It exists so `HelpLauncher` can get out of the capsule's way. Both are
+ * `fixed` and neither can see the other, and at 390px the capsule is ~290px
+ * of centred pill whose right edge runs under the launcher's left — they were
+ * drawn on top of one another on every phone.
+ */
+export function showsFloatingControls(pathname: string): boolean {
+  const path = pathname.replace(/\/+$/, "") || "/";
+  return path === "/services" || path === "/providers";
+}
+
 /** True only for app-internal absolute paths ("/x"), never external URLs. */
 export function isSafeInternalPath(path: string | null): path is string {
   if (!path || !path.startsWith("/")) return false;

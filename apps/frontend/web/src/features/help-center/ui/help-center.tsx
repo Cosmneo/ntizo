@@ -6,7 +6,7 @@ import { useSupportRequests } from "@/features/help-center/viewmodel/use-support
 import { useOpenSupportRequest } from "@/features/help-center/viewmodel/use-open-support-request";
 import { useCurrentUser } from "@/features/user/viewmodel/use-current-user";
 import { useActiveProvider } from "@/features/provider/viewmodel/use-active-provider";
-import { showsHelpLauncher } from "@/shared/lib/zones";
+import { showsFloatingControls, showsHelpLauncher } from "@/shared/lib/zones";
 import { HelpLauncher } from "@/features/help-center/ui/help-launcher";
 import { HelpPanel } from "@/features/help-center/ui/help-panel";
 import { HelpHome } from "@/features/help-center/ui/help-home";
@@ -107,7 +107,11 @@ export function HelpCenter() {
   return (
     <>
       {showsHelpLauncher(pathname) && (
-        <HelpLauncher unreadCount={unreadCount} onOpen={() => help.openPanel()} />
+        <HelpLauncher
+          unreadCount={unreadCount}
+          onOpen={() => help.openPanel()}
+          raised={showsFloatingControls(pathname)}
+        />
       )}
 
       <HelpPanel

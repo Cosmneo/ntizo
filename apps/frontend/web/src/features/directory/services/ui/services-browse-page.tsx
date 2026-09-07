@@ -196,7 +196,12 @@ export function ServicesBrowsePage() {
       />
 
 
-      <main className="page-shell pb-14">
+      {/* The floating capsule is `fixed` and covers whatever the page ends
+          with — which is the pager, so "Next →" was sitting behind it and
+          could not be pressed. The root layout's own `pb-14` clears
+          `MobileNav` and nothing more; this clears the capsule above it, and
+          stops at `lg`, where the capsule is hidden and the pills take over. */}
+      <main className="page-shell pb-[calc(7rem+env(safe-area-inset-bottom))] lg:pb-14">
         <div className="flex items-end justify-between gap-5 pt-6 pb-3.5">
           <div>
             <h1 className="text-[26px] leading-tight font-bold tracking-[-0.02em] text-[var(--color-headline)]">

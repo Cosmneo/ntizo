@@ -4,6 +4,7 @@ import {
   canAccessAdmin,
   canAccessProvider,
   isSafeInternalPath,
+  showsFloatingControls,
   resolvePostLoginDestination,
   showsHelpLauncher,
   zoneOwnsChrome,
@@ -146,5 +147,32 @@ describe("showsHelpLauncher", () => {
 
   it("shows on the booking details step, which is where somebody asks for help", () => {
     expect(showsHelpLauncher("/booking/b-1/details")).toBe(true);
+  });
+});
+
+describe("showsFloatingControls", () => {
+  /**
+   * It exists so the help launcher can step above the filter capsule. Both are
+   * `fixed` and neither can measure the other, so getting this wrong puts two
+   * round buttons on top of one another — which is what a phone showed.
+   */
+  it("is true on the two list pages that draw the capsule", () => {
+    expect(showsFloatingControls("/services")).toBe(true);
+    expect(showsFloatingControls("/providers")).toBe(true);
+    // A trailing slash is the same page.
+    expect(showsFloatingControls("/providers/")).toBe(true);
+  });
+
+  it("is false on a business's own page, which draws no capsule", () => {
+    // The prefix test this replaces raised the launcher on every profile on
+    // the site: "/providers/salao-x".startsWith("/providers") is true.
+    expect(showsFloatingControls("/providers/salao-x")).toBe(false);
+    expect(showsFloatingControls("/services/corte-de-cabelo")).toBe(false);
+  });
+
+  it("is false everywhere else", () => {
+    for (const path of ["/", "/help", "/bookings", "/service", "/provider/x/overview"]) {
+      expect(showsFloatingControls(path)).toBe(false);
+    }
   });
 });
