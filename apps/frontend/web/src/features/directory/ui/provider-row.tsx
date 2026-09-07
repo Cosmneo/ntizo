@@ -93,7 +93,17 @@ export function ProviderRow({
             params={{ slug: provider.slug }}
             className={TILE_TITLE_LINK_CLASS}
           >
-            {provider.name}
+            {provider.name}{" "}
+            {/* Inside the link, not loose in the side column. Left there it
+                was an orphan sentence a screen reader met after the price,
+                belonging to nothing; here it is the end of the link's own
+                accessible name — "Estúdio Mavalane View business" — which is
+                what it was always trying to say. The space before it is
+                explicit because JSX drops the one at a line break, and
+                without it the two run together in the computed name. */}
+            <span className="sr-only">
+              {t(provider.type === "individual" ? "providerOpenPerson" : "providerOpenBusiness")}
+            </span>
           </Link>
           {provider.verified && (
             <span
@@ -222,9 +232,6 @@ export function ProviderRow({
               className="mt-2.5 hidden h-[34px] w-[34px] place-items-center rounded-full border border-[var(--color-border-strong)] text-[var(--color-headline)] md:grid"
             >
               <ChevronRight className="h-[15px] w-[15px]" />
-            </span>
-            <span className="sr-only">
-              {t(provider.type === "individual" ? "providerOpenPerson" : "providerOpenBusiness")}
             </span>
           </div>
         </div>

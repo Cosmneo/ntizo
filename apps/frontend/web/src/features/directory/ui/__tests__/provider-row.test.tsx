@@ -218,7 +218,11 @@ describe("ProviderRow", () => {
 
   it("says a person's profile is a profile, not a business", async () => {
     renderRow(provider({ type: "individual" }));
-    await screen.findByRole("link", { name: /Estúdio Mavalane/ });
-    expect(screen.getByText("View profile")).toBeInTheDocument();
+    const row = await screen.findByRole("link", { name: /Estúdio Mavalane/ });
+    // Inside the link, as the tail of its accessible name: loose in the side
+    // column it was a sentence a screen reader met after the price with
+    // nothing to attach it to.
+    expect(row).toContainElement(screen.getByText("View profile"));
+    expect(row).toHaveAccessibleName("Estúdio Mavalane View profile");
   });
 });

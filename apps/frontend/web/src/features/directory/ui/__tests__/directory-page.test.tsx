@@ -180,13 +180,19 @@ describe("DirectoryPage", () => {
   it("draws no button on a row at all — the row is the link", async () => {
     // A blue "View business" repeated twenty times down a page competes with
     // every price on it and with the one button that matters, in the header.
-    // The destination is named for a screen reader, inside the row, and is
-    // not a second link a keyboard user has to step past.
+    // The destination is said inside the row's one link, as the tail of its
+    // own accessible name, rather than as a second control to step past or —
+    // as it was before — a sentence loose in the side column that a screen
+    // reader met after the price, belonging to nothing.
     renderPage("/providers", { items: [provider()], total: 1 });
-    await screen.findByRole("link", { name: "Estúdio Mavalane" });
-    expect(screen.queryByRole("link", { name: /View business/i })).toBeNull();
+    const row = await screen.findByRole("link", { name: /Estúdio Mavalane/ });
+    expect(screen.getAllByRole("link", { name: /Estúdio Mavalane/ })).toHaveLength(1);
     expect(screen.queryByRole("button", { name: /View business/i })).toBeNull();
-    expect(screen.getByText("View business")).toBeInTheDocument();
+
+    const destination = screen.getByText("View business");
+    expect(row).toContainElement(destination);
+    expect(destination.className).toContain("sr-only");
+    expect(row).toHaveAccessibleName("Estúdio Mavalane View business");
   });
 
   it("does not tell somebody who filtered that the platform is empty", async () => {
@@ -598,7 +604,7 @@ describe("DirectoryPage", () => {
   it("offers no numbered pages when everything matched fits on one", async () => {
     // A pager reading "page 1 of 1" makes an eight-result search look truncated.
     renderPage("/providers", { items: [provider()], total: 1 });
-    await screen.findByRole("link", { name: "Estúdio Mavalane" });
+    await screen.findByRole("link", { name: /Estúdio Mavalane/ });
     expect(screen.queryByRole("navigation", { name: "Pages" })).not.toBeInTheDocument();
   });
 
