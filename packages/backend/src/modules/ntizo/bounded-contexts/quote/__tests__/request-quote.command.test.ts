@@ -11,7 +11,6 @@ import {
   ADDRESS,
   CapturingOutbox,
   FakeAttachmentRepo,
-  FakeMemberReader,
   FakeQuoteRepo,
   FakeRaiser,
   FakeServiceReader,
@@ -62,6 +61,7 @@ describe("RequestQuoteCommand", () => {
     expect(unitOfWork.order).toEqual(["insert", "attachments"]);
     expect(outbox.published[0]?.aggregateType).toBe("quote");
     expect(outbox.published[0]?.events[0]?.eventName).toBe("quote.requested");
+    expect(outbox.published[0]?.insideTransaction).toBe(true);
     expect(raiser.raised[0]).toMatchObject({ type: NotificationType.ProviderQuoteRequested, audience: "provider", providerId: "prov-1" });
     expect(raiser.insideTransactionAtCall).toEqual([false]);
   });
@@ -88,10 +88,19 @@ describe("RequestQuoteCommand", () => {
     const result = await remote.command.execute({ ...INPUT, address: null });
     expect(result.quoteId).toBe("q-1");
     expect(remote.repo.inserted[0]?.hasCompleteAddress()).toBe(false);
+
+    const formAsks = setup({ snapshot: serviceSnapshot({ locationType: "remote", quoteForm: { responseHours: 48, askDeadline: true, askPhotos: true, askLocation: true, intro: null } }) });
+    await expect(formAsks.command.execute({ ...INPUT, address: null })).rejects.toThrow(QuoteAddressRequiredError);
+
+    const flexible = setup({ snapshot: serviceSnapshot({ locationType: "flexible", quoteForm: { responseHours: 48, askDeadline: true, askPhotos: true, askLocation: false, intro: null } }) });
+    await expect(flexible.command.execute({ ...INPUT, address: null })).rejects.toThrow(QuoteAddressRequiredError);
   });
 
   it("refuses a description carrying a phone number, and a file the caller did not upload", async () => {
-    await expect(setup().command.execute({ ...INPUT, description: "Liga-me para o 84 123 4567" })).rejects.toThrow(QuoteContainsContactError);
+    const { command, services } = setup();
+    await expect(command.execute({ ...INPUT, description: "Liga-me para o 84 123 4567" })).rejects.toThrow(QuoteContainsContactError);
+    expect(services.calls).toEqual([]);
+
     const foreign = setup({ storage: new FakeStorage({ "attachment/other-user/1-a.jpg": storedPhoto("other-user") }) });
     await expect(foreign.command.execute({ ...INPUT, attachments: [{ storageKey: "attachment/other-user/1-a.jpg" }] })).rejects.toThrow(QuoteAttachmentNotAvailableError);
   });
