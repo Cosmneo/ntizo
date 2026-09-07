@@ -2,6 +2,10 @@ export * from "./bootstrap";
 export { Booking } from "./domain/aggregates/booking.aggregate";
 export { CreateBookingCommand } from "./app/use-cases/create-booking.command";
 export type { CreateBookingInput } from "./app/use-cases/create-booking.command";
+export {
+  CreateBookingFromQuoteCommand,
+  type CreateBookingFromQuoteInput,
+} from "./app/use-cases/create-booking-from-quote.command";
 export { SubmitBookingCommand } from "./app/use-cases/submit-booking.command";
 export type { SubmitBookingInput } from "./app/use-cases/submit-booking.command";
 export { AcceptBookingCommand } from "./app/use-cases/accept-booking.command";

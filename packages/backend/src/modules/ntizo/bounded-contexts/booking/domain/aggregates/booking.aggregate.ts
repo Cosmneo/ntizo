@@ -455,6 +455,121 @@ export class Booking {
   }
 
   /**
+   * A booking born from an accepted quote.
+   *
+   * It starts at `PENDING_PAYMENT`, not `DRAFT`: the provider said yes when
+   * they proposed, and the customer said yes by accepting, so the only thing
+   * left is the money. That is the same state `accept` leaves a priced
+   * booking in, which is why nothing downstream — the charge sweep, the
+   * payment window, `markPaid`, the close reminders — needs to know a booking
+   * came from a quote.
+   *
+   * `optionName` and `serviceOptionId` are null and `quoteId` is set; the
+   * price and the duration are the proposal's, not a catalogue option's.
+   * The address is required here, unlike in `create`: a quote-born booking is
+   * never a draft, and every status past `DRAFT` must carry one.
+   */
+  static createFromQuote(input: {
+    id?: string | null;
+    quoteId: string;
+    customerId: string;
+    providerId: string;
+    serviceId: string;
+    providerMemberId: string;
+    startsAt: Date;
+    durationMinutes: number;
+    priceMinor: number;
+    commissionBps: number;
+    currency: string;
+    serviceName: string;
+    providerName: string;
+    providerSlug: string;
+    addressLabel: string;
+    addressLine: string;
+    addressCity: string;
+    addressDistrict?: string | null;
+    addressDirections?: string | null;
+    addressLat?: number | null;
+    addressLng?: number | null;
+    description?: string | null;
+    at: Date;
+    payBy: Date;
+  }): Booking {
+    Booking.requireNonBlank(input.quoteId, "quoteId");
+    Booking.requireNonBlank(input.customerId, "customerId");
+    Booking.requireNonBlank(input.providerId, "providerId");
+    Booking.requireNonBlank(input.serviceId, "serviceId");
+    Booking.requireNonBlank(input.providerMemberId, "providerMemberId");
+    Booking.requireNonBlank(input.currency, "currency");
+    Booking.requireNonBlank(input.serviceName, "serviceName");
+    Booking.requireNonBlank(input.providerName, "providerName");
+    Booking.requireNonBlank(input.providerSlug, "providerSlug");
+    Booking.requireNonBlank(input.addressLabel, "addressLabel");
+    Booking.requireNonBlank(input.addressLine, "addressLine");
+    Booking.requireNonBlank(input.addressCity, "addressCity");
+    if (input.addressDistrict != null) Booking.requireNonBlank(input.addressDistrict, "addressDistrict");
+    if (input.addressDirections != null) Booking.requireNonBlank(input.addressDirections, "addressDirections");
+    Booking.requireValidDate(input.startsAt, "startsAt");
+    Booking.requireValidDate(input.at, "at");
+    Booking.requireValidDate(input.payBy, "payBy");
+
+    if (!Number.isInteger(input.durationMinutes) || input.durationMinutes <= 0) {
+      throw new BookingDurationInvalidError(input.durationMinutes);
+    }
+    if (!Number.isInteger(input.priceMinor) || input.priceMinor < 0) {
+      throw new BookingPriceInvalidError(input.priceMinor);
+    }
+    if (!Number.isInteger(input.commissionBps) || input.commissionBps < 0 || input.commissionBps > COMMISSION_BPS_MAX) {
+      throw new CommissionOutOfRangeError(input.commissionBps);
+    }
+
+    const endsAt = new Date(input.startsAt.getTime() + input.durationMinutes * 60_000);
+    const commissionMinor = Math.round((input.priceMinor * input.commissionBps) / COMMISSION_BPS_MAX);
+    const description = (input.description ?? "").trim();
+
+    return new Booking({
+      id: input.id ?? null,
+      customerId: input.customerId,
+      providerId: input.providerId,
+      serviceId: input.serviceId,
+      serviceOptionId: null,
+      optionName: null,
+      quoteId: input.quoteId,
+      providerMemberId: input.providerMemberId,
+      startsAt: input.startsAt,
+      endsAt,
+      durationMinutes: input.durationMinutes,
+      status: BookingStatus.PendingPayment,
+      expiresAt: input.payBy,
+      paidAt: null,
+      paymentRef: null,
+      confirmedAt: input.at,
+      declinedAt: null,
+      cancelledAt: null,
+      remindedAt: null,
+      markedDoneAt: null,
+      completedAt: null,
+      disputedAt: null,
+      expiredAt: null,
+      priceMinor: input.priceMinor,
+      commissionBps: input.commissionBps,
+      commissionMinor,
+      currency: input.currency,
+      serviceName: input.serviceName,
+      providerName: input.providerName,
+      providerSlug: input.providerSlug,
+      addressLabel: input.addressLabel,
+      addressLine: input.addressLine,
+      addressCity: input.addressCity,
+      addressDistrict: input.addressDistrict ?? null,
+      addressDirections: input.addressDirections ?? null,
+      addressLat: input.addressLat ?? null,
+      addressLng: input.addressLng ?? null,
+      description: description === "" ? null : description,
+    });
+  }
+
+  /**
    * A booking as the repository reconstitutes it from a stored row.
    *
    * This is Task 7's reconstitution seam, not test scaffolding: `findById`
