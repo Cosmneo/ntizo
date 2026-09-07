@@ -8,6 +8,7 @@ import {
   serviceTranslation,
 } from "../../../../../shared/infrastructure/database/catalog/schemas";
 import { provider } from "../../../../../shared/infrastructure/database/provider/schemas";
+import { QuoteServiceUnnamedError } from "../../../domain/exceptions";
 import type {
   QuoteServiceReaderPort,
   QuoteServiceSnapshot,
@@ -41,6 +42,19 @@ const source = alias(serviceTranslation, "quote_svc_tr_source");
  * rather than joined into the first — joining it would multiply the single
  * service/translation/form row once per performer for no reason the caller
  * needs.
+ *
+ * **Refuses on an unnamed service rather than reporting one.** A blank
+ * `serviceName` leaving this reader would ride, untouched, all the way to
+ * `Booking.createFromQuote`'s `requireNonBlank` — the same trap Booking's
+ * own `DrizzleServicePricingReader` closes for options, and closed here for
+ * the same reason: a booking snapshot is the customer's record of what they
+ * bought, and "" is not a name for it. Refusing here, where the service id
+ * and both locales that were checked are still in scope, turns a
+ * booking-shaped `BOOKING_FIELD_BLANK` several calls later into a
+ * catalogue-shaped `QuoteServiceUnnamedError` at the query that actually
+ * found the gap. "No such service" (`null`) and "a service with no name"
+ * (this throw) stay two different answers — the first never reaches the
+ * name check at all.
  */
 export class DrizzleQuoteServiceReader implements QuoteServiceReaderPort {
   async findForQuote(serviceId: string, locale: string): Promise<QuoteServiceSnapshot | null> {
@@ -49,6 +63,10 @@ export class DrizzleQuoteServiceReader implements QuoteServiceReaderPort {
       .select({
         serviceId: service.id,
         providerId: service.providerId,
+        // Read only so the refusal below can name the locale it looked in
+        // second — matching `service-pricing.reader.ts`'s own reason for
+        // reading this column.
+        sourceLocale: service.sourceLocale,
         providerStatus: provider.status,
         serviceStatus: service.status,
         bookingMode: service.bookingMode,
@@ -70,6 +88,20 @@ export class DrizzleQuoteServiceReader implements QuoteServiceReaderPort {
       .limit(1);
     if (!row) return null;
 
+    // Requested locale first, source locale second — same two-step
+    // `service-pricing.reader.ts` takes, and the same reason: a customer
+    // reading in a locale nobody translated into still gets the name the
+    // provider actually wrote, not an empty service.
+    //
+    // Trimmed for the check and not for the value, matching
+    // `ServiceOptionUnnamedError`'s own reasoning: `"   "` is as unusable a
+    // name as `""`, but what a quote (and the booking it can become)
+    // snapshots is what the catalogue actually holds.
+    const serviceName = row.requestedName ?? row.sourceName ?? "";
+    if (serviceName.trim().length === 0) {
+      throw new QuoteServiceUnnamedError(serviceId, locale, row.sourceLocale);
+    }
+
     const members = await db
       .select({ memberId: serviceMember.memberId })
       .from(serviceMember)
@@ -82,11 +114,7 @@ export class DrizzleQuoteServiceReader implements QuoteServiceReaderPort {
       serviceStatus: row.serviceStatus,
       bookingMode: row.bookingMode,
       locationType: row.locationType,
-      // Requested locale first, source locale second — same two-step
-      // `service-pricing.reader.ts` takes, and the same reason: a customer
-      // reading in a locale nobody translated into still gets the name the
-      // provider actually wrote, not an empty service.
-      serviceName: row.requestedName ?? row.sourceName ?? "",
+      serviceName,
       quoteForm:
         row.responseHours === null
           ? null

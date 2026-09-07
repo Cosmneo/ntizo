@@ -24,6 +24,11 @@
  * does not ask for a profile row. Typechecking them against their ports
  * (done at compile time by `implements`) is the coverage this file adds for
  * those two.
+ *
+ * A second, minimal service (`unnamedServiceId`) covers Round 1's finding:
+ * its only translation is in a third locale, neither the one asked for nor
+ * its own `sourceLocale`, so `DrizzleQuoteServiceReader` must refuse it
+ * rather than hand back `""`.
  */
 import { afterAll, beforeAll, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { eq } from "drizzle-orm";
@@ -39,6 +44,7 @@ import { user } from "../user/schemas/user.schema";
 import { thread } from "../communication/schemas/thread.schema";
 import { quote } from "../quote/schemas";
 import { booking } from "../booking/schemas/booking.schema";
+import { QuoteServiceUnnamedError } from "../../../../bounded-contexts/quote/domain/exceptions";
 import { DrizzleQuoteServiceReader } from "../../../../bounded-contexts/quote/infrastructure/repositories/drizzle/quote-service.reader";
 import { DrizzleSlotOverlapReader } from "../../../../bounded-contexts/quote/infrastructure/repositories/drizzle/slot-overlap.reader";
 import { DrizzleQuotePlatformSettingsReader } from "../../../../bounded-contexts/quote/infrastructure/repositories/drizzle/platform-settings.reader";
@@ -70,6 +76,7 @@ let serviceId: string;
 let threadId: string;
 let closedQuoteId: string;
 let bookingId: string;
+let unnamedServiceId: string;
 
 beforeAll(async () => {
   customerId = crypto.randomUUID();
@@ -168,6 +175,25 @@ beforeAll(async () => {
     })
     .returning({ id: booking.id });
   bookingId = b!.id;
+
+  // Round 1's fixture: a service whose only translation is in a locale that
+  // is neither the one a caller will ask for nor its own `sourceLocale` —
+  // the case `DrizzleQuoteServiceReader` must refuse rather than describe
+  // with `""`. Its own service, not the fixture above, so the "happy path"
+  // test's `pt-MZ` translation can't accidentally satisfy this one.
+  const [u] = await db
+    .insert(service)
+    .values({
+      providerId,
+      categoryId,
+      sourceLocale: "en-US",
+      locationType: "at_customer",
+      bookingMode: "quote",
+      status: "published",
+    })
+    .returning({ id: service.id });
+  unnamedServiceId = u!.id;
+  await db.insert(serviceTranslation).values({ serviceId: unnamedServiceId, locale: "fr-FR", name: "Chauffage" });
 });
 
 afterAll(async () => {
@@ -176,8 +202,10 @@ afterAll(async () => {
     () => db.delete(serviceMember).where(eq(serviceMember.serviceId, serviceId)),
     () => db.delete(serviceQuoteForm).where(eq(serviceQuoteForm.serviceId, serviceId)),
     () => db.delete(serviceTranslation).where(eq(serviceTranslation.serviceId, serviceId)),
+    () => db.delete(serviceTranslation).where(eq(serviceTranslation.serviceId, unnamedServiceId)),
     () => db.delete(quote).where(eq(quote.id, closedQuoteId)),
     () => db.delete(thread).where(eq(thread.id, threadId)),
+    () => db.delete(service).where(eq(service.id, unnamedServiceId)),
     () => db.delete(service).where(eq(service.id, serviceId)),
     () => db.delete(category).where(eq(category.id, categoryId)),
     () => db.delete(providerMember).where(eq(providerMember.id, memberId)),
@@ -198,6 +226,12 @@ describe("the Drizzle readers behind the quote context's ports", () => {
     expect(fallback?.serviceName).toBe("Instalação de AC");
 
     expect(await run(() => new DrizzleQuoteServiceReader().findForQuote(crypto.randomUUID(), "pt-MZ"))).toBeNull();
+  });
+
+  test("the service reader refuses a service with no name in the requested locale or its own source locale", async () => {
+    await expect(
+      run(() => new DrizzleQuoteServiceReader().findForQuote(unnamedServiceId, "de-DE")),
+    ).rejects.toThrow(QuoteServiceUnnamedError);
   });
 
   test("the overlap reader sees the confirmed booking and nothing beside it", async () => {

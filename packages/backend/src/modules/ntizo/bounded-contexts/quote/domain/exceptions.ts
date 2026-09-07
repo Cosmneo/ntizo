@@ -55,6 +55,41 @@ export class QuoteServiceNotQuotableError extends UnprocessableError {
   }
 }
 
+/**
+ * Refused because a service that does exist has no name to snapshot — not in
+ * the locale the customer was reading, and not in the service's own source
+ * locale either.
+ *
+ * A quote, and the booking it can become, records the name of the thing
+ * being bought — `""` is not a name, and `Booking.createFromQuote` already
+ * refuses it (`requireNonBlank`, `BOOKING_FIELD_BLANK`). That guard stays,
+ * but it fires several calls after this one, on a fact already flattened
+ * into "a booking field was blank" with no service id and nothing pointing
+ * at the catalogue row that is actually wrong. This is the same refusal
+ * made where the missing thing is still visible.
+ *
+ * **Raised by `QuoteServiceReaderPort.findForQuote`, not by a command.**
+ * Modelled on Booking's `ServiceOptionUnnamedError` — see that error's own
+ * doc comment for the fuller argument, which carries over here unchanged.
+ * Both locales are named for the same reason: a name missing only from the
+ * customer's locale is a translation gap the fallback silently absorbs;
+ * one missing from the source locale too is a service nobody ever named,
+ * and only that second case reaches here.
+ */
+export class QuoteServiceUnnamedError extends UnprocessableError {
+  constructor(
+    public readonly serviceId: string,
+    public readonly requestedLocale: string,
+    public readonly sourceLocale: string,
+  ) {
+    super({
+      message: `Service "${serviceId}" has no name in "${requestedLocale}" or in its source locale "${sourceLocale}"`,
+      code: "QUOTE_SERVICE_UNNAMED",
+    });
+    this.name = "QuoteServiceUnnamedError";
+  }
+}
+
 export class QuoteAlreadyOpenError extends ConflictError {
   constructor() {
     super({ message: "You already have an open quote for this service", code: "QUOTE_ALREADY_OPEN" });
