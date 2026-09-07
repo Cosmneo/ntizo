@@ -13,7 +13,7 @@
 ## Global Constraints
 
 - Work in the worktree `.claude/worktrees/quotes` on branch `feat/quotes` (cut from `origin/dev`). All paths below are relative to that worktree root. Never `git stash`.
-- Backend tests: `bun test <path>` from `packages/backend`. Typecheck: `bun run typecheck` from the repo root (turbo). Tests under `shared/infrastructure/database/__tests__` hit the real dev database through `DEV_DB_URL` in `packages/backend/.env`.
+- Test runners differ by package and are not interchangeable: `packages/backend` runs `bun test <path>` and its tests import from `"bun:test"`; `packages/shared` runs `bun run test` (vitest) and its tests import from `"vitest"`. Typecheck: `bun run typecheck` from the repo root (turbo). Tests under `shared/infrastructure/database/__tests__` hit the real dev database through `DEV_DB_URL` in `packages/backend/.env`.
 - No bounded context imports another context's `app/` tree. Cross-context calls go through an outbound port declared on the caller's side and filled in `apps/backend/api/src/graphql/private.ts` (and `scheduled.ts` for the cron).
 - Every domain exception extends a kit error (`ConflictError`, `ForbiddenError`, `NotFoundError`, `UnprocessableError` from `@cosmneo/onion-lasagna`) and sets a `code` string; the client reads it as `extensions.originalCode`. A plain `Error` reaches the browser as `INTERNAL_ERROR`.
 - Money is minor units as integers. Currency `MZN`. Minimum proposal price is `platform_settings.min_service_price_minor` (live).
