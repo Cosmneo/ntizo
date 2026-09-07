@@ -3,7 +3,7 @@ import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { SearchX, Store } from "lucide-react";
 import { EmptyCard } from "@/shared/components/empty-card";
 import { SiteHeader } from "@/shared/components/site-header";
-import { SearchPill } from "@/shared/components/browse/search-pill";
+import { ServiceSearch } from "@/shared/components/service-search";
 import {
   CATEGORY_STRIP_LIMIT,
   CategoryStrip,
@@ -20,7 +20,7 @@ import { formatRating } from "@/shared/domain/rating";
 // touch `data`, and going through the hook reuses the cache the home page has
 // usually already filled.
 import { useCategoryPreview } from "@/features/landing/viewmodel/use-categories";
-import { useDirectory, useProviderCities } from "@/features/directory/viewmodel/use-directory";
+import { useDirectory } from "@/features/directory/viewmodel/use-directory";
 import { ProviderRow } from "@/features/directory/ui/provider-row";
 import {
   MobileProviderFilters,
@@ -59,25 +59,26 @@ import { resultsScope } from "@/features/directory/domain/results-scope";
  * a business gets a row with its services and their prices in it rather than
  * the tile a service gets. See `ProviderRow`.
  *
- * Four levels of narrowing, deliberately not the same shape. The header's
- * search pill asks the opening question, in the same place it is asked on
- * every page of the site. The category strip is full-width navigation between
- * whole result sets. The pills under the heading narrow one of those sets. The
- * sort reorders what is left. Making all four a row of chips would say they
- * were peers.
+ * Four levels of narrowing, deliberately not the same shape. The search bar
+ * under the header asks the opening question — the landing hero's own
+ * `ServiceSearch`, unchanged but pointed here and asking for a business by
+ * name, so the question is asked in the same shape as on the home page. The
+ * category strip is full-width navigation between whole result sets. The
+ * pills under the heading narrow one of those sets. The sort reorders what is
+ * left. Making all four a row of chips would say they were peers.
  *
- * **A white page with one blue on it** — the pill's search button. Everything
- * else is headline navy, ink, grey and the amber star, which is why the rows
- * carry no border, no shadow and no button of their own: what the eye should
- * land on down a column of results is the photographs, the ratings and the
- * prices, not twenty identical calls to action.
+ * **A white page with one blue on it** — the search bar's button, alongside
+ * the header's own nav pill and sign-in, exactly as on every other page.
+ * Everything else is headline navy, ink, grey and the amber star, which is
+ * why the rows carry no border, no shadow and no button of their own: what
+ * the eye should land on down a column of results is the photographs, the
+ * ratings and the prices, not twenty identical calls to action.
  *
- * **Nothing straddles the strip.** The header sits above it, the strip is a
- * plain white band with a hairline under it, and `main` starts below. The
- * search that used to sit in a card across that band's top edge lives in the
- * header now, so the strip is a single positioned layer with no paint-order
- * split — anything reintroduced there on a negative margin would be painted
- * over by it.
+ * **Nothing straddles the strip.** Header, then search bar, then strip, then
+ * `main`: four bands stacked, none of them overlapping the next. The card
+ * that once sat in a well across the strip's top edge is gone, so the strip
+ * is a single positioned layer with no paint-order split — anything
+ * reintroduced there on a negative margin would be painted over by it.
  *
  * **The phone is not this page shrunk.** The pills give way to four one-tap
  * chips above the results and one navy capsule at the thumb holding the
@@ -134,7 +135,24 @@ export function DirectoryPage() {
 
   return (
     <>
-      <SiteHeader current="providers" search={<HeroSearch current={current} />} />
+      <SiteHeader current="providers" />
+
+      {/* The site's search, not a search this page invented: the landing
+          hero's own bar, in the page's own column under the header rather
+          than inside it. 760px and centred so it reads as a field over the
+          results it filters and not as a banner across the window. Pointed at
+          this list and asking for a name, because that is what a reader has
+          in hand when they come looking for a business rather than a job. The
+          city is not one of its fields — that is the "City" filter pill
+          below, where a narrowing belongs. */}
+      <div className="page-shell">
+        <ServiceSearch
+          to="/providers"
+          placeholder={t("searchFieldProviderEmpty")}
+          initialValue={current.q ?? ""}
+          className="mx-auto mt-5 max-w-[760px]"
+        />
+      </div>
 
       <CategoryStrip label={t("categoryStripLabel")}>
         <StripItem
@@ -350,42 +368,6 @@ export function DirectoryPage() {
  * come back on when the pill was used instead.
  */
 const QUICK_MIN_RATING: RatingThreshold = 4.5;
-
-/**
- * The header's search, wired to this page's URL. `SearchPill` owns the fields,
- * the drafts, the phone sheet and every reason for them — see its own comment;
- * all this adds is where an applied search goes.
- */
-function HeroSearch({ current }: { current: DirectorySearch }) {
-  const { t } = useTranslation("directory");
-  const navigate = useNavigate();
-  const cities = useProviderCities();
-
-  return (
-    <SearchPill
-      termLabel={t("searchFieldProvider")}
-      termPlaceholder={t("searchFieldProviderEmpty")}
-      cityLabel={t("searchFieldCity")}
-      cityPlaceholder={t("searchFieldCityEmpty")}
-      term={current.q ?? ""}
-      city={current.city ?? ""}
-      cities={cities.map((c) => c.city)}
-      onApply={({ term, city }) =>
-        void navigate({
-          to: "/providers",
-          // Both fields, from the pill's drafts. Either may have been edited
-          // without the other being submitted first, which is why they arrive
-          // together rather than being read back off `current`.
-          search: directorySearch(current, {
-            q: term || undefined,
-            city: city || undefined,
-            offset: undefined,
-          }),
-        })
-      }
-    />
-  );
-}
 
 /** One category, as an item in the strip: its icon over its name. */
 function StripItem({

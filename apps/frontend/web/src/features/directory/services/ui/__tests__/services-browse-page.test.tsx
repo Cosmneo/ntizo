@@ -177,7 +177,7 @@ describe("ServicesBrowsePage", () => {
 
   it("draws no button on a result at all — the tile is the link", async () => {
     // A blue "Book" repeated twenty-four times down a page competes with every
-    // price on it and with the one button that matters, in the header.
+    // price on it and with the one button that matters, in the search bar.
     renderPage("/services", { items: [service()], nextOffset: null, total: 1 });
     await screen.findByRole("link", { name: "Corte de cabelo" });
     expect(screen.queryByRole("link", { name: /book/i })).toBeNull();
@@ -290,110 +290,30 @@ describe("ServicesBrowsePage", () => {
     expect(removals).toContain("/services?city=Maputo");
   });
 
-  it("shows what was searched in the header's pill, and opens a real box to change it", async () => {
-    // The field is a button at rest because it *opens* something; what it
-    // opens is itself. A text box that does nothing until you click it anyway
-    // is a text box lying about being one.
-    renderPage("/services?q=corte", { items: [service()], nextOffset: null, total: 1 });
-    const field = await screen.findByRole("button", { name: /Service.*corte/ });
-    fireEvent.click(field);
-    expect(screen.getByRole("searchbox", { name: "Service" })).toHaveValue("corte");
-  });
-
-  it("offers the cities the server counted rather than a box to guess one into", async () => {
-    // A typed place matching none of them is a search that silently returns
-    // nothing, with no way for the reader to see why.
-    renderPage("/services", { items: [service()], nextOffset: null, total: 1 });
-    fireEvent.click(await screen.findByRole("button", { name: /City/ }));
-    // `CitySelect` renders the list in its own popover, a sibling of the
-    // combobox rather than a child of it — `<option>` inside `<select>` no
-    // longer applies, so the options are found at the document root.
-    expect(screen.getByRole("combobox", { name: "City" })).toBeInTheDocument();
-    expect(screen.getByRole("option", { name: "Maputo" })).toBeInTheDocument();
-    expect(screen.getByRole("option", { name: "Beira" })).toBeInTheDocument();
-  });
-
-  it("swaps in the styled combobox, open on the one click that revealed it", async () => {
-    // The defect a screenshot caught: a raw `<select>` carries none of the
-    // pill's styling into its own popup and reads as a control from a
-    // different application — and needs a second click besides, because
-    // focusing a native select does not open its popup. `CitySelect` opens on
-    // its own focus handler, so focusing it as it mounts makes the swap-in
-    // itself the one click.
-    renderPage("/services", { items: [service()], nextOffset: null, total: 1 });
-    fireEvent.click(await screen.findByRole("button", { name: /City/ }));
-    expect(screen.getByRole("combobox", { name: "City" }).tagName).toBe("INPUT");
-    expect(screen.getByRole("listbox")).toBeInTheDocument();
-  });
-
-  it("carries a typed term through a change to the other field", async () => {
-    // The pill composed its URL from what the URL already said, so a term that
-    // had not been submitted first was dropped the moment the city changed:
-    // type "corte", pick Beira, get `?city=Beira` and no word at all.
+  it("the search bar sits under the header and submits to this page", async () => {
+    // The site's own bar — the landing hero's `ServiceSearch` — under the
+    // header rather than inside it, and what it writes is this page's own
+    // `?q=`. The page used to draw a search pill of its own in the header,
+    // which is the inconsistency this replaced.
     const { router } = renderPage("/services", {
       items: [service()],
       nextOffset: null,
       total: 1,
     });
-
-    fireEvent.click(await screen.findByRole("button", { name: /Service/ }));
-    fireEvent.change(screen.getByRole("searchbox", { name: "Service" }), {
-      target: { value: "corte" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: /City/ }));
-    fireEvent.change(screen.getByRole("combobox", { name: "City" }), {
-      target: { value: "Beira" },
-    });
+    fireEvent.change(await screen.findByRole("searchbox"), { target: { value: "corte" } });
     fireEvent.submit(screen.getByRole("search"));
 
     await waitFor(() => {
-      expect(router.state.location.search).toEqual({ q: "corte", city: "Beira" });
+      expect(router.state.location.pathname).toBe("/services");
+      expect(router.state.location.search).toEqual({ q: "corte" });
     });
   });
 
-  it("searches on a real submit, not on a hand-rolled key handler", async () => {
-    // Enter inside a text field reaching the submit button is a browser
-    // behaviour. Reimplementing it is how the search ended up the only control
-    // on a page of links that did nothing before JavaScript ran.
-    renderPage("/services", { items: [service()], nextOffset: null, total: 1 });
-    const form = await screen.findByRole("search");
-    expect(within(form).getByRole("button", { name: /Search/ })).toHaveAttribute(
-      "type",
-      "submit",
-    );
-  });
-
-  it("does not run a search while the reader is still typing or arrowing through cities", async () => {
-    // Typing and highlighting are `CitySelect`'s own business, not a search
-    // trigger — only picking a city or submitting the form is. A native
-    // select could not make that distinction: it fired `change` on every
-    // arrow key on Windows and Firefox, which would have run a search per
-    // city passed.
-    const { router } = renderPage("/services", {
-      items: [service()],
-      nextOffset: null,
-      total: 1,
-    });
-    fireEvent.click(await screen.findByRole("button", { name: /City/ }));
-    const box = screen.getByRole("combobox", { name: "City" });
-    fireEvent.change(box, { target: { value: "Maputo" } });
-    fireEvent.keyDown(box, { key: "ArrowDown" });
-    expect(router.state.location.search).toEqual({});
-  });
-
-  it("closes an open field on Escape and hands focus back to its button", async () => {
-    // The control the reader is standing on stops existing. Without this,
-    // focus lands on <body> and a keyboard user is at the top of the document.
-    renderPage("/services", { items: [service()], nextOffset: null, total: 1 });
-    fireEvent.click(await screen.findByRole("button", { name: /Service/ }));
-    const box = screen.getByRole("searchbox", { name: "Service" });
-    fireEvent.keyDown(box, { key: "Escape" });
-    await waitFor(() => {
-      expect(screen.queryByRole("searchbox", { name: "Service" })).not.toBeInTheDocument();
-    });
-    await waitFor(() => {
-      expect(document.activeElement).toBe(screen.getByRole("button", { name: /Service/ }));
-    });
+  it("the search bar shows the current term", async () => {
+    // A results page whose search box is empty tells the reader they searched
+    // for nothing, and a second search from it starts from scratch.
+    renderPage("/services?q=barba", { items: [service()], nextOffset: null, total: 1 });
+    expect(await screen.findByRole("searchbox")).toHaveValue("barba");
   });
 
   it("marks only the category actually in force as the current page", async () => {
@@ -448,47 +368,6 @@ describe("ServicesBrowsePage", () => {
     const clears = screen.getAllByRole("link", { name: "Clear all" });
     expect(clears).toHaveLength(2);
     for (const clear of clears) expect(clear).not.toHaveAttribute("aria-current");
-  });
-
-  it("collapses the search pill to one row on a phone, and opens both fields in a sheet", async () => {
-    // Two fields and a button in 360px is a control nobody completes. The pill
-    // hides itself below `md` and this row takes the width — so the row and
-    // the pill are never both on screen, which is why each carries its own
-    // half of the breakpoint.
-    renderPage("/services", { items: [service()], nextOffset: null, total: 1 });
-    const row = await screen.findByRole("button", { name: "Change your search" });
-    expect(row.className).toContain("md:hidden");
-    expect(screen.getByRole("search").className).toContain("hidden");
-
-    fireEvent.click(row);
-    const sheet = screen.getByRole("dialog", { name: "What are you looking for?" });
-    expect(within(sheet).getByRole("searchbox", { name: "Service" })).toBeInTheDocument();
-    expect(within(sheet).getByRole("combobox", { name: "City" })).toBeInTheDocument();
-    expect(within(sheet).getByRole("button", { name: "Show results" })).toBeInTheDocument();
-  });
-
-  it("carries both of the sheet's fields into the URL, and closes behind itself", async () => {
-    // The same `apply` the pill uses, for the same reason: two copies of it is
-    // how one of the two starts dropping a parameter the other keeps. And a
-    // sheet left open over the results it just changed hides the answer.
-    const { router } = renderPage("/services", {
-      items: [service()],
-      nextOffset: null,
-      total: 1,
-    });
-    fireEvent.click(await screen.findByRole("button", { name: "Change your search" }));
-    fireEvent.change(screen.getByRole("searchbox", { name: "Service" }), {
-      target: { value: "corte" },
-    });
-    fireEvent.change(screen.getByRole("combobox", { name: "City" }), {
-      target: { value: "Beira" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Show results" }));
-
-    await waitFor(() => {
-      expect(router.state.location.search).toEqual({ q: "corte", city: "Beira" });
-    });
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
   it("sits the phone's floating controls above the bottom nav, not under it", async () => {

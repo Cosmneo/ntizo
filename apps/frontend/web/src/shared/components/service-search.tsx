@@ -9,31 +9,47 @@ interface ServiceSearchProps {
   initialValue?: string;
   className?: string;
   autoFocus?: boolean;
+  /**
+   * Where the term goes. The home page and `/services` search services;
+   * `/providers` searches businesses by name.
+   */
+  to?: "/services" | "/providers";
+  /** What the empty field asks for. Defaults to the services wording. */
+  placeholder?: string;
 }
 
 /**
- * The one search field, used on the home page and again on the results page.
+ * The one search field: the home page's hero, and again under the header on
+ * each of the two browse pages.
  *
  * A single input, not the four-part what/where/when/who bar it replaces: the
  * other three had nothing behind them, and a form that asks for a date before
  * it can answer "who fixes taps" makes the user do the work of a filter that
- * does not exist yet.
+ * does not exist yet. The city is not one of its fields either — it is the
+ * browse pages' "Cidade" filter pill, which is where a narrowing belongs.
  *
- * Submitting navigates to `/services?q=`, which is what the field has always
- * said it does: the placeholder asks for a service and the button is labelled
- * "search services".
+ * Submitting navigates to `to?q=`, which is what the field says it does: the
+ * placeholder asks for the thing that list holds and the button searches it.
+ * `to` is a destination and not a mode — the markup, the drafts and the
+ * submit are identical either way, so `/providers` gets the same bar the
+ * landing hero draws rather than a second search component of its own, which
+ * is exactly how the two browse pages each ended up with a private copy
+ * before this.
  *
- * It used to go to `/providers`, and the comment here explained why — there
- * was no Service aggregate to search. There is now, `/services` has taken a
- * `q` since the browse page shipped, and the redirect had quietly become the
- * kind of thing that makes a search box feel broken: you ask for "corte de
- * cabelo" and land on a list of businesses instead of the haircuts you asked
- * for.
+ * The default is `/services`, and used to be the only behaviour: it went to
+ * `/providers` once, back when there was no Service aggregate to search, and
+ * that redirect had quietly become the kind of thing that makes a search box
+ * feel broken — you ask for "corte de cabelo" and land on a list of
+ * businesses instead of the haircuts you asked for. The `/providers` page
+ * asks for a business by name and says so in its own placeholder, which is
+ * the difference between choosing a destination and being sent to one.
  */
 export function ServiceSearch({
   initialValue = "",
   className,
   autoFocus,
+  to = "/services",
+  placeholder,
 }: ServiceSearchProps) {
   const { t } = useTranslation("directory");
   const navigate = useNavigate();
@@ -52,8 +68,8 @@ export function ServiceSearch({
         const q = value.trim();
         // An empty search still navigates: somebody who clears the box and
         // presses the button is asking to browse everything, and leaving them
-        // on the home page reads as the button having failed.
-        navigate({ to: "/services", search: q ? { q } : {} });
+        // where they are reads as the button having failed.
+        navigate({ to, search: q ? { q } : {} });
       }}
       className={cn(
         "flex w-full items-center gap-2 rounded-full border border-[var(--color-border)]",
@@ -73,7 +89,7 @@ export function ServiceSearch({
         value={value}
         autoFocus={autoFocus}
         onChange={(e) => setValue(e.target.value)}
-        placeholder={t("searchPlaceholder")}
+        placeholder={placeholder ?? t("searchPlaceholder")}
         aria-label={t("searchLabel")}
         className="min-w-0 flex-1 bg-transparent text-sm text-[var(--color-foreground)] outline-none placeholder:text-[var(--color-muted-foreground)]"
       />

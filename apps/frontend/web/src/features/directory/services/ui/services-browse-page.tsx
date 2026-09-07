@@ -3,7 +3,7 @@ import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { LayoutGrid, SearchX } from "lucide-react";
 import { EmptyCard } from "@/shared/components/empty-card";
 import { SiteHeader } from "@/shared/components/site-header";
-import { SearchPill } from "@/shared/components/browse/search-pill";
+import { ServiceSearch } from "@/shared/components/service-search";
 import {
   CATEGORY_STRIP_LIMIT,
   CategoryStrip,
@@ -19,10 +19,7 @@ import { EXACT_MATCH } from "@/shared/components/browse/active-match";
 // touch `data`, and going through the hook reuses the cache the home page has
 // usually already filled.
 import { useCategoryPreview } from "@/features/landing/viewmodel/use-categories";
-import {
-  useBrowseServices,
-  useServiceCities,
-} from "@/features/directory/services/viewmodel/use-browse-services";
+import { useBrowseServices } from "@/features/directory/services/viewmodel/use-browse-services";
 import { ServiceTile } from "@/features/directory/services/ui/service-tile";
 import {
   MobileServiceFilters,
@@ -46,25 +43,26 @@ import { resultsScope } from "@/features/directory/domain/results-scope";
  * particular barber — the commoner arrival, and why Services sits before
  * Providers in the nav.
  *
- * Four levels of narrowing, deliberately not the same shape. The header's
- * search pill asks the opening question, in the same place it is asked on
- * every page of the site. The category strip is full-width navigation between
- * whole result sets. The pills under the heading narrow one of those sets. The
- * sort reorders what is left. Making all four a row of chips would say they
- * were peers.
+ * Four levels of narrowing, deliberately not the same shape. The search bar
+ * under the header asks the opening question — the landing hero's own
+ * `ServiceSearch`, unchanged, so the question is asked in the same words and
+ * the same shape here as on the home page. The category strip is full-width
+ * navigation between whole result sets. The pills under the heading narrow
+ * one of those sets. The sort reorders what is left. Making all four a row of
+ * chips would say they were peers.
  *
- * **A white page with one blue on it** — the pill's search button. Everything
- * else is headline navy, ink, grey and the amber star, which is why the tiles
- * carry no border, no shadow and no button of their own: what the eye should
- * land on down a column of results is the photographs and the prices, not
- * twenty-four identical calls to action.
+ * **A white page with one blue on it** — the search bar's button, alongside
+ * the header's own nav pill and sign-in, exactly as on every other page.
+ * Everything else is headline navy, ink, grey and the amber star, which is
+ * why the tiles carry no border, no shadow and no button of their own: what
+ * the eye should land on down a column of results is the photographs and the
+ * prices, not twenty-four identical calls to action.
  *
- * **Nothing straddles the strip.** The header sits above it, the strip is a
- * plain white band with a hairline under it, and `main` starts below. The
- * search that used to sit in a card across that band's top edge lives in the
- * header now, so the strip is a single positioned layer with no paint-order
- * split — anything reintroduced there on a negative margin would be painted
- * over by it.
+ * **Nothing straddles the strip.** Header, then search bar, then strip, then
+ * `main`: four bands stacked, none of them overlapping the next. The card
+ * that once sat in a well across the strip's top edge is gone, so the strip
+ * is a single positioned layer with no paint-order split — anything
+ * reintroduced there on a negative margin would be painted over by it.
  *
  * **The phone is not this page shrunk.** The pills give way to three one-tap
  * chips above the results and one navy capsule at the thumb holding the
@@ -133,7 +131,17 @@ export function ServicesBrowsePage() {
 
   return (
     <>
-      <SiteHeader current="services" search={<HeroSearch current={current} />} />
+      <SiteHeader current="services" />
+
+      {/* The site's search, not a search this page invented: the landing
+          hero's own bar, in the page's own column under the header rather
+          than inside it. 760px and centred so it reads as a field over the
+          results it filters and not as a banner across the window. The city
+          is not one of its fields — that is the "City" filter pill below,
+          where a narrowing belongs. */}
+      <div className="page-shell">
+        <ServiceSearch initialValue={current.q ?? ""} className="mx-auto mt-5 max-w-[760px]" />
+      </div>
 
       <CategoryStrip label={t("categoryStripLabel")}>
         <StripItem
@@ -354,42 +362,6 @@ const DEFAULT_CURRENCY = "MZN";
  * on a tile, rather than the two being written out separately and drifting.
  */
 const QUICK_MAX_PRICE = 1000;
-
-/**
- * The header's search, wired to this page's URL. `SearchPill` owns the fields,
- * the drafts, the phone sheet and every reason for them — see its own comment;
- * all this adds is where an applied search goes.
- */
-function HeroSearch({ current }: { current: BrowseSearch }) {
-  const { t } = useTranslation("directory");
-  const navigate = useNavigate();
-  const cities = useServiceCities();
-
-  return (
-    <SearchPill
-      termLabel={t("searchFieldService")}
-      termPlaceholder={t("searchFieldServiceEmpty")}
-      cityLabel={t("searchFieldCity")}
-      cityPlaceholder={t("searchFieldCityEmpty")}
-      term={current.q ?? ""}
-      city={current.city ?? ""}
-      cities={cities.map((c) => c.city)}
-      onApply={({ term, city }) =>
-        void navigate({
-          to: "/services",
-          // Both fields, from the pill's drafts. Either may have been edited
-          // without the other being submitted first, which is why they arrive
-          // together rather than being read back off `current`.
-          search: browseSearch(current, {
-            q: term || undefined,
-            city: city || undefined,
-            offset: undefined,
-          }),
-        })
-      }
-    />
-  );
-}
 
 /** One category, as an item in the strip: its icon over its name. */
 function StripItem({

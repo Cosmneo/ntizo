@@ -46,10 +46,10 @@ export function iconComponent(name: string | null, isAll: boolean) {
  * categories past the fold are the rarer ones.
  *
  * White with a bottom hairline, not the rail's tinted ground: the search that
- * used to live in a card straddling this band's top edge now lives in the
- * header itself (see `SearchPill`), so there is no card left either to
- * disappear into on white or to leave clearance for — the padding above the
- * items is symmetric (see the scroller below).
+ * used to live in a card straddling this band's top edge is now the site's own
+ * `ServiceSearch` bar, drawn above this strip rather than across it, so there
+ * is no card left either to disappear into on white or to leave clearance for
+ * — the padding above the items is symmetric (see the scroller below).
  *
  * The fades and the arrows are the difference between a scroll container and a
  * finished one: without them the row simply ends mid-item, which reads as a

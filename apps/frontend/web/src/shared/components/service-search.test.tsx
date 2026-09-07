@@ -10,22 +10,37 @@ import {
 } from "@tanstack/react-router";
 import { ServiceSearch } from "./service-search";
 
-async function renderSearch(initialValue = "") {
+/**
+ * The bar on the home page, with both of its destinations reachable.
+ *
+ * `/providers` is a route here as well as `/services` because the bar now
+ * carries a `to`: a navigation to a route the test router does not know
+ * lands nowhere, and the assertion on the pathname would pass against a
+ * component that never moved.
+ */
+async function renderSearch(props: Parameters<typeof ServiceSearch>[0] = {}) {
+  const q = (s: Record<string, unknown>): { q?: string } =>
+    typeof s["q"] === "string" && s["q"] ? { q: s["q"] } : {};
   const root = createRootRoute();
   const home = createRoute({
     getParentRoute: () => root,
     path: "/",
-    component: () => <ServiceSearch initialValue={initialValue} />,
+    component: () => <ServiceSearch {...props} />,
   });
   const services = createRoute({
     getParentRoute: () => root,
     path: "/services",
-    validateSearch: (s: Record<string, unknown>): { q?: string } =>
-      typeof s["q"] === "string" && s["q"] ? { q: s["q"] } : {},
+    validateSearch: q,
     component: () => <div>results</div>,
   });
+  const providers = createRoute({
+    getParentRoute: () => root,
+    path: "/providers",
+    validateSearch: q,
+    component: () => <div>businesses</div>,
+  });
   const router = createRouter({
-    routeTree: root.addChildren([home, services]),
+    routeTree: root.addChildren([home, services, providers]),
     history: createMemoryHistory({ initialEntries: ["/"] }),
   });
   await router.load();
@@ -72,8 +87,42 @@ describe("ServiceSearch", () => {
     expect(router.state.location.search).toEqual({});
   });
 
+  it("goes to /providers with the term when told to", async () => {
+    // The same bar on `/providers`, asking a different question: there the
+    // reader is naming a business, not a job, so the term has to reach the
+    // list of businesses rather than bouncing them to the services one.
+    const user = userEvent.setup();
+    const router = await renderSearch({ to: "/providers", placeholder: "Nome do negócio" });
+
+    await user.type(screen.getByRole("searchbox"), "Cossa");
+    await user.click(screen.getByRole("button", { name: "Search" }));
+
+    expect(router.state.location.pathname).toBe("/providers");
+    expect(router.state.location.search).toEqual({ q: "Cossa" });
+  });
+
+  it("keeps going to /services by default", async () => {
+    // The home page and `/services` pass no `to` at all, so the default is
+    // the behaviour eight callers already depend on.
+    const user = userEvent.setup();
+    const router = await renderSearch();
+
+    await user.type(screen.getByRole("searchbox"), "Cossa");
+    await user.click(screen.getByRole("button", { name: "Search" }));
+
+    expect(router.state.location.pathname).toBe("/services");
+    expect(router.state.location.search).toEqual({ q: "Cossa" });
+  });
+
+  it("shows the placeholder it is given", async () => {
+    // "Procurar serviços…" over a list of businesses is the field telling the
+    // reader to type the wrong thing.
+    await renderSearch({ to: "/providers", placeholder: "Nome do negócio" });
+    expect(screen.getByRole("searchbox")).toHaveAttribute("placeholder", "Nome do negócio");
+  });
+
   it("shows the current term when rendered on the results page", async () => {
-    await renderSearch("jardinagem");
+    await renderSearch({ initialValue: "jardinagem" });
     expect(screen.getByLabelText("Search services")).toHaveValue("jardinagem");
   });
 
