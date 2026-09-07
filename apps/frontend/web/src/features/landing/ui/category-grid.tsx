@@ -1,19 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
-import {
-  Brush,
-  Camera,
-  Car,
-  ChefHat,
-  Hammer,
-  Leaf,
-  Scissors,
-  Shirt,
-  Sparkles,
-  Wrench,
-  Zap,
-  type LucideIcon,
-} from "lucide-react";
+import { Sparkles, icons } from "lucide-react";
 import { Skeleton } from "@ntizo/frontend-ui";
 import { useCategoryPreview } from "@/features/landing/viewmodel/use-categories";
 import { SectionHead } from "@/features/landing/ui/section-head";
@@ -22,26 +9,17 @@ import { SectionHead } from "@/features/landing/ui/section-head";
 export const LANDING_CATEGORIES = 8;
 
 /**
- * The icon a category draws when it has no photograph.
+ * Resolve a Lucide icon name from the database to the component.
  *
- * Keyed on the `icon` the administrator set. A category with none, or with a
- * name this map has never heard of, draws `Sparkles` — one shape rather than
- * nothing, because an empty navy square says less than a wrong-but-present
- * mark.
+ * Looked up rather than imported one by one: the set lives in a table an
+ * administrator edits, so the code cannot know it at build time. An unknown or
+ * missing name falls back to `Sparkles` rather than rendering nothing — an
+ * empty navy square says less than a wrong-but-present mark.
  */
-const ICONS: Record<string, LucideIcon> = {
-  scissors: Scissors,
-  wrench: Wrench,
-  zap: Zap,
-  sparkles: Sparkles,
-  car: Car,
-  chef: ChefHat,
-  hammer: Hammer,
-  leaf: Leaf,
-  camera: Camera,
-  shirt: Shirt,
-  brush: Brush,
-};
+function getIconComponent(name: string | null) {
+  if (!name) return Sparkles;
+  return icons[name as keyof typeof icons] ?? Sparkles;
+}
 
 /**
  * Eight trades, each with a picture.
@@ -79,7 +57,8 @@ export function CategoryGrid() {
               </li>
             ))
           : items.map((c) => {
-              const Icon = (c.icon && ICONS[c.icon]) ?? null;
+              const Icon = getIconComponent(c.icon);
+              const isFallback = !c.icon || !icons[c.icon as keyof typeof icons];
               return (
                 <li key={c.id}>
                   <Link
@@ -96,21 +75,12 @@ export function CategoryGrid() {
                         />
                       ) : (
                         <span className="grid h-full w-full place-items-center">
-                          {Icon ? (
-                            <Icon
-                              data-testid={`category-icon-${c.icon}`}
-                              className="h-9 w-9 text-[var(--color-navy-on)]"
-                              strokeWidth={1.4}
-                              aria-hidden="true"
-                            />
-                          ) : (
-                            <Sparkles
-                              data-testid="category-icon-fallback"
-                              className="h-9 w-9 text-[var(--color-navy-on)]"
-                              strokeWidth={1.4}
-                              aria-hidden="true"
-                            />
-                          )}
+                          <Icon
+                            data-testid={isFallback ? "category-icon-fallback" : `category-icon-${c.icon}`}
+                            className="h-9 w-9 text-[var(--color-navy-on)]"
+                            strokeWidth={1.4}
+                            aria-hidden="true"
+                          />
                         </span>
                       )}
                     </div>

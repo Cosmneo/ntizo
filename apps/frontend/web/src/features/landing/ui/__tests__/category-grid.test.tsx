@@ -19,7 +19,7 @@ function category(over: Partial<CategoryDTO> = {}): CategoryDTO {
     name: "Plumbing",
     description: null,
     imageUrl: "https://cdn.example/plumbing.jpg",
-    icon: "wrench",
+    icon: "Wrench",
     isFallback: false,
     ...over,
   };
@@ -69,16 +69,21 @@ describe("CategoryGrid", () => {
   // mark, which reads as a broken grid rather than as a set of choices.
   it("draws the category's own icon rather than one repeated mark", async () => {
     await renderGrid([
-      category({ id: "a", code: "plumbing", name: "Plumbing", imageUrl: null, icon: "wrench" }),
-      category({ id: "b", code: "beauty", name: "Beauty", imageUrl: null, icon: "scissors" }),
+      category({ id: "a", code: "plumbing", name: "Plumbing", imageUrl: null, icon: "Wrench" }),
+      category({ id: "b", code: "beauty", name: "Beauty", imageUrl: null, icon: "Scissors" }),
     ]);
-    expect(await screen.findByTestId("category-icon-wrench")).toBeInTheDocument();
-    expect(screen.getByTestId("category-icon-scissors")).toBeInTheDocument();
+    expect(await screen.findByTestId("category-icon-Wrench")).toBeInTheDocument();
+    expect(screen.getByTestId("category-icon-Scissors")).toBeInTheDocument();
     expect(screen.queryByTestId("brand-tile")).toBeNull();
   });
 
   it("falls back to one shape for a category whose icon nobody set", async () => {
     await renderGrid([category({ imageUrl: null, icon: null })]);
+    expect(await screen.findByTestId("category-icon-fallback")).toBeInTheDocument();
+  });
+
+  it("falls back to one shape for a category with an unknown icon name", async () => {
+    await renderGrid([category({ imageUrl: null, icon: "NotARealIcon" })]);
     expect(await screen.findByTestId("category-icon-fallback")).toBeInTheDocument();
   });
 });
