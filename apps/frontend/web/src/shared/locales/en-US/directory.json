@@ -251,7 +251,6 @@
   "categoryStripScrollLeft": "Previous categories",
   "categoryStripScrollRight": "Next categories",
 
-  "filterPillMore": "More filters",
   "filterPillRemove": "Remove {{filter}}",
   "filterSheetApply_one": "Show {{count}} result",
   "filterSheetApply_other": "Show {{count}} results",

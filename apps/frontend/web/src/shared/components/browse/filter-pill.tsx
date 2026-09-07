@@ -89,6 +89,14 @@ export function FilterPill({
  * The pills stay in the document either way, which is deliberate: they are
  * `<Link>`s a crawler should follow, and hiding them in CSS keeps them
  * followable while taking them off the phone's screen.
+ *
+ * **It wraps; there is no "More filters" pill.** The spec sketched one
+ * collecting whatever did not fit at the current width, and R30 ruled the wrap
+ * in its place: six pills and "Clear all" fit at 1440 and take a second row
+ * between `lg` and about 1180px, which is legible, while an overflow pill
+ * would need a `ResizeObserver` to know what fits and would hide filters a
+ * crawler should see. The `filterPillMore` key was deleted from all eight
+ * locales with that ruling.
  */
 export function FilterBar({ children }: { children: ReactNode }) {
   return (

@@ -239,7 +239,6 @@
   "categoryStripScrollLeft": "Vorherige Kategorien",
   "categoryStripScrollRight": "Nächste Kategorien",
 
-  "filterPillMore": "Weitere Filter",
   "filterPillRemove": "{{filter}} entfernen",
   "filterSheetApply_one": "{{count}} Ergebnis anzeigen",
   "filterSheetApply_other": "{{count}} Ergebnisse anzeigen",
