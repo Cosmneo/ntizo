@@ -103,4 +103,41 @@ describe("VerifiedProviders", () => {
     await renderProviders([]);
     expect(screen.queryByRole("heading", { name: "Verified providers" })).toBeNull();
   });
+
+  // Three photo/logo combinations. `img` elements carrying `alt=""` are
+  // decorative — role "presentation", not "img" — so they are found by
+  // querying the DOM directly rather than through `getByRole`.
+  describe("the photograph and the logo badge", () => {
+    it("draws the photo as the background and the logo as a small badge over it — never the same picture twice", async () => {
+      await renderProviders([
+        provider({
+          photoUrls: ["https://cdn.test/photo.jpg"],
+          logoUrl: "https://cdn.test/logo.png",
+        }),
+      ]);
+      await screen.findByText("Oficina do Zeca");
+      const images = document.querySelectorAll("img");
+      const srcs = Array.from(images).map((img) => img.getAttribute("src"));
+      expect(srcs).toEqual(["https://cdn.test/photo.jpg", "https://cdn.test/logo.png"]);
+      expect(screen.queryByTestId("brand-tile")).toBeNull();
+    });
+
+    it("draws the brand tile as the background and the logo as a badge over it when there is a logo but no photo", async () => {
+      await renderProviders([
+        provider({ photoUrls: [], logoUrl: "https://cdn.test/logo.png" }),
+      ]);
+      await screen.findByText("Oficina do Zeca");
+      expect(screen.getByTestId("brand-tile")).toBeInTheDocument();
+      const images = document.querySelectorAll("img");
+      expect(images).toHaveLength(1);
+      expect(images[0]?.getAttribute("src")).toBe("https://cdn.test/logo.png");
+    });
+
+    it("draws the brand tile with no badge at all when there is neither", async () => {
+      await renderProviders([provider({ photoUrls: [], logoUrl: null })]);
+      await screen.findByText("Oficina do Zeca");
+      expect(screen.getByTestId("brand-tile")).toBeInTheDocument();
+      expect(document.querySelectorAll("img")).toHaveLength(0);
+    });
+  });
 });
