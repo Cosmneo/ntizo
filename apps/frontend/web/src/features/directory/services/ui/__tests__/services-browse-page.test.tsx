@@ -114,6 +114,14 @@ function renderPage(url: string, page: ServicePageDTO) {
   };
 }
 
+/**
+ * The page draws two sort triggers — the heading's, which is `hidden lg:…`,
+ * and the phone capsule's — so that a reader gets exactly one at any width.
+ * They are the same control with the same options; a test that acts on the
+ * first is acting on the sort.
+ */
+const sortTrigger = () => screen.getAllByRole("button", { name: /^Sort:/ })[0]!;
+
 describe("ServicesBrowsePage", () => {
   it("states how many matched, not how many fit on this page", async () => {
     // The bug this whole chain of tasks started from: `items.length` is the
@@ -121,6 +129,18 @@ describe("ServicesBrowsePage", () => {
     renderPage("/services", { items: [service()], nextOffset: 24, total: 40 });
     expect(await screen.findByText("40 services found")).toBeInTheDocument();
     expect(screen.getByText("in all categories")).toBeInTheDocument();
+  });
+
+  it("counts the total even when the page in hand is three tiles long", async () => {
+    // The same rule from the other side: what is drawn and what is counted are
+    // different numbers, and the count is the server's.
+    renderPage("/services", {
+      items: [service({ id: "a" }), service({ id: "b" }), service({ id: "c" })],
+      nextOffset: 24,
+      total: 40,
+    });
+    expect(await screen.findByText("40 services found")).toBeInTheDocument();
+    expect(screen.getAllByRole("link", { name: "Corte de cabelo" })).toHaveLength(3);
   });
 
   it("forwards the city to the query, so the filter actually filters", async () => {
@@ -137,9 +157,31 @@ describe("ServicesBrowsePage", () => {
     expect(await screen.findByRole("heading", { level: 1 })).toHaveTextContent(
       "Services ready to book in Maputo",
     );
-    // Asked of the summary paragraph specifically: the city chip beside it
-    // reads "in Maputo" too, and a bare text query cannot tell them apart.
+    // Asked of the summary paragraph specifically: the scope clause reads
+    // "in Maputo" and so does nothing else on the page, but a bare text query
+    // could not tell them apart if it ever did.
     expect(screen.getByText("1 service found").closest("p")).toHaveTextContent("in Maputo");
+  });
+
+  it("heads the page with what was typed, which outranks the category", async () => {
+    // The term is what the reader asked for; the category they are in is
+    // already stated, underlined, by the strip above. Ranking the category
+    // first meant the heading answered a question nobody had asked.
+    renderPage("/services?q=corte&city=Maputo&category=hair", {
+      items: [service()],
+      nextOffset: null,
+      total: 1,
+    });
+    expect(await screen.findByRole("heading", { level: 1 })).toHaveTextContent("corte in Maputo");
+  });
+
+  it("draws no button on a result at all — the tile is the link", async () => {
+    // A blue "Book" repeated twenty-four times down a page competes with every
+    // price on it and with the one button that matters, in the header.
+    renderPage("/services", { items: [service()], nextOffset: null, total: 1 });
+    await screen.findByRole("link", { name: "Corte de cabelo" });
+    expect(screen.queryByRole("link", { name: /book/i })).toBeNull();
+    expect(screen.queryByRole("button", { name: /book/i })).toBeNull();
   });
 
   it("does not tell somebody who filtered that the platform is empty", async () => {
@@ -159,7 +201,8 @@ describe("ServicesBrowsePage", () => {
 
   it("offers three orders in the dropdown, with only the one in force checked", async () => {
     renderPage("/services?sort=newest", { items: [service()], nextOffset: null, total: 1 });
-    fireEvent.click(await screen.findByRole("button", { name: /^Sort:/ }));
+    await screen.findByRole("heading", { level: 1 });
+    fireEvent.click(sortTrigger());
 
     expect(screen.getByRole("menuitemradio", { name: "Suggested" })).toHaveAttribute(
       "aria-checked",
@@ -181,7 +224,8 @@ describe("ServicesBrowsePage", () => {
       nextOffset: null,
       total: 96,
     });
-    fireEvent.click(await screen.findByRole("button", { name: /^Sort:/ }));
+    await screen.findByRole("heading", { level: 1 });
+    fireEvent.click(sortTrigger());
     fireEvent.click(screen.getByRole("menuitemradio", { name: "Price" }));
 
     await waitFor(() => {
@@ -197,7 +241,8 @@ describe("ServicesBrowsePage", () => {
       nextOffset: null,
       total: 1,
     });
-    fireEvent.click(await screen.findByRole("button", { name: /^Sort:/ }));
+    await screen.findByRole("heading", { level: 1 });
+    fireEvent.click(sortTrigger());
     fireEvent.click(screen.getByRole("menuitemradio", { name: "Suggested" }));
 
     await waitFor(() => {
@@ -205,25 +250,30 @@ describe("ServicesBrowsePage", () => {
     });
   });
 
-  it("shows what is narrowing the list, each with the link that removes just it", async () => {
-    renderPage("/services?city=Maputo&paymentMode=hourly", {
+  it("shows what is narrowing the list on the pills themselves, each with the link that removes just it", async () => {
+    // The chip row under the results bar is gone: an applied filter fills its
+    // own pill and grows the × that takes it off, because two places showing
+    // the same state was one place too many.
+    const { container } = renderPage("/services?city=Maputo&paymentMode=hourly", {
       items: [service()],
       nextOffset: null,
       total: 1,
     });
-    const chips = await screen.findByRole("list", { name: "Active filters" });
-    expect(chips).toHaveTextContent("in Maputo");
-    expect(chips).toHaveTextContent("Per hour");
-    // Removing one keeps the other. A chip built by hand at the call site only
+    await screen.findByRole("heading", { level: 1 });
+    const summaries = [...container.querySelectorAll("summary")].map((s) => s.textContent);
+    expect(summaries).toContain("Per hour");
+    expect(summaries).toContain("Maputo");
+
+    // Removing one keeps the other. A link built by hand at the call site only
     // ever remembers the parameters that call site knows about.
     const removals = screen
-      .getAllByRole("link", { name: "Remove filter" })
+      .getAllByRole("link", { name: /^Remove / })
       .map((a) => a.getAttribute("href"));
     expect(removals).toContain("/services?paymentMode=hourly");
     expect(removals).toContain("/services?city=Maputo");
   });
 
-  it("shows what was searched in the hero, and opens a real box to change it", async () => {
+  it("shows what was searched in the header's pill, and opens a real box to change it", async () => {
     // The field is a button at rest because it *opens* something; what it
     // opens is itself. A text box that does nothing until you click it anyway
     // is a text box lying about being one.
@@ -248,7 +298,7 @@ describe("ServicesBrowsePage", () => {
 
   it("swaps in the styled combobox, open on the one click that revealed it", async () => {
     // The defect a screenshot caught: a raw `<select>` carries none of the
-    // card's styling into its own popup and reads as a control from a
+    // pill's styling into its own popup and reads as a control from a
     // different application — and needs a second click besides, because
     // focusing a native select does not open its popup. `CitySelect` opens on
     // its own focus handler, so focusing it as it mounts makes the swap-in
@@ -260,7 +310,7 @@ describe("ServicesBrowsePage", () => {
   });
 
   it("carries a typed term through a change to the other field", async () => {
-    // The card composed its URL from what the URL already said, so a term that
+    // The pill composed its URL from what the URL already said, so a term that
     // had not been submitted first was dropped the moment the city changed:
     // type "corte", pick Beira, get `?city=Beira` and no word at all.
     const { router } = renderPage("/services", {
@@ -286,7 +336,7 @@ describe("ServicesBrowsePage", () => {
 
   it("searches on a real submit, not on a hand-rolled key handler", async () => {
     // Enter inside a text field reaching the submit button is a browser
-    // behaviour. Reimplementing it is how the card ended up the only control
+    // behaviour. Reimplementing it is how the search ended up the only control
     // on a page of links that did nothing before JavaScript ran.
     renderPage("/services", { items: [service()], nextOffset: null, total: 1 });
     const form = await screen.findByRole("search");
@@ -350,45 +400,46 @@ describe("ServicesBrowsePage", () => {
     );
   });
 
-  it("marks no facet or filter link as the current page just for removing a filter", async () => {
-    // The same subset trap, in the two panels. A facet's *active* option links
-    // back to `/services` — an empty search, which is a subset of every one —
-    // so both the sidebar and the phone sheet announced it as where you are.
+  it("marks no filter link as the current page just for removing a filter", async () => {
+    // The same subset trap, now in three places. A filter's *active* option
+    // links back to `/services` — an empty search, which is a subset of every
+    // one — so the pill's row, the phone's quick chip and the sheet's row all
+    // announced it as where you are.
     renderPage("/services?locationType=at_customer", {
       items: [service()],
       nextOffset: null,
       total: 1,
     });
-    // The sidebar's is the only copy in the document until the bar is opened:
-    // `SheetContent` returns null while closed, so a test that leaves it shut
-    // is checking one link while its comment claims two.
+    // Two while the sheet is shut: the pill's option row and the phone's quick
+    // chip, which offers this same narrowing in one tap. `SheetContent`
+    // returns null until it is opened.
     const closed = await screen.findAllByRole("link", { name: "At your place" });
-    expect(closed).toHaveLength(1);
+    expect(closed).toHaveLength(2);
 
-    fireEvent.click(screen.getByRole("button", { name: /Filters/ }));
+    fireEvent.click(screen.getByRole("button", { name: /^Filters/ }));
 
-    // Two now: the sidebar's, and the phone sheet's — both must be clean.
+    // Three now, and all three must be clean.
     const options = screen.getAllByRole("link", { name: "At your place" });
-    expect(options).toHaveLength(2);
+    expect(options).toHaveLength(3);
     for (const option of options) expect(option).not.toHaveAttribute("aria-current");
 
     // The clear-all is the same trap wearing a different label, and the worst
     // case of it: its search is the *empty* one, a subset of every search
     // there is, so unguarded it announces "you are already here" on the one
-    // link that changes the page most. Three copies — the chip row's, the
-    // sidebar's and the sheet's — and all three carry `EXACT_MATCH`.
+    // link that changes the page most. Two copies — the pill bar's and the
+    // sheet's — and both carry `EXACT_MATCH`.
     const clears = screen.getAllByRole("link", { name: "Clear all" });
-    expect(clears).toHaveLength(3);
+    expect(clears).toHaveLength(2);
     for (const clear of clears) expect(clear).not.toHaveAttribute("aria-current");
   });
 
-  it("collapses the search card to one row on a phone, and opens both fields in a sheet", async () => {
-    // Two fields and a button in 360px is a control nobody completes. The card
-    // hides itself below `md` and this takes the width — so the row and the
-    // card are never both on screen, which is why each carries its own half of
-    // the breakpoint.
+  it("collapses the search pill to one row on a phone, and opens both fields in a sheet", async () => {
+    // Two fields and a button in 360px is a control nobody completes. The pill
+    // hides itself below `md` and this row takes the width — so the row and
+    // the pill are never both on screen, which is why each carries its own
+    // half of the breakpoint.
     renderPage("/services", { items: [service()], nextOffset: null, total: 1 });
-    const row = await screen.findByRole("button", { name: /What do you need done\?.*Anywhere/ });
+    const row = await screen.findByRole("button", { name: "Change your search" });
     expect(row.className).toContain("md:hidden");
     expect(screen.getByRole("search").className).toContain("hidden");
 
@@ -400,7 +451,7 @@ describe("ServicesBrowsePage", () => {
   });
 
   it("carries both of the sheet's fields into the URL, and closes behind itself", async () => {
-    // The same `apply` the card uses, for the same reason: two copies of it is
+    // The same `apply` the pill uses, for the same reason: two copies of it is
     // how one of the two starts dropping a parameter the other keeps. And a
     // sheet left open over the results it just changed hides the answer.
     const { router } = renderPage("/services", {
@@ -408,7 +459,7 @@ describe("ServicesBrowsePage", () => {
       nextOffset: null,
       total: 1,
     });
-    fireEvent.click(await screen.findByRole("button", { name: /What do you need done\?.*Anywhere/ }));
+    fireEvent.click(await screen.findByRole("button", { name: "Change your search" }));
     fireEvent.change(screen.getByRole("searchbox", { name: "Service" }), {
       target: { value: "corte" },
     });
@@ -423,44 +474,51 @@ describe("ServicesBrowsePage", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
-  it("sits the phone filter bar above the bottom nav, and back down at md", async () => {
-    // The one defect of this redesign that made a control dead rather than
-    // ugly: `MobileNav` is `fixed bottom-0 z-40 md:hidden` and the bar was
+  it("sits the phone's floating controls above the bottom nav, not under it", async () => {
+    // The one defect of the previous redesign that made a control dead rather
+    // than ugly: `MobileNav` is `fixed bottom-0 z-40 md:hidden` and the bar was
     // `bottom-0 z-30`, so below `md` the nav painted over it completely — the
-    // badge, the sheet and every filter in it, unreachable on a phone, with
-    // the whole suite green. The offset is `3.5rem` because that is the
-    // `pb-14` the root reserves for the nav, plus the safe-area inset the nav
-    // itself carries; at `md` the nav is gone and the bar goes back down.
+    // count, the sheet and every filter in it, unreachable on a phone, with
+    // the whole suite green.
     renderPage("/services", { items: [service()], nextOffset: null, total: 1 });
-    const bar = (await screen.findByRole("button", { name: /Filters/ })).parentElement!;
-    const classes = bar.className.split(/\s+/);
-    expect(classes).toContain("bottom-[calc(3.5rem+env(safe-area-inset-bottom))]");
-    expect(classes).toContain("md:bottom-0");
-    // The one that bites: a bare `bottom-0` is the bar back under the nav.
-    expect(classes).not.toContain("bottom-0");
+    await screen.findByRole("heading", { level: 1 });
+    const controls = screen.getByTestId("floating-controls");
+    expect(controls.className).toContain("safe-area-inset-bottom");
+    // The one that bites: a bare `bottom-0` is the capsule back under the nav.
+    expect(controls.className.split(/\s+/)).not.toContain("bottom-0");
+    // Both halves ride in it, so the phone gets one sort and not two.
+    expect(within(controls).getByRole("button", { name: /^Filters/ })).toBeInTheDocument();
+    expect(within(controls).getByRole("button", { name: /^Sort:/ })).toBeInTheDocument();
   });
 
-  it("offers every filter its badge counts, and a way to take them all off", async () => {
-    // The badge counted `city` while the sheet had no city group at all, so it
-    // read 2 over a sheet showing one control the reader could act on. The
-    // sheet renders the sidebar's own groups now, and carries the clear-all
-    // beside its title rather than floating under it.
-    renderPage("/services?city=Maputo&locationType=at_customer", {
+  it("counts on the phone's control only what its sheet can take off, and offers a way to take them all off", async () => {
+    // The count once included a city the sheet had no group for, so it read 2
+    // over a sheet showing one control the reader could act on. It leaves the
+    // typed term out for the same reason: the term is the header pill's, and
+    // this sheet has no box for it.
+    renderPage("/services?q=corte&city=Maputo&locationType=at_customer", {
       items: [service()],
       nextOffset: null,
       total: 1,
     });
-    const bar = await screen.findByRole("button", { name: /Filters/ });
-    expect(bar).toHaveTextContent("2");
+    const control = await screen.findByRole("button", { name: /^Filters/ });
+    expect(control).toHaveTextContent("Filters · 2");
 
-    fireEvent.click(bar);
+    fireEvent.click(control);
     const sheet = screen.getByRole("dialog", { name: "Filters" });
-    expect(within(sheet).getByRole("link", { name: /Maputo/ })).toHaveAttribute("aria-pressed", "true");
+    expect(within(sheet).getByRole("link", { name: /Maputo/ })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
     expect(within(sheet).getByRole("link", { name: "At your place" })).toBeInTheDocument();
+    // Clearing takes off what the sheet showed as on and keeps what it never
+    // offered — the term survives.
     expect(within(sheet).getByRole("link", { name: "Clear all" })).toHaveAttribute(
       "href",
-      "/services",
+      "/services?q=corte",
     );
+    // And the button says what it will do, rather than "Apply".
+    expect(within(sheet).getByRole("button", { name: "Show 1 result" })).toBeInTheDocument();
   });
 
   it("does not close the filter sheet the moment somebody taps the price box", async () => {
@@ -468,33 +526,57 @@ describe("ServicesBrowsePage", () => {
     // the cursor in "Min" — so the one filter in there that has to be typed
     // could not be typed at all.
     renderPage("/services", { items: [service()], nextOffset: null, total: 1 });
-    fireEvent.click(await screen.findByRole("button", { name: /Filters/ }));
+    fireEvent.click(await screen.findByRole("button", { name: /^Filters/ }));
     const sheet = screen.getByRole("dialog", { name: "Filters" });
     fireEvent.click(within(sheet).getByRole("textbox", { name: "Min" }));
     expect(screen.getByRole("dialog", { name: "Filters" })).toBeInTheDocument();
   });
 
-  it("warns, on the city group, that every city\u2019s count includes the remote services", async () => {
-    // `?city=\u2026` matches "this city OR remote" \u2014 a remote service has no
-    // geography to be excluded by \u2014 so the count beside a city is the city\u2019s
+  it("warns, on the city group, that every city’s count includes the remote services", async () => {
+    // `?city=…` matches "this city OR remote" — a remote service has no
+    // geography to be excluded by — so the count beside a city is the city’s
     // own services plus every online listing on the platform. Without the
     // sentence, "Beira 12" over a town with one business reads as a wrong
     // number rather than as an honest one about a wider link.
     renderPage("/services", { items: [service()], nextOffset: null, total: 1 });
     const hint = await screen.findByText("Remote services appear under every city.");
-    // On the city group and not merely somewhere on the page: this is the one
-    // group whose label overclaims, and the language group already carries a
-    // hint of its own two groups below.
+    // On the city pill and not merely somewhere on the page: this is the one
+    // group whose label overclaims, and the language group carries a hint of
+    // its own beside it.
     const group = hint.closest("details");
     expect(group).not.toBeNull();
     expect(group).toHaveTextContent("City");
     expect(within(group!).getByRole("link", { name: /Beira/ })).toBeInTheDocument();
   });
 
+  it("offers three one-tap narrowings on a phone, each of which taps off again", async () => {
+    // The pills are a toolbar and a toolbar does not fit a thumb, so the phone
+    // gets the two or three narrowings people actually use. A chip already on
+    // links back to the same search without it.
+    const { container } = renderPage("/services?paymentMode=fixed", {
+      items: [service()],
+      nextOffset: null,
+      total: 1,
+    });
+    await screen.findByRole("heading", { level: 1 });
+    const chips = within(container).getByRole("list", { name: "Filters" });
+    const fixed = within(chips).getByRole("link", { name: "Fixed price" });
+    expect(fixed).toHaveAttribute("aria-pressed", "true");
+    expect(fixed).toHaveAttribute("href", "/services");
+    expect(within(chips).getByRole("link", { name: "At your place" })).toHaveAttribute(
+      "href",
+      "/services?locationType=at_customer&paymentMode=fixed",
+    );
+    expect(within(chips).getByRole("link", { name: "up to 1000" })).toHaveAttribute(
+      "href",
+      "/services?paymentMode=fixed&maxPrice=1000",
+    );
+  });
+
   it("offers no numbered pages when everything matched fits on one", async () => {
     // A pager reading "page 1 of 1" makes an eight-result search look truncated.
     renderPage("/services", { items: [service()], nextOffset: null, total: 1 });
-    await screen.findByRole("listitem");
+    await screen.findByRole("link", { name: "Corte de cabelo" });
     expect(screen.queryByRole("navigation", { name: "Pages" })).not.toBeInTheDocument();
   });
 
