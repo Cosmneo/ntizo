@@ -30,8 +30,8 @@ function navLinkClassName(active: boolean, overlay: boolean): string {
       : "text-sm font-medium text-white/70 hover:text-white";
   }
   return active
-    ? "text-sm font-semibold text-[var(--color-headline)]"
-    : "text-sm font-medium text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]";
+    ? "text-sm font-semibold whitespace-nowrap text-[var(--color-headline)]"
+    : "text-sm font-medium whitespace-nowrap text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]";
 }
 
 /**
@@ -56,20 +56,33 @@ function navLinkClassName(active: boolean, overlay: boolean): string {
  * three. They are bare text — see `navLinkClassName` for why the capsule and
  * the icons went.
  *
- * **The bar hugs the logo. It is not centred, and does not pretend to be.**
- * It was centred in the space left between the logo and the right-hand
- * cluster, which is not the centre of the window — the logo is ~110px and
- * the cluster ~420px, so the midpoint of what is left sits well to the left
- * of the midpoint of the screen, and it read as a centring that had failed
- * (7 September 2026).
+ * **The bar is centred in the window, and the middle track's width is what
+ * centres it.** Two earlier versions both read as a centring that had
+ * failed, and for the same reason: they centred the bar in the space left
+ * over between the logo and the right-hand cluster, and those are 87px and
+ * 403px, so the middle of what is left sits well left of the middle of the
+ * screen.
  *
- * True window-centring is not available at the widths this site is read at.
- * It takes equal outer columns, so both become the ~420px the cluster needs:
- * 420px of field at 1440, and at 1024 the arithmetic leaves under 100px,
- * which means either a field nobody can type in or dropping the destinations
- * below 1280. Anchored to the logo it is the same distance from the same
- * thing at every width, keeps its full 520px, and the free space collects
- * where free space is harmless — between the bar and the cluster.
+ * A bare `1fr` is `minmax(auto, 1fr)`: a track that cannot go below its own
+ * content but takes an equal share of whatever is free. So the two outer
+ * tracks come out the same width — and the bar exactly centred — for as long
+ * as that equal share is at least the 403px the cluster needs. Which is a
+ * sum: `shell − bar − 64px of gap ≥ 2 × 403`, and the shell is
+ * `min(1320px, 100vw − 48px)`. Solve it for the bar and you get
+ * `100vw − 918px`, capped at 450 where the shell stops growing.
+ *
+ * Hence `clamp(362px, calc(100vw - 918px), 450px)`. Measured: dead centre at
+ * 768, 900, 1280, 1368, 1440, 1600 and 1920. The floor is what the band from
+ * 1024 to 1279 costs — there the three destinations are showing and the
+ * window is narrow, and exact centring would want a 234px field, so the bar
+ * keeps 362px and sits left instead. A bar nobody can type in is worse than
+ * a bar that is not quite centred.
+ *
+ * 450 rather than the 520 the bar had while it was anchored to the logo:
+ * centring is bought with width, and that is the price. `minmax(0, …)` is a
+ * maximum and not a floor, so the bar still gives way before either side
+ * does — which is what keeps this honest in the languages whose three
+ * destinations run wider than Portuguese's.
  */
 export function SiteHeader({
   overlay = false,
@@ -107,34 +120,41 @@ export function SiteHeader({
           : "sticky top-0 z-20 border-b border-[var(--color-border)] bg-[var(--color-background)]"
       }
     >
-      {/* Wrapping flex, not a grid: the search takes a row of its own on a
-          phone, where a field between the logo and the account controls has
-          about 90px to live in. `order-last` plus `w-full` is what puts it
-          there — one element moved by the layout, rather than a second copy
-          rendered per breakpoint, which would put two searchboxes and two
-          identical labels in the document on every page. */}
-      <div className="page-shell flex flex-wrap items-center gap-x-4 gap-y-3 py-3.5 md:h-[84px] md:flex-nowrap md:gap-x-6 md:py-0 lg:gap-x-8">
-        <Link to="/" className="shrink-0">
+      {/* A wrapping flex below `md`, the three-column grid above it. On a
+          phone the search takes a row of its own — a field between the logo
+          and the account controls has about 90px to live in — and
+          `order-last` plus `w-full` is what puts it there. One element moved
+          by the layout, rather than a second copy rendered per breakpoint,
+          which would put two searchboxes and two identical labels in the
+          document on every page. */}
+      <div className="page-shell flex flex-wrap items-center gap-x-4 gap-y-3 py-3.5 md:grid md:h-[84px] md:grid-cols-[1fr_minmax(0,clamp(362px,calc(100vw-918px),450px))_1fr] md:gap-x-6 md:py-0 lg:gap-x-8">
+        <Link to="/" className="shrink-0 md:justify-self-start">
+          {/* `max-w-none` undoes Tailwind's preflight, which caps every `img`
+              at `max-width: 100%`. That cap makes the logo's min-content
+              contribution nearly nothing, so the left track collapsed and
+              scaled the wordmark down — 87px to 59px at a 1024px viewport —
+              instead of the bar giving up the width it was told to give up.
+              A logo that changes size with the window is not a logo. */}
           <img
             src={overlay ? "/brand/logo-white.svg" : "/brand/logo-primary.svg"}
             alt="Ntizo"
-            className="h-7"
+            className="h-7 max-w-none"
           />
         </Link>
 
-        {/* `min-w-0` on the flex child. A flex item's minimum is its content's
-            width by default, so without this the bar refused to shrink and
-            pushed the account controls off the right of the shell — which
-            scrolls the whole page sideways, not just the header. */}
-        <div className="order-last w-full md:order-none md:w-auto md:min-w-0 md:max-w-[520px] md:flex-1">
+        {/* `min-w-0` so the bar may shrink below its content's width. Without
+            it the middle track refuses to give ground and the account
+            controls are pushed off the right of the shell — which scrolls the
+            whole page sideways, not just the header. */}
+        <div className="order-last w-full min-w-0 md:order-none">
           <ServiceSearch {...search} className="w-full" />
         </div>
 
-        {/* `ml-auto` at every width, which is what anchors the bar to the logo:
-            the cluster takes all the slack, so the bar starts at the same
-            place whatever is on the right of it — a signed-in avatar, a
-            "Sign in" pill, or a name of any length. */}
-        <div className="ml-auto flex items-center gap-2 lg:gap-3.5">
+        {/* `ml-auto` is the phone's: it pushes the controls to the right of
+            the logo on the first row. From `md` the grid places them, and
+            `justify-self-end` holds them at the shell's right edge however
+            wide the track around them turns out to be. */}
+        <div className="ml-auto flex items-center gap-2 md:ml-0 md:justify-self-end lg:gap-3.5">
           <nav className="hidden items-center gap-6 lg:flex">
             {PUBLIC_NAV.map((item) => (
               <Link
@@ -158,6 +178,14 @@ export function SiteHeader({
             }
           />
 
+          {/* `whitespace-nowrap` on everything in this cluster, and it is
+              load-bearing rather than cosmetic. The middle track is
+              `minmax(0, 450px)` precisely so the bar gives way before either
+              side does — but a track's floor is its *min-content*, and text
+              that may wrap has a min-content of its longest word. Left to
+              wrap, "Sign in" broke over two lines at 1024px while the bar
+              stayed at its full 450, which is the cluster being squeezed
+              instead of the thing that was meant to yield. */}
           <HeaderActions
             onDark={overlay}
             signedOutAction={
@@ -165,8 +193,8 @@ export function SiteHeader({
                 to="/sign-in"
                 className={
                   overlay
-                    ? "font-rounded rounded-full bg-white/95 px-5 py-2.5 text-sm font-bold text-[#0e1f37]"
-                    : "font-rounded rounded-full bg-[var(--color-primary)] px-5 py-2.5 text-sm font-bold text-white"
+                    ? "font-rounded rounded-full bg-white/95 px-5 py-2.5 text-sm font-bold whitespace-nowrap text-[#0e1f37]"
+                    : "font-rounded rounded-full bg-[var(--color-primary)] px-5 py-2.5 text-sm font-bold whitespace-nowrap text-white"
                 }
               >
                 {t("signIn")}
