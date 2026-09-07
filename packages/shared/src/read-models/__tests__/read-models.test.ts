@@ -23,6 +23,8 @@ import {
   customerBookingDetailReadModel,
   customerBookingPageReadModel,
 } from "../system";
+import { adminBookingStatsReadModel } from "../system/booking";
+import { providerStatusCountsReadModel } from "../system/provider";
 
 describe("providerListItemReadModel", () => {
   it("accepts a well-formed list item", () => {
@@ -802,5 +804,32 @@ describe("providerPublicDetailReadModel", () => {
 
   it("still parses as the list model, so the directory is unaffected", () => {
     expect(() => providerPublicReadModel.parse(base)).not.toThrow();
+  });
+});
+
+describe("adminBookingStatsReadModel", () => {
+  const day = (i: number) => ({ date: `2026-08-${String(i + 1).padStart(2, "0")}`, requests: 0, confirmed: 0 });
+  const valid = {
+    disputed: 1, confirmedLast30: 12, completedLast30: 9,
+    grossLast30Minor: 1_240_000, commissionLast30Minor: 124_000, newProvidersLast30: 3,
+    currency: "MZN", perDay: Array.from({ length: 30 }, (_, i) => day(i)),
+  };
+  it("accepts the platform's numbers with exactly thirty days", () => {
+    expect(adminBookingStatsReadModel.parse(valid).perDay).toHaveLength(30);
+  });
+  it("refuses a chart that is not thirty days long", () => {
+    expect(() => adminBookingStatsReadModel.parse({ ...valid, perDay: valid.perDay.slice(1) })).toThrow();
+  });
+  it("refuses negative money", () => {
+    expect(() => adminBookingStatsReadModel.parse({ ...valid, commissionLast30Minor: -1 })).toThrow();
+  });
+});
+
+describe("providerStatusCountsReadModel", () => {
+  it("carries one count per status, all five, none negative", () => {
+    const parsed = providerStatusCountsReadModel.parse({ pending: 2, active: 40, rejected: 1, suspended: 0, archived: 3 });
+    expect(parsed.pending).toBe(2);
+    expect(() => providerStatusCountsReadModel.parse({ pending: 2, active: 40, rejected: 1, suspended: 0 })).toThrow();
+    expect(() => providerStatusCountsReadModel.parse({ pending: -1, active: 0, rejected: 0, suspended: 0, archived: 0 })).toThrow();
   });
 });
