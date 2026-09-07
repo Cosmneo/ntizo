@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { ReactNode } from "react";
 import { render, screen, within } from "@testing-library/react";
 import {
   RouterProvider,
@@ -54,7 +55,7 @@ function service(over: Partial<ServiceDTO> = {}): ServiceDTO {
 
 const option = service().defaultOption!;
 
-function renderTile(dto: ServiceDTO, locale = "en-US") {
+function renderTile(dto: ServiceDTO, locale = "en-US", favourite?: ReactNode) {
   const rootRoute = createRootRoute();
   const indexRoute = createRoute({
     getParentRoute: () => rootRoute,
@@ -62,7 +63,7 @@ function renderTile(dto: ServiceDTO, locale = "en-US") {
     component: () => (
       <ul>
         <li>
-          <ServiceTile service={dto} locale={locale} />
+          <ServiceTile service={dto} locale={locale} favourite={favourite} />
         </li>
       </ul>
     ),
@@ -207,4 +208,37 @@ describe("ServiceTile", () => {
     expect(priceLine.className).toContain("flex-wrap");
   });
 
+  it("hangs the favourite it is handed on the photograph", async () => {
+    // The tile takes a node rather than a `saved` flag: the marks come from
+    // one query in the page, so the page is what knows the answer, and the
+    // tile stays a thing that is handed a `ServiceDTO` and asks nobody
+    // anything.
+    renderTile(service(), "en-US", <button type="button">Save</button>);
+    await screen.findByRole("listitem");
+    const heart = screen.getByRole("button", { name: "Save" });
+    expect(heart.closest("[class*='aspect-square']")).not.toBeNull();
+  });
+
+  it("is exactly as tall with a favourite on it as without one", async () => {
+    // The grid must not shift when a mark arrives, which is the whole reason
+    // the heart is on the picture and not in the three lines of text.
+    const marked = renderTile(service(), "en-US", <button type="button">Save</button>);
+    await screen.findByRole("listitem");
+    const words = () =>
+      document.querySelector("article")!.lastElementChild!.innerHTML;
+    const withHeart = words();
+    marked.unmount();
+
+    renderTile(service());
+    await screen.findByRole("listitem");
+    expect(words()).toBe(withHeart);
+  });
+
+  it("draws no favourite when the page hands it none", async () => {
+    // `/services/$id`, the provider page's rail and anything else composing a
+    // tile gets no stray control it never asked for.
+    renderTile(service());
+    await screen.findByRole("listitem");
+    expect(screen.queryByRole("button")).toBeNull();
+  });
 });

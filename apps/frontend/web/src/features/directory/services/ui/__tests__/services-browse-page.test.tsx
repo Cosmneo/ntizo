@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
@@ -9,6 +9,7 @@ import {
   createRouter,
 } from "@tanstack/react-router";
 import type { ServiceDTO, ServicePageDTO } from "@ntizo/shared/read-models";
+import * as client from "@/shared/lib/graphql/session-graphql";
 import type { BrowseNarrowing } from "@/features/directory/services/viewmodel/use-browse-services";
 
 /**
@@ -46,6 +47,21 @@ vi.mock("@/features/landing/viewmodel/use-categories", () => ({
   useCategoryPreview: () => ({
     data: { items: [{ id: "c1", code: "hair", name: "Hair & beauty", icon: "Scissors" }] },
   }),
+}));
+
+/**
+ * The session, signed out by default and switched on only by the tests about
+ * the hearts.
+ *
+ * Mocked at `@/shared/hooks/use-session`, the one-line re-export, rather than
+ * at `@/shared/lib/api/auth-client`, which also exports the `API_BASE_URL`
+ * that `session-graphql.ts` imports. Signed out, `useFavouriteMarks` is
+ * disabled and asks nothing, which is what keeps every other test in this
+ * file free of a network call it never wanted.
+ */
+const session = vi.hoisted(() => ({ data: null as { user: { id: string } } | null }));
+vi.mock("@/shared/hooks/use-session", () => ({
+  useSession: () => ({ data: session.data }),
 }));
 
 const { ServicesBrowsePage } = await import("../services-browse-page");
@@ -579,5 +595,85 @@ describe("ServicesBrowsePage", () => {
     // Scoped to the pager: the site header's own "Services" link is the
     // current page too, and says so with the same attribute.
     expect(within(pager).getByRole("link", { current: "page" })).toHaveTextContent("2");
+  });
+
+  /**
+   * The hearts.
+   *
+   * Asserted against the real transport rather than a mocked
+   * `useFavouriteMarks`: the one thing that can only go wrong *here* is how
+   * many questions a page of tiles asks and which ids it asks about, and a
+   * mocked hook counting its own calls would pass with a hook called inside
+   * every tile.
+   */
+  describe("the favourite hearts", () => {
+    afterEach(() => {
+      vi.restoreAllMocks();
+      session.data = null;
+    });
+
+    /** Answers the two documents this page can send, and refuses anything else by name. */
+    function fakeServer(marked: string[] = []) {
+      return vi.spyOn(client, "sessionGraphql").mockImplementation(async (query) => {
+        const text = String(query);
+        if (text.includes("favouriteMarked")) return { favouriteMarked: marked } as never;
+        // The header's own `useCurrentUser`, which every page renders.
+        if (text.includes("userMe")) return { userMe: null } as never;
+        throw new Error(`the page asked something this fake server does not answer: ${text}`);
+      });
+    }
+
+    const signIn = () => {
+      session.data = { user: { id: "u1" } };
+    };
+
+    const marksCalls = (spy: ReturnType<typeof fakeServer>) =>
+      spy.mock.calls.filter(([query]) => String(query).includes("favouriteMarked"));
+
+    it("asks once for the whole page, naming every listing on it", async () => {
+      // One request per page, never one per tile. Twenty-four tiles asking
+      // for themselves is the failure this shape exists to prevent.
+      signIn();
+      const spy = fakeServer();
+      renderPage("/services", {
+        items: [service({ id: "a" }), service({ id: "b" }), service({ id: "c" })],
+        nextOffset: null,
+        total: 3,
+      });
+      await screen.findAllByRole("button", { name: "Save" });
+
+      expect(marksCalls(spy)).toHaveLength(1);
+      expect(marksCalls(spy)[0]![1]).toEqual({
+        input: { targetType: "service", targetIds: ["a", "b", "c"] },
+      });
+    });
+
+    it("fills only the hearts the answer named", async () => {
+      signIn();
+      fakeServer(["b"]);
+      renderPage("/services", {
+        items: [
+          service({ id: "a", name: "Corte" }),
+          service({ id: "b", name: "Tranças" }),
+        ],
+        nextOffset: null,
+        total: 2,
+      });
+
+      const saved = await screen.findByRole("button", { name: "Saved" });
+      expect(saved.closest("article")).toHaveTextContent("Tranças");
+      expect(screen.getAllByRole("button", { name: "Save" })).toHaveLength(1);
+    });
+
+    it("asks nothing at all of a signed-out reader, and still draws the heart", async () => {
+      // Every favourites field refuses an anonymous caller, so the query is
+      // disabled — but the control stays on screen, because hiding it
+      // teaches nobody the feature exists.
+      const spy = fakeServer();
+      renderPage("/services", { items: [service()], nextOffset: null, total: 1 });
+
+      expect(await screen.findByRole("button", { name: "Save" })).toBeInTheDocument();
+      expect(marksCalls(spy)).toHaveLength(0);
+    });
   });
 });

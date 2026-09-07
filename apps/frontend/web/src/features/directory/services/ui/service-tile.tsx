@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import { Check } from "lucide-react";
@@ -24,7 +25,11 @@ import type { ServiceDTO } from "@/features/directory/services/domain/types";
  *
  * **No button.** The price is what the eye lands on and the tile is the link.
  * A blue button repeated twenty-four times down a page competes with every
- * price on it and with the one button that matters, in the search bar.
+ * price on it and with the one button that matters, in the search bar. The
+ * favourite is the single exception, and it earns the exception by costing
+ * almost nothing: it stands on the photograph rather than in the words, so
+ * the three text lines keep their column and a saved tile is exactly as tall
+ * as an unsaved one.
  *
  * **The rating lives on the provider line, not the title line.** The score is
  * the *provider's* average across everything they sell, never the service's
@@ -33,14 +38,31 @@ import type { ServiceDTO } from "@/features/directory/services/domain/types";
  * name, where the seal already sits, it reads as one more fact about who is
  * behind the price.
  */
-export function ServiceTile({ service, locale }: { service: ServiceDTO; locale: string }) {
+export function ServiceTile({
+  service,
+  locale,
+  favourite,
+}: {
+  service: ServiceDTO;
+  locale: string;
+  /**
+   * The heart, drawn on the photograph — or nothing, for a caller that wants
+   * a tile with no control on it at all.
+   *
+   * A node the page builds rather than a `saved` flag this tile turns into
+   * one: the marks for a page come from a single `useFavouriteMarks` call up
+   * there, so the page is what knows the answer, and the tile goes on being a
+   * thing that is handed a `ServiceDTO` and asks nobody anything.
+   */
+  favourite?: ReactNode;
+}) {
   const { t } = useTranslation("directory");
   const line = servicePriceLine(service);
   const where = t(`filterWhereOption.${service.locationType}`, { defaultValue: "" });
 
   return (
     <ResultTile
-      media={<TileMedia src={service.imageUrls[0] ?? null} />}
+      media={<TileMedia src={service.imageUrls[0] ?? null} favourite={favourite} />}
       title={
         /* Two lines on a phone, where the row gives the title the whole
            width beside a 116px photo and a clipped name is the one thing

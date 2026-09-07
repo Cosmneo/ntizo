@@ -21,6 +21,11 @@ import { formatRating } from "@/shared/domain/rating";
 // usually already filled.
 import { useCategoryPreview } from "@/features/landing/viewmodel/use-categories";
 import { useDirectory } from "@/features/directory/viewmodel/use-directory";
+// One question about the hearts for the whole page, and the control that
+// answers it — see the `useFavouriteMarks` call below for why the page owns
+// the query rather than the row.
+import { useFavouriteMarks } from "@/features/favourites/viewmodel/use-favourite-marks";
+import { FavouriteButton } from "@/features/favourites/ui/favourite-button";
 import { ProviderRow } from "@/features/directory/ui/provider-row";
 import {
   MobileProviderFilters,
@@ -111,6 +116,20 @@ export function DirectoryPage() {
   const current = useSearch({ strict: false }) as DirectorySearch;
   const { category, q, sort, offset = 0 } = current;
   const page = useDirectory(current, locale);
+  /**
+   * Which of the businesses on this page the reader has already saved — asked
+   * **once, here**, and handed down as a filled or empty heart.
+   *
+   * `"provider"` and not `"service"`: a service and a business may
+   * legitimately share an id, so the type rides along on every question and
+   * every write, or one page's marks fill the other's hearts. Never a hook
+   * inside the row, which would be one round trip per result. See
+   * `useFavouriteMarks`.
+   */
+  const marks = useFavouriteMarks(
+    "provider",
+    page.items.map((item) => item.id),
+  );
   const navigate = useNavigate();
   // A plain query, unlike the listings: this is a control, not the content a
   // crawler came for, so it may arrive a beat later.
@@ -301,7 +320,18 @@ export function DirectoryPage() {
             <ul className="grid list-none p-0">
               {page.items.map((provider, index) => (
                 <li key={provider.id}>
-                  <ProviderRow provider={provider} locale={locale} first={index === 0} />
+                  <ProviderRow
+                    provider={provider}
+                    locale={locale}
+                    first={index === 0}
+                    favourite={
+                      <FavouriteButton
+                        targetType="provider"
+                        targetId={provider.id}
+                        saved={marks.isMarked(provider.id)}
+                      />
+                    }
+                  />
                 </li>
               ))}
             </ul>

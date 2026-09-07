@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import { Check, ChevronRight } from "lucide-react";
@@ -22,10 +23,21 @@ import { formatHeadlinePrice } from "@/features/directory/services/domain/servic
 export function ProviderRow({
   provider,
   locale,
+  favourite,
   first = false,
 }: {
   provider: ProviderPublicDTO;
   locale: string;
+  /**
+   * The heart, drawn on the photograph — or nothing, for a caller that wants
+   * a row with no control on it at all.
+   *
+   * A node the page builds rather than a `saved` flag this row turns into
+   * one: the marks for a page come from a single `useFavouriteMarks` call up
+   * there, so the page is what knows the answer, and the row goes on being a
+   * thing that is handed a `ProviderPublicDTO` and asks nobody anything.
+   */
+  favourite?: ReactNode;
   /**
    * Whether this is the first row of the list — forwarded straight to
    * `ResultRow`, which draws the hairline every other row is separated by.
@@ -55,6 +67,7 @@ export function ProviderRow({
   return (
     <ResultRow
       first={first}
+      favourite={favourite}
       media={
         // Sixteen-by-nine on a phone, where the photograph is the full width
         // of a stacked card and a 4:3 crop of it took a third of the screen;

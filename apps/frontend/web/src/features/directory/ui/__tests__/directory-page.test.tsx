@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
@@ -10,6 +10,7 @@ import {
 } from "@tanstack/react-router";
 import type { ProviderPublicDTO } from "@ntizo/shared";
 import type { ProviderPageDTO } from "@ntizo/shared/read-models";
+import * as client from "@/shared/lib/graphql/session-graphql";
 import type { DirectorySearch } from "@/features/directory/domain/directory-search";
 
 /**
@@ -51,6 +52,21 @@ vi.mock("@/features/landing/viewmodel/use-categories", () => ({
   useCategoryPreview: () => ({
     data: { items: [{ id: "c1", code: "hair", name: "Hair & beauty", icon: "Scissors" }] },
   }),
+}));
+
+/**
+ * The session, signed out by default and switched on only by the tests about
+ * the hearts.
+ *
+ * Mocked at `@/shared/hooks/use-session`, the one-line re-export, rather than
+ * at `@/shared/lib/api/auth-client`, which also exports the `API_BASE_URL`
+ * that `session-graphql.ts` imports. Signed out, `useFavouriteMarks` is
+ * disabled and asks nothing, which is what keeps every other test in this
+ * file free of a network call it never wanted.
+ */
+const session = vi.hoisted(() => ({ data: null as { user: { id: string } } | null }));
+vi.mock("@/shared/hooks/use-session", () => ({
+  useSession: () => ({ data: session.data }),
 }));
 
 const { DirectoryPage } = await import("../directory-page");
@@ -561,5 +577,75 @@ describe("DirectoryPage", () => {
       "href",
       "/providers?offset=40",
     );
+  });
+
+  /**
+   * The hearts. The twin of the services page's own block, deliberately: the
+   * two pages ask the same question about a different target type, and the
+   * type riding along is the thing that must not be got wrong — a service
+   * and a business may legitimately share an id.
+   */
+  describe("the favourite hearts", () => {
+    afterEach(() => {
+      vi.restoreAllMocks();
+      session.data = null;
+    });
+
+    /** Answers the two documents this page can send, and refuses anything else by name. */
+    function fakeServer(marked: string[] = []) {
+      return vi.spyOn(client, "sessionGraphql").mockImplementation(async (query) => {
+        const text = String(query);
+        if (text.includes("favouriteMarked")) return { favouriteMarked: marked } as never;
+        // The header's own `useCurrentUser`, which every page renders.
+        if (text.includes("userMe")) return { userMe: null } as never;
+        throw new Error(`the page asked something this fake server does not answer: ${text}`);
+      });
+    }
+
+    const signIn = () => {
+      session.data = { user: { id: "u1" } };
+    };
+
+    const marksCalls = (spy: ReturnType<typeof fakeServer>) =>
+      spy.mock.calls.filter(([query]) => String(query).includes("favouriteMarked"));
+
+    it("asks once for the whole page, as providers and not as services", async () => {
+      signIn();
+      const spy = fakeServer();
+      renderPage("/providers", {
+        items: [provider({ id: "a" }), provider({ id: "b", slug: "b" })],
+        total: 2,
+      });
+      await screen.findAllByRole("button", { name: "Save" });
+
+      expect(marksCalls(spy)).toHaveLength(1);
+      expect(marksCalls(spy)[0]![1]).toEqual({
+        input: { targetType: "provider", targetIds: ["a", "b"] },
+      });
+    });
+
+    it("fills only the hearts the answer named", async () => {
+      signIn();
+      fakeServer(["b"]);
+      renderPage("/providers", {
+        items: [
+          provider({ id: "a", name: "Estúdio Mavalane", slug: "a" }),
+          provider({ id: "b", name: "Salão Nyeleti", slug: "b" }),
+        ],
+        total: 2,
+      });
+
+      const saved = await screen.findByRole("button", { name: "Saved" });
+      expect(saved.closest("article")).toHaveTextContent("Salão Nyeleti");
+      expect(screen.getAllByRole("button", { name: "Save" })).toHaveLength(1);
+    });
+
+    it("asks nothing at all of a signed-out reader, and still draws the heart", async () => {
+      const spy = fakeServer();
+      renderPage("/providers", { items: [provider()], total: 1 });
+
+      expect(await screen.findByRole("button", { name: "Save" })).toBeInTheDocument();
+      expect(marksCalls(spy)).toHaveLength(0);
+    });
   });
 });

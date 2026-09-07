@@ -84,6 +84,8 @@
   "providersPrevious": "Précédent",
   "providersNext": "Suivant",
   "providerVerified": "Vérifié",
+  "favouriteSave": "Enregistrer",
+  "favouriteSaved": "Enregistré",
   "railRatingOutOfFive": "sur 5",
   "providerNoReviews": "Pas encore d'avis",
   "providerRatingLabel": "{{score}} sur 5, sur {{count}} avis",

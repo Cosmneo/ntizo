@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { ReactNode } from "react";
 import { render, screen } from "@testing-library/react";
 import {
   RouterProvider,
@@ -44,14 +45,14 @@ function provider(over: Partial<ProviderPublicDTO> = {}): ProviderPublicDTO {
   };
 }
 
-function renderRow(dto: ProviderPublicDTO, locale = "en-US") {
+function renderRow(dto: ProviderPublicDTO, locale = "en-US", favourite?: ReactNode) {
   const rootRoute = createRootRoute();
   const indexRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: "/",
     component: () => (
       <ul>
-        <ProviderRow provider={dto} locale={locale} />
+        <ProviderRow provider={dto} locale={locale} favourite={favourite} />
       </ul>
     ),
   });
@@ -236,5 +237,27 @@ describe("ProviderRow", () => {
     // nothing to attach it to.
     expect(row).toContainElement(screen.getByText("View profile"));
     expect(row).toHaveAccessibleName("Estúdio Mavalane View profile");
+  });
+
+  it("hangs the favourite it is handed on the photograph", async () => {
+    // The row takes a node rather than a `saved` flag: the marks come from
+    // one query in the page, so the page knows the answer and the row goes
+    // on asking nobody anything.
+    const { container } = renderRow(
+      provider(),
+      "en-US",
+      <button type="button">Save</button>,
+    );
+    await screen.findByRole("link", { name: /Estúdio Mavalane/ });
+
+    const cell = container.querySelector("article")!.firstElementChild!;
+    expect(cell).toContainElement(screen.getByRole("button", { name: "Save" }));
+    expect(cell).toContainElement(container.querySelector("div.relative.overflow-hidden"));
+  });
+
+  it("draws no favourite when it is handed none", async () => {
+    renderRow(provider());
+    await screen.findByRole("link", { name: /Estúdio Mavalane/ });
+    expect(screen.queryByRole("button")).toBeNull();
   });
 });

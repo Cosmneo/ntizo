@@ -20,6 +20,11 @@ import { EXACT_MATCH } from "@/shared/components/browse/active-match";
 // usually already filled.
 import { useCategoryPreview } from "@/features/landing/viewmodel/use-categories";
 import { useBrowseServices } from "@/features/directory/services/viewmodel/use-browse-services";
+// One question about the hearts for the whole page, and the control that
+// answers it — see the `useFavouriteMarks` call below for why the page owns
+// the query rather than the tile.
+import { useFavouriteMarks } from "@/features/favourites/viewmodel/use-favourite-marks";
+import { FavouriteButton } from "@/features/favourites/ui/favourite-button";
 import { ServiceTile } from "@/features/directory/services/ui/service-tile";
 import {
   MobileServiceFilters,
@@ -100,6 +105,19 @@ export function ServicesBrowsePage() {
     sort,
     offset,
   });
+  /**
+   * Which of the tiles on this page the reader has already saved — asked
+   * **once, here**, and handed down as a filled or empty heart.
+   *
+   * Never a hook inside the tile: every tile would ask the same question, and
+   * the heart would cost twenty-four round trips a page instead of one. The
+   * query is disabled for a signed-out reader and for an empty page, so this
+   * costs nothing at all in either case — see `useFavouriteMarks`.
+   */
+  const marks = useFavouriteMarks(
+    "service",
+    page.items.map((item) => item.id),
+  );
   const navigate = useNavigate();
   // A plain query, unlike the services: this is a control, not the content a
   // crawler came for, so it may arrive a beat later.
@@ -292,7 +310,17 @@ export function ServicesBrowsePage() {
             <ul className="grid list-none grid-cols-1 gap-0 divide-y divide-[var(--color-border)] p-0 sm:grid-cols-2 sm:gap-x-6 sm:gap-y-8 sm:divide-y-0 md:grid-cols-3 lg:grid-cols-4">
               {page.items.map((service) => (
                 <li key={service.id}>
-                  <ServiceTile service={service} locale={locale} />
+                  <ServiceTile
+                    service={service}
+                    locale={locale}
+                    favourite={
+                      <FavouriteButton
+                        targetType="service"
+                        targetId={service.id}
+                        saved={marks.isMarked(service.id)}
+                      />
+                    }
+                  />
                 </li>
               ))}
             </ul>

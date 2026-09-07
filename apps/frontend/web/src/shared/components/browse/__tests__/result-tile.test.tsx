@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import {
   RatingMark,
   ResultTile,
@@ -52,6 +52,26 @@ describe("TileMedia", () => {
     // paints behind a picture.
     const { container } = render(<TileMedia src={null} />);
     expect(container.firstElementChild!.className).toContain("bg-[var(--color-muted)]");
+  });
+
+  it("holds the favourite on the photograph itself, not beside it", () => {
+    // "On the photograph, never in the words": the three text lines keep
+    // their column, so a saved tile and an unsaved one are exactly the same
+    // height and the grid never shifts when a mark arrives.
+    const { container } = render(
+      <TileMedia src={null} favourite={<button type="button">Save</button>} />,
+    );
+    const box = container.firstElementChild as HTMLElement;
+    expect(within(box).getByRole("button", { name: "Save" })).toBeInTheDocument();
+  });
+
+  it("is the positioning context that favourite is placed against", () => {
+    // The heart positions itself absolutely. Without `relative` here it would
+    // resolve against whichever ancestor happens to be positioned — the
+    // `<article>`, whose top-right corner below `sm` is the text column, not
+    // the picture.
+    const { container } = render(<TileMedia src={null} />);
+    expect(container.firstElementChild!.className).toContain("relative");
   });
 
   it("is square on a phone and four-by-three from sm, because the tile changes shape", () => {

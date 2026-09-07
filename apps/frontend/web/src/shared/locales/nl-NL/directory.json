@@ -84,6 +84,8 @@
   "providersPrevious": "Vorige",
   "providersNext": "Volgende",
   "providerVerified": "Geverifieerd",
+  "favouriteSave": "Bewaren",
+  "favouriteSaved": "Bewaard",
   "railRatingOutOfFive": "van de 5",
   "providerNoReviews": "Nog geen beoordelingen",
   "providerRatingLabel": "{{score}} van 5, uit {{count}} beoordeling",
