@@ -8,6 +8,10 @@ import { CursorInvalidError, ListNameTakenError } from "../domain/exceptions";
 import {
   DrizzleFavouriteListRepository,
   buildEnsureDefaultInsert,
+  buildListForUserQuery,
+  buildOwnedByQuery,
+  buildRemoveDelete,
+  buildRenameUpdate,
 } from "../infrastructure/repositories/drizzle/favourite-list.repository";
 import {
   DrizzleFavouriteRepository,
@@ -172,6 +176,63 @@ describe("ensureDefault", () => {
     expect(calls).toEqual(["db.insert", "db.insert.values:1", "db.select"]);
     expect(list.isDefault).toBe(true);
     expect(list.name).toBeNull();
+  });
+});
+
+/**
+ * The `user_id` predicate on the four statements that carry it, read straight
+ * off the generated SQL.
+ *
+ * This is the one thing on this context that a passing suite could not
+ * otherwise see. The command layer checks ownership, but its tests run against
+ * fakes: they observe that the check was made, never that the statement kept
+ * it. Delete `eq(favouriteList.userId, …)` from `buildOwnedByQuery` and every
+ * command still refuses exactly the ids it always refused — while `setLists`,
+ * `rename` and `remove` quietly become operable against any list id in the
+ * database. A bug elsewhere on this branch shows the wrong page; this one
+ * hands one person another person's lists, so it gets the assertion nothing
+ * else can make.
+ *
+ * Each test cuts at ` where ` through {@link clauseOf}, for the reason that
+ * helper documents: `SELECT *` names `user_id` in its projection, so asserting
+ * on the whole statement would pass with the predicate gone.
+ */
+describe("the user_id predicates", () => {
+  it("scopes listForUser to the caller's own rows", () => {
+    // The read every ownership check in the context is ultimately built on.
+    // Widened to "every list", `RenameListCommand` and `RemoveListCommand`
+    // would be matching against strangers' rows.
+    const { sql, params } = buildListForUserQuery(db as never, "u1").toSQL();
+    expect(clauseOf(sql, " where ")).toContain("user_id");
+    expect(params).toContain("u1");
+  });
+
+  it("scopes ownedBy to the caller, not merely to the ids asked about", () => {
+    // Both halves, and neither is redundant: `id IN (…)` narrows to what was
+    // asked, `user_id = ?` is the answer to "are they yours". Without the
+    // second this reads as "do these lists exist", which every caller then
+    // takes for a yes.
+    const { sql, params } = buildOwnedByQuery(db as never, { userId: "u1", listIds: ["l1", "l2"] }).toSQL();
+    const where = clauseOf(sql, " where ");
+    expect(where).toContain("user_id");
+    expect(where).toContain('"id" in (');
+    expect(params).toEqual(expect.arrayContaining(["u1", "l1", "l2"]));
+  });
+
+  it("scopes rename to the caller, so a stray id renames nothing", () => {
+    const { sql, params } = buildRenameUpdate(db as never, { id: "l1", userId: "u1", name: "Casa nova" }).toSQL();
+    const where = clauseOf(sql, " where ");
+    expect(where).toContain("user_id");
+    expect(where).toContain('"id" =');
+    expect(params).toEqual(expect.arrayContaining(["Casa nova", "l1", "u1"]));
+  });
+
+  it("scopes remove to the caller, so a stray id deletes nothing", () => {
+    const { sql, params } = buildRemoveDelete(db as never, { id: "l1", userId: "u1" }).toSQL();
+    const where = clauseOf(sql, " where ");
+    expect(where).toContain("user_id");
+    expect(where).toContain('"id" =');
+    expect(params).toEqual(expect.arrayContaining(["l1", "u1"]));
   });
 });
 

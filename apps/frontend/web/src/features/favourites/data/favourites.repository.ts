@@ -40,6 +40,32 @@ import type { FavouriteList, FavouriteTargetType } from "../domain/types";
  * of ids, **leaves on the wire**. They take no selection set, and adding one
  * is not a harmless no-op: it invalidates the whole document.
  *
+ * **`favouriteListById`'s `items` is a GraphQL union, not an object type.**
+ * The read model returns `items: [FavouriteListByIdOutput_Items_Item]`, a
+ * discriminated union of a service entry and a provider entry, and the kit
+ * emits it as a `union` — so a flat selection set on it is rejected at
+ * validation, before any resolver runs. It has to be selected with inline
+ * fragments, one per member:
+ *
+ * ```graphql
+ * favouriteListById(input: $input) {
+ *   items {
+ *     ... on FavouriteListByIdOutput_Items_Item_Service { savedAt service { … } }
+ *     ... on FavouriteListByIdOutput_Items_Item_Provider { savedAt provider { … } }
+ *   }
+ * }
+ * ```
+ *
+ * Note there is no field the two members share on the wire: `savedAt` is
+ * repeated inside each fragment rather than hoisted out of them, because a
+ * union has no fields of its own to hoist onto — only an interface would.
+ * The kit supplies `resolveType` from the row's `kind` discriminator, so this
+ * works at runtime once the document is shaped this way; the failure mode is
+ * purely a validation error on a document that looks reasonable. Verified by
+ * building the schema in-process, the same way the table above was. No query
+ * in this file selects those fields yet — this is written down for Tasks
+ * 10-12, which will.
+ *
  * The four fields this task does not use yet — `favouriteListsFor`,
  * `favouriteListById`, `favouriteListRename`, `favouriteListRemove` — belong
  * to the dialog and the `/favourites` page, and land with them (Tasks 10-12).

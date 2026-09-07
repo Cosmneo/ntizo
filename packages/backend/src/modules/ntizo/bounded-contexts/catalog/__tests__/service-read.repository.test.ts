@@ -71,6 +71,31 @@ describe("orderByFor", () => {
   });
 });
 
+describe("conditionsFor — ids", () => {
+  it("narrows to the ids it was given, and keeps the published gate while it does", () => {
+    // `/favourites` reads the saved listings through this branch: the page
+    // holds ids and delegates the projection to `listPublished`. Lose the
+    // `inArray` and nothing anywhere fails — the delegated query simply
+    // returns the first `ids.length` published rows, so the page shows an
+    // arbitrary slice of the catalogue under the heading "saved". Typecheck
+    // proves the field is threaded through; only the WHERE proves it arrives.
+    const { sql, params } = db
+      .select()
+      .from(service)
+      .where(and(...conditionsFor(db as never, { ids: ["s1", "s2"] })))
+      .toSQL();
+    const where = clauseOf(sql, " where ");
+    expect(where).toContain('"id" in (');
+    expect(params).toEqual(expect.arrayContaining(["s1", "s2"]));
+
+    // And it *composes* rather than replaces. A saved service whose provider
+    // has since been suspended, or which the provider has unpublished, must
+    // not reappear because the id narrowing took the WHERE over: this branch
+    // adds a condition to the gate, it does not become the gate.
+    expect(params).toEqual(expect.arrayContaining(["published", "active"]));
+  });
+});
+
 describe("conditionsFor — city", () => {
   it("never hides a remote service behind a city filter", () => {
     // A remote service has no geography at all. Excluding it from "Maputo"

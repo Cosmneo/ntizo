@@ -378,15 +378,15 @@ describe("likePattern", () => {
  * `verifiedOnly`, the price bounds and `minRating` read it — so an empty
  * object stands in for it and no database is needed to build one.
  */
-describe("DrizzleProviderPublicRepository.wheres — city", () => {
+describe("DrizzleProviderPublicRepository.wheres", () => {
   const db = drizzle(postgres("postgres://user:pass@localhost:5999/nonexistent", { prepare: false, max: 1 }));
 
-  const build = (city: string) => {
+  const build = (filters: Partial<ListActiveFilters>) => {
     const wheres = (
       DrizzleProviderPublicRepository as unknown as {
         wheres(filters: ListActiveFilters, agg: unknown): SQL[];
       }
-    ).wheres({ limit: 20, offset: 0, locale: "en-US", city }, {});
+    ).wheres({ limit: 20, offset: 0, locale: "en-US", ...filters }, {});
     const { sql, params } = db.select({ id: provider.id }).from(provider).where(and(...wheres)).toSQL();
     // Sliced at the keyword, so the SELECT list cannot satisfy an assertion
     // about the WHERE — `address_city` is a column this query names either way.
@@ -395,18 +395,33 @@ describe("DrizzleProviderPublicRepository.wheres — city", () => {
     return { where: sql.toLowerCase().slice(at), params };
   };
 
+  it("narrows to the ids it was given, and keeps the active gate while it does", () => {
+    // `/favourites` reads the saved businesses through this branch: the page
+    // holds ids and delegates the projection to `listActive`. Lose the
+    // `inArray` and nothing anywhere fails — the delegated query returns the
+    // first `ids.length` active rows instead, so the page shows an arbitrary
+    // slice of the directory under the heading "saved".
+    const { where, params } = build({ ids: ["p1", "p2"] });
+    expect(where).toContain('"id" in (');
+    expect(params).toEqual(expect.arrayContaining(["p1", "p2"]));
+    // And it *composes* rather than replaces: a saved business that has since
+    // been suspended must not reappear because the id narrowing took the
+    // WHERE over. This branch adds to the gate, it does not become the gate.
+    expect(params).toContain("active");
+  });
+
   it("matches a lowercase city, because the reader types the city themselves", () => {
     // The twin rule at the API layer. Both pages show the same city field in
     // the same hero card, so `?city=maputo` has to answer on both — with `eq`
     // it returned businesses on one page and an empty list on the other, under
     // an h1 reading "Prestadores em maputo".
-    expect(build("maputo").where).toContain('address_city" ilike');
+    expect(build({ city: "maputo" }).where).toContain('address_city" ilike');
   });
 
   it("treats a wildcard the reader typed as a character, not as a wildcard", () => {
     // `%` and `_` are ILIKE's own metacharacters, so `?city=M%` would
     // otherwise match every city beginning with M.
-    const { params } = build("M%");
+    const { params } = build({ city: "M%" });
     expect(params).toContain("M\\%");
     expect(params).not.toContain("M%");
   });

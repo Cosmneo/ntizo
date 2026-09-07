@@ -56,7 +56,14 @@ export class RenameListCommand implements RenameListPort {
     const newName = renamed.name!;
 
     const wanted = newName.trim().toLowerCase();
-    const taken = mine.some((list) => list.id !== input.listId && (list.name ?? "").trim().toLowerCase() === wanted);
+    // Lists with a `null` name — the nameless default — are skipped, not
+    // coerced to `""`: a nameless default is not a list named "". The same
+    // rule `CreateListCommand` states, stated the same way, so the two
+    // commands cannot drift apart again. `list.id !== input.listId` is what
+    // lets a list keep its own name.
+    const taken = mine.some(
+      (list) => list.id !== input.listId && list.name !== null && list.name.trim().toLowerCase() === wanted,
+    );
     if (taken) {
       throw new ListNameTakenError(newName);
     }

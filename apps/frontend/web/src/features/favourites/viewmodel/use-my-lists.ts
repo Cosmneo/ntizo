@@ -37,11 +37,22 @@ export function useMyLists() {
   return {
     lists,
     /**
-     * `isFetching`, not `isPending`: a disabled query stays pending forever,
-     * so a signed-out reader would see a spinner over a list that is not
-     * being fetched.
+     * `isLoading`, which is `isPending && isFetching` — and deliberately
+     * neither of the two on its own.
+     *
+     * Not `isPending`: a disabled query stays pending forever, so a signed-out
+     * reader would see a spinner over a list that is not being fetched.
+     *
+     * Not `isFetching` either, which was the first answer here and is wrong
+     * for the opposite reason. `isFetching` is true during a *background
+     * refetch* of data already in hand, and every save's `onSettled`
+     * invalidates the whole `["favourites"]` prefix — so ticking one list in
+     * the dialog put a spinner over the very rows the reader is ticking,
+     * which are on screen and correct throughout. `isLoading` is true only
+     * for the first fetch, the one moment there is nothing to draw.
+     * `useActiveProvider` reads it for this same reason.
      */
-    loading: query.isFetching,
+    loading: query.isLoading,
     /** `undefined` when there is nothing wrong. See `favouritesErrorCode`. */
     errorCode: favouritesErrorCode(query.error),
   };

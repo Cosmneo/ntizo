@@ -46,11 +46,24 @@ export function useFavouriteMarks(targetType: FavouriteTargetType, ids: string[]
     marked,
     isMarked: (id: string) => marked.has(id),
     /**
-     * `isFetching`, not `isPending`: a disabled query stays pending forever,
-     * so a card reading `isPending` would show a spinner to every signed-out
-     * visitor on a page that is not waiting for anything.
+     * `isLoading`, which is `isPending && isFetching` — and deliberately
+     * neither of the two on its own.
+     *
+     * Not `isPending`: a disabled query stays pending forever, so a card
+     * reading it would show a spinner to every signed-out visitor on a page
+     * that is not waiting for anything.
+     *
+     * Not `isFetching` either, which was the first answer here and is wrong
+     * for the opposite reason. `isFetching` is true during a *background
+     * refetch* of data already in hand, and every quick-save's `onSettled`
+     * invalidates the whole `["favourites"]` prefix — so a single tap on one
+     * heart flipped `loading` true across every heart on the page, each
+     * flashing a spinner over an answer it already had and was still showing.
+     * `isLoading` is true only for the first fetch, which is the one moment
+     * there is genuinely nothing to draw. `useActiveProvider` reads it for
+     * this same reason.
      */
-    loading: query.isFetching,
+    loading: query.isLoading,
     /** `undefined` when there is nothing wrong. See `favouritesErrorCode`. */
     errorCode: favouritesErrorCode(query.error),
   };

@@ -96,6 +96,92 @@ function isNameCollision(error: unknown): boolean {
   return code === "23505" && constraintName === LIST_NAME_UNIQUE_CONSTRAINT;
 }
 
+/*
+ * The four builders below are module-level exports rather than private
+ * methods, for the same reason {@link buildEnsureDefaultInsert} above is one:
+ * a test asserts on their generated SQL through drizzle's `.toSQL()`, and a
+ * method buried in the class gives that test no seam to call it from. The
+ * same shape `catalog/…/service-read.repository.ts` uses for `conditionsFor`.
+ *
+ * These four in particular, because these four carry `user_id` — the
+ * predicate that *is* this context's authorisation. The command layer checks
+ * ownership before it calls any of them, but the command tests run against
+ * fakes and can only see that the check was made, never that the statement
+ * kept it. Delete `eq(favouriteList.userId, …)` from `ownedBy` and every
+ * command still refuses the ids it always refused, while `setLists`, `rename`
+ * and `remove` become operable against any list id in the database. That is a
+ * cross-user data breach rather than a bug, and `.toSQL()` on these builders
+ * is the only place a test can catch it.
+ */
+
+/**
+ * Every list this person has, newest first.
+ *
+ * The order `favourite_list_user_created_idx` was declared for, so this reads
+ * straight off the index. Putting the default list at the top is a
+ * presentation choice and belongs to whoever renders the dialog — sorting by
+ * `is_default` here would give up the index for a decision this layer has no
+ * business making.
+ *
+ * `user_id` in the WHERE is the whole scope of the read: this is what every
+ * ownership check in the context is ultimately built on, so widening it to
+ * "every list" would hand `RenameListCommand` and `RemoveListCommand`
+ * strangers' rows to match against.
+ */
+export function buildListForUserQuery(db: ReturnType<typeof getDb>, userId: string) {
+  return db
+    .select()
+    .from(favouriteList)
+    .where(eq(favouriteList.userId, userId))
+    .orderBy(desc(favouriteList.createdAt));
+}
+
+/**
+ * Which of these list ids are this person's.
+ *
+ * Both halves matter and neither is redundant: `id IN (…)` narrows to what
+ * was asked about, `user_id = ?` is the answer to "are they yours". Losing
+ * the second turns this into "do these lists exist", which every caller then
+ * reads as a yes.
+ *
+ * Callers must not pass an empty `listIds` — `IN ()` is a syntax error, and
+ * `ownedBy` short-circuits before reaching here.
+ */
+export function buildOwnedByQuery(db: ReturnType<typeof getDb>, p: { userId: string; listIds: string[] }) {
+  return db
+    .select({ id: favouriteList.id })
+    .from(favouriteList)
+    .where(and(eq(favouriteList.userId, p.userId), inArray(favouriteList.id, p.listIds)));
+}
+
+/**
+ * The rename, scoped by `user_id` as well as `id`.
+ *
+ * The command has already checked ownership; this is the second lock on the
+ * same door. An id that slipped through updates zero rows rather than
+ * renaming a stranger's list.
+ */
+export function buildRenameUpdate(db: ReturnType<typeof getDb>, p: { id: string; userId: string; name: string }) {
+  return db
+    .update(favouriteList)
+    .set({ name: p.name })
+    .where(and(eq(favouriteList.id, p.id), eq(favouriteList.userId, p.userId)));
+}
+
+/**
+ * The delete, scoped by `user_id` as well as `id`.
+ *
+ * `returning` rather than a preceding SELECT: one statement answers both "was
+ * it deleted" and "was it theirs", and there is no window between the check
+ * and the delete for the row to change owner or disappear.
+ */
+export function buildRemoveDelete(db: ReturnType<typeof getDb>, p: { id: string; userId: string }) {
+  return db
+    .delete(favouriteList)
+    .where(and(eq(favouriteList.id, p.id), eq(favouriteList.userId, p.userId)))
+    .returning({ id: favouriteList.id });
+}
+
 export class DrizzleFavouriteListRepository implements FavouriteListRepositoryPort {
   /**
    * The default list, created on first use.
@@ -164,11 +250,7 @@ export class DrizzleFavouriteListRepository implements FavouriteListRepositoryPo
   }
 
   /**
-   * `user_id` in the WHERE as well as `id`.
-   *
-   * The command has already checked ownership; this is the second lock on the
-   * same door. An id that slipped through updates zero rows rather than
-   * renaming a stranger's list.
+   * `user_id` in the WHERE as well as `id` — see {@link buildRenameUpdate}.
    *
    * `RenameListCommand` already checked the new name against this person's
    * other lists before calling this, so a `favourite_list_user_name_uq`
@@ -177,10 +259,7 @@ export class DrizzleFavouriteListRepository implements FavouriteListRepositoryPo
    */
   async rename(p: { id: string; userId: string; name: string }): Promise<void> {
     try {
-      await getDb()
-        .update(favouriteList)
-        .set({ name: p.name })
-        .where(and(eq(favouriteList.id, p.id), eq(favouriteList.userId, p.userId)));
+      await buildRenameUpdate(getDb(), p);
     } catch (error) {
       if (isNameCollision(error)) {
         throw new ListNameTakenError(p.name);
@@ -191,47 +270,27 @@ export class DrizzleFavouriteListRepository implements FavouriteListRepositoryPo
 
   /**
    * Deletes the list; its entries go with it through
-   * `favourite_list_owner_fk`'s `ON DELETE CASCADE`.
-   *
-   * `returning` rather than a preceding SELECT: one statement answers both
-   * "was it deleted" and "was it theirs", and there is no window between the
-   * check and the delete for the row to change owner or disappear.
+   * `favourite_list_owner_fk`'s `ON DELETE CASCADE`. Scoped by `user_id` as
+   * well as `id` — see {@link buildRemoveDelete}.
    */
   async remove(p: { id: string; userId: string }): Promise<boolean> {
-    const rows = await getDb()
-      .delete(favouriteList)
-      .where(and(eq(favouriteList.id, p.id), eq(favouriteList.userId, p.userId)))
-      .returning({ id: favouriteList.id });
+    const rows = await buildRemoveDelete(getDb(), p);
     return rows.length > 0;
   }
 
-  /**
-   * Every list this person has, newest first.
-   *
-   * The order `favourite_list_user_created_idx` was declared for, so this
-   * reads straight off the index. Putting the default list at the top is a
-   * presentation choice and belongs to whoever renders the dialog — sorting
-   * by `is_default` here would give up the index for a decision this layer
-   * has no business making.
-   */
+  /** Every list this person has, newest first — see {@link buildListForUserQuery}. */
   async listForUser(userId: string): Promise<FavouriteList[]> {
-    const rows = await getDb()
-      .select()
-      .from(favouriteList)
-      .where(eq(favouriteList.userId, userId))
-      .orderBy(desc(favouriteList.createdAt));
+    const rows = await buildListForUserQuery(getDb(), userId);
     return rows.map(toAggregate);
   }
 
+  /** Which of these list ids are theirs — see {@link buildOwnedByQuery}. */
   async ownedBy(p: { userId: string; listIds: string[] }): Promise<string[]> {
     // `IN ()` is a syntax error, and "no lists selected" is a real request —
     // clearing every tick in the dialog sends exactly this.
     if (p.listIds.length === 0) return [];
 
-    const rows = await getDb()
-      .select({ id: favouriteList.id })
-      .from(favouriteList)
-      .where(and(eq(favouriteList.userId, p.userId), inArray(favouriteList.id, p.listIds)));
+    const rows = await buildOwnedByQuery(getDb(), p);
     return rows.map((r) => r.id);
   }
 }
