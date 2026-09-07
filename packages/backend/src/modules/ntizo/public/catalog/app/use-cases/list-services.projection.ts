@@ -8,6 +8,23 @@ export const MAX_SERVICE_PAGE = 48;
 
 export interface ListServicesInput {
   locale: string;
+  /**
+   * Narrows to these specific services, passed straight to the repository's
+   * filter of the same name.
+   *
+   * Not reachable from the public GraphQL field — no schema declares it — and
+   * deliberately so: it exists for the read side of `favourite`, which turns a
+   * page of saved ids into cards through this projection rather than around
+   * it. Going through here is the whole point. Published AND the provider
+   * active, plus a name that resolves in some locale, is *this class's*
+   * definition of visible, and a favourites page that resolved ids itself
+   * would be a second copy of that definition — one that drifts, and then
+   * shows a listing the browse has stopped showing.
+   *
+   * An empty array matches nothing, never everything. See
+   * `ListPublishedServicesFilter.ids`.
+   */
+  ids?: string[] | undefined;
   categoryCode?: string | undefined;
   /** Scopes the page to one business's own services — a provider's public page, not the platform-wide browse. */
   providerId?: string | undefined;
@@ -113,6 +130,7 @@ export class ListServicesProjection {
     // The same object both calls receive, so a filter added to one can never
     // be forgotten by the other.
     const filters = {
+      ids: input.ids,
       categoryCode: input.categoryCode,
       providerId: input.providerId,
       locationType: input.locationType,
