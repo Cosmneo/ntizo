@@ -29,6 +29,23 @@ const NEXT_STEPS = [
   ["accept.next3Title", "accept.next3Body"],
 ] as const;
 
+/**
+ * The three `refusal` keys that are actually about the phone field.
+ *
+ * `refusal` is whole-form state — it equally holds `errorLapsed`,
+ * `errorMoved`, `errorAddressRequired` and `errorGeneric`, none of which mean
+ * the *number* is wrong. An explicit set (rather than a
+ * `refusal.startsWith("accept.phone")` prefix test) is what this checks
+ * against: a prefix would also light up for some future `accept.phoneLead`-
+ * shaped key that has nothing to do with a refusal, and three literals is a
+ * small enough list that spelling them out is no less clear than a pattern.
+ */
+const PHONE_REFUSALS = new Set([
+  "accept.phoneRequired",
+  "accept.phoneInvalid",
+  "accept.phoneNotVodacom",
+]);
+
 /** One saved address, as a line an envelope would carry — the same shape `request-page.tsx` prints. */
 function addressSummary(address: {
   line1: string;
@@ -192,6 +209,12 @@ export function AcceptQuotePage({ quoteId }: { quoteId: string }) {
   const when = slotWording(proposal.startsAt, proposal.endsAt, locale, q.timezone);
   const totalAmount = formatMoney(proposal.priceMinor, proposal.currency, locale);
   const busy = profile.isPending || accept.isPending;
+  // Narrowed from `refusal`, which is whole-form state: a lapsed proposal, a
+  // moved quote or a generic server error all set it too, and none of those
+  // mean the number in the field is wrong. Marking the field invalid for
+  // those would send a screen-reader user to correct the one thing that
+  // isn't the problem.
+  const phoneRefused = refusal !== null && PHONE_REFUSALS.has(refusal);
 
   const savedAddresses = addresses.data ?? [];
   const addressFormOpen = addingAddress || (!addresses.isPending && savedAddresses.length === 0);
@@ -287,11 +310,11 @@ export function AcceptQuotePage({ quoteId }: { quoteId: string }) {
                     setRefusal(null);
                   }}
                   defaultCountry="MZ"
-                  locale={i18n.language}
+                  locale={locale}
                   searchPlaceholder={t("accept.countrySearchPlaceholder")}
                   noResultsText={t("accept.countryNoResults")}
                   countrySelectLabel={t("accept.countrySelectLabel")}
-                  aria-invalid={refusal !== null}
+                  aria-invalid={phoneRefused}
                   aria-describedby="accept-phone-hint"
                 />
               </div>

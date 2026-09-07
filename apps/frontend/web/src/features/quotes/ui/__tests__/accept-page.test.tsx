@@ -244,6 +244,10 @@ describe("AcceptQuotePage", () => {
       expect.stringContaining("QuoteAccept"),
       expect.anything(),
     );
+    // A genuine phone refusal marks the field itself invalid, not only the
+    // sentence beside it — the half a screen reader needs when it lands on
+    // the field again by tab.
+    expect(screen.getByLabelText("Número M-Pesa")).toHaveAttribute("aria-invalid", "true");
   });
 
   it("saves the phone before it accepts, never both at once", async () => {
@@ -270,5 +274,10 @@ describe("AcceptQuotePage", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Esta proposta caducou. Peça uma nova ao prestador.",
     );
+    // The refusal is announced, but the number the customer typed was never
+    // the problem — a lapsed proposal has nothing to do with the phone
+    // field, and marking it invalid would send a screen-reader user to fix
+    // the one thing that is fine.
+    expect(screen.getByLabelText("Número M-Pesa")).not.toHaveAttribute("aria-invalid", "true");
   });
 });
