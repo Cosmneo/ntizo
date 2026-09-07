@@ -269,9 +269,12 @@ export function serviceSnapshot(over: Partial<QuoteServiceSnapshot> = {}): Quote
 }
 
 export class FakeServiceReader implements QuoteServiceReaderPort {
+  public calls: { serviceId: string; locale: string }[] = [];
+
   constructor(private readonly snapshot: QuoteServiceSnapshot | null = serviceSnapshot()) {}
 
-  async findForQuote(): Promise<QuoteServiceSnapshot | null> {
+  async findForQuote(serviceId: string, locale: string): Promise<QuoteServiceSnapshot | null> {
+    this.calls.push({ serviceId, locale });
     return this.snapshot;
   }
 }
