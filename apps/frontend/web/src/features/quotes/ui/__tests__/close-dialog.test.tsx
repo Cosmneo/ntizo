@@ -1,12 +1,21 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { QUOTE_CUSTOMER_REJECT_REASONS } from "@ntizo/shared";
 import i18n from "@/shared/lib/i18n";
 import { CloseQuoteDialog } from "../close-dialog";
 
 beforeEach(async () => {
   await i18n.changeLanguage("pt-MZ");
+});
+
+// `i18n` is a module-level singleton shared across every test file in this
+// process — leaving the language at `pt-MZ` after this file's tests run
+// would carry it into whichever suite runs next, exactly the isolation risk
+// `request-page.test.tsx` and `quote-page.test.tsx` both guard against with
+// this same reset.
+afterEach(async () => {
+  await i18n.changeLanguage("en-US");
 });
 
 describe("CloseQuoteDialog", () => {

@@ -193,7 +193,13 @@ export function QuotePage({ quoteId }: { quoteId: string }) {
     .sort((a, b) => new Date(b.supersededAt!).getTime() - new Date(a.supersededAt!).getTime());
   const revised = revisionCount(q.proposals);
   const hasHadProposal = q.proposal !== null || q.proposals.length > 0;
-  const decided = q.status !== "REQUESTED" && q.status !== "PROPOSED";
+  // A quote leaving REQUESTED/PROPOSED is not by itself a decision: WITHDRAWN,
+  // DECLINED and EXPIRED (provider-did-not-respond) are all reachable
+  // straight from REQUESTED, with no proposal ever having existed for the
+  // customer to decide on. Requiring `hasHadProposal` too is what keeps the
+  // rail's dots a straight run of filled-then-hollow rather than filled,
+  // hollow, filled.
+  const decided = q.status !== "REQUESTED" && q.status !== "PROPOSED" && hasHadProposal;
 
   return (
     <div>
@@ -313,9 +319,18 @@ export function QuotePage({ quoteId }: { quoteId: string }) {
                 <div>
                   <dt className={CAPTION}>{t("detail.neededByLabel")}</dt>
                   <dd className="type-body mt-1">
-                    {new Intl.DateTimeFormat(locale, { day: "numeric", month: "long" }).format(
-                      new Date(q.neededBy),
-                    )}
+                    {/* `neededBy` is a calendar date the customer picked
+                        ("2026-09-27"), not an instant — it has no zone of its
+                        own. `new Date()` parses that string as UTC midnight,
+                        so formatting it in the service's zone (or the
+                        viewer's) can roll it back to the previous day; `UTC`
+                        here is what makes the digits round-trip, not a
+                        mismatch with this page's other formatters. */}
+                    {new Intl.DateTimeFormat(locale, {
+                      day: "numeric",
+                      month: "long",
+                      timeZone: "UTC",
+                    }).format(new Date(q.neededBy))}
                   </dd>
                 </div>
               )}
@@ -344,6 +359,30 @@ export function QuotePage({ quoteId }: { quoteId: string }) {
           <section className={CARD}>
             <h2 className="type-h3">{t("detail.historyTitle")}</h2>
             <ol className="mt-3 grid list-none gap-4 p-0">
+              {/* Why this quote actually ended, for DECLINED/REJECTED/
+                  WITHDRAWN alike — the reason token, the closing party's own
+                  note, and any file they attached. `closedReason` is null for
+                  EXPIRED (which has no party's decision to explain; its own
+                  cause already reads through `QuoteStatusLine`'s clock line),
+                  so this entry simply does not render there. No `<time>` of
+                  its own: the read model carries no `closedAt` instant
+                  alongside `closedReason`, only the reason itself. */}
+              {q.closedReason && (
+                <li className="grid grid-cols-[5.5rem_minmax(0,1fr)] gap-3">
+                  <span aria-hidden="true" />
+                  <div>
+                    <p className="type-body-medium font-semibold">
+                      {t(`close.reason.${q.closedReason}`, { defaultValue: q.closedReason })}
+                    </p>
+                    {q.closedNote && <p className="type-body mt-1">{q.closedNote}</p>}
+                    {q.closingAttachments.length > 0 && (
+                      <div className="mt-1.5">
+                        <QuoteAttachmentList attachments={q.closingAttachments} />
+                      </div>
+                    )}
+                  </div>
+                </li>
+              )}
               {superseded.map((p: QuoteProposalDTO) => {
                 const when = slotWording(p.startsAt, p.endsAt, locale, q.timezone);
                 const priceText = formatMoney(p.priceMinor, p.currency, locale);

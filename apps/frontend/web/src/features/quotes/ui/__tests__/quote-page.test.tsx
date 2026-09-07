@@ -112,6 +112,31 @@ const acceptedDetail = detailFixture({
   bookingId: "b1",
 });
 
+const declinedDetail = detailFixture({
+  status: "DECLINED",
+  proposal: null,
+  proposals: [],
+  closedReason: "outside_area",
+  closedNote: "Não cobrimos essa zona esta semana.",
+  closingAttachments: [
+    {
+      id: "att-closing-1",
+      step: "closing",
+      proposalId: null,
+      fileName: "nota-recusa.pdf",
+      contentType: "application/pdf",
+      sizeBytes: 2048,
+    },
+  ],
+});
+
+const withdrawnDetail = detailFixture({
+  status: "WITHDRAWN",
+  proposal: null,
+  proposals: [],
+  closedReason: "withdrawn",
+});
+
 async function renderQuote(
   detail: CustomerQuoteDetailDTO | null,
   opts: { rejectApplied?: boolean; withdrawApplied?: boolean } = {},
@@ -247,5 +272,21 @@ describe("QuotePage", () => {
   it("says a quote it cannot find is gone, rather than showing an empty page", async () => {
     await renderQuote(null);
     expect(await screen.findByText("Este orçamento não existe")).toBeInTheDocument();
+  });
+
+  it("says why a declined quote was declined, in the party's own words, with what they attached", async () => {
+    await renderQuote(declinedDetail);
+    // The reason also appears in the status line's own clock caption
+    // (`QuoteStatusLine`), so the history entry is found through the note
+    // beside it — unique text — rather than through the reason token alone.
+    const note = await screen.findByText("Não cobrimos essa zona esta semana.");
+    expect(note.parentElement).toHaveTextContent("Fora da minha zona");
+    expect(screen.getByText("nota-recusa.pdf")).toBeInTheDocument();
+  });
+
+  it("never marks the decision step done when the customer withdrew before deciding anything", async () => {
+    await renderQuote(withdrawnDetail);
+    const decisionLabel = await screen.findByText("A sua decisão");
+    expect(decisionLabel.className).not.toContain("font-semibold");
   });
 });
