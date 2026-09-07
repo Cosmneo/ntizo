@@ -277,6 +277,11 @@ QUOTE_ATTACHMENT_STEPS       = ["request","proposal","closing"]
    refusal on submit instead of a live green line. A live check needs a query that does not exist.
 4. **Drag-and-drop upload is not built.** The picker is a button, as in messaging. "ou arraste para
    aqui" is dropped from the pt-MZ copy.
+5. **A closed quote shows why it closed, not when.** The mockup's history rows carry a date
+   ("Recusado pelo prestador · 26 Ago"), and the read model has no closing timestamp — `expiresAt`
+   on a closed quote is the deadline that was still running when it closed, so printing it would be
+   printing the wrong date. The rows show `closedReason` instead. Adding a `closed_at` to the read
+   model is backend work outside this plan; if it lands later, `clockOf` gains one branch.
 
 ---
 
@@ -349,7 +354,7 @@ mockup; do not reword.
       "respondBy": "responde até {{when}}",
       "yourDecision": "a sua decisão · válida até {{when}}",
       "becameBooking": "passou a reserva",
-      "closedOn": "{{when}}",
+      "closedReason": "{{reason}}",
       "providerDidNotRespond": "o prestador não respondeu · {{when}}",
       "proposalLapsed": "a proposta caducou · {{when}}"
     },
@@ -907,7 +912,7 @@ be done to it", `money-split.ts` answers "what does the provider take home".
   type QuoteTone = "waiting" | "yours" | "done" | "refused" | "gone"
   type QuoteClock =
     | { kind: "respondBy"; at: string } | { kind: "decideBy"; at: string }
-    | { kind: "becameBooking" } | { kind: "closedOn"; at: string }
+    | { kind: "becameBooking" } | { kind: "closedReason"; reason: string }
     | { kind: "expired"; cause: QuoteExpiredCause; at: string } | { kind: "none" }
   customerTone(status: QuoteStatus): QuoteTone
   providerTone(status: QuoteStatus): QuoteTone
@@ -981,7 +986,7 @@ describe("actions", () => {
 });
 
 describe("clockOf", () => {
-  const base = { expiresAt: "2026-09-05T10:12:00.000Z", expiredCause: null,
+  const base = { expiresAt: "2026-09-05T10:12:00.000Z", expiredCause: null, closedReason: null,
                  requestedAt: "2026-09-03T10:12:00.000Z", proposal: null };
 
   it("points a REQUESTED quote at the provider's deadline", () => {
@@ -1005,8 +1010,17 @@ describe("clockOf", () => {
       .toEqual({ kind: "expired", cause: "provider_did_not_respond", at: "2026-09-05T10:12:00.000Z" });
   });
 
+  it("says why a refused quote closed, because there is no timestamp for when", () => {
+    expect(clockOf({ ...base, status: "DECLINED", closedReason: "outside_area" } as never))
+      .toEqual({ kind: "closedReason", reason: "outside_area" });
+    expect(clockOf({ ...base, status: "WITHDRAWN", closedReason: "other" } as never))
+      .toEqual({ kind: "closedReason", reason: "other" });
+  });
+
   it("falls back to nothing rather than inventing a date it does not have", () => {
     expect(clockOf({ ...base, status: "EXPIRED", expiredCause: null, expiresAt: null } as never))
+      .toEqual({ kind: "none" });
+    expect(clockOf({ ...base, status: "REJECTED", closedReason: null } as never))
       .toEqual({ kind: "none" });
   });
 });
@@ -1110,16 +1124,17 @@ export type QuoteClock =
   | { kind: "respondBy"; at: string }
   | { kind: "decideBy"; at: string }
   | { kind: "becameBooking" }
-  | { kind: "closedOn"; at: string }
+  | { kind: "closedReason"; reason: string }
   | { kind: "expired"; cause: QuoteExpiredCause; at: string }
   | { kind: "none" };
 
 interface ClockSource {
   status: QuoteStatus;
   expiresAt: string | null;
+  closedReason: string | null;
   expiredCause: QuoteExpiredCause | null;
   requestedAt: string;
-  proposal: { validUntil: string | null } | null;
+  proposal: { validUntil: string } | null;
 }
 
 /**
@@ -1145,7 +1160,13 @@ export function clockOf(quote: ClockSource): QuoteClock {
     case "DECLINED":
     case "REJECTED":
     case "WITHDRAWN":
-      return quote.expiresAt === null ? { kind: "none" } : { kind: "closedOn", at: quote.expiresAt };
+      // No closing timestamp exists on the read model — `expiresAt` on a
+      // closed quote is the deadline that was still running, not the moment
+      // it closed. The reason is what there is, so the reason is what is
+      // said. See the Deviations section.
+      return quote.closedReason === null
+        ? { kind: "none" }
+        : { kind: "closedReason", reason: quote.closedReason };
   }
 }
 
@@ -1438,7 +1459,7 @@ export interface QuoteProposalDTO {
   providerMemberId: string;
   memberFirstName: string;
   note: string | null;
-  validUntil: string | null;
+  validUntil: string;
   createdAt: string;
   supersededAt: string | null;
   supersededCause: QuoteSupersededCause | null;
@@ -1452,7 +1473,10 @@ export interface CustomerQuoteDTO {
   serviceName: string;
   providerId: string;
   timezone: string;
-  threadId: string | null;
+  // Not nullable on the read model: every quote gets a thread, and every
+  // proposal gets a validity. The wire types them nullable because the field
+  // kit emits every scalar nullable; the zod model is the runtime truth.
+  threadId: string;
   expiresAt: string | null;
   expiredCause: QuoteExpiredCause | null;
   closedReason: string | null;
@@ -2484,7 +2508,10 @@ The form's parts, in order:
    `t("request.optional")` beside the label. Its value is already `YYYY-MM-DD`, which is what the
    mutation wants; do not reformat it.
 6. **Photos**, only when `form?.askPhotos` — `<QuoteAttachmentPicker inputId="quote-photos"
-   label={t("request.photosAction")} hint={t("request.photosHint")} {...attachments} />`.
+   label={t("request.photosAction")} hint={t("request.photosHint")}
+   files={attachments.files} onAdd={attachments.add} onRemove={attachments.remove} />`.
+   **`useAttachments` returns `{ files, add, remove, reset, uploading, uploadAll }`, not
+   `onAdd`/`onRemove`** — spreading it wholesale silently passes no handlers`.
 7. **Address**, only when `wantsAddress` — the `<fieldset>` + radio construction from
    `details-page.tsx:641-695`, verbatim in structure with `name="quote-address"`, including its
    three states (loading skeleton, `role="alert"` with a retry button, the list) and `AddressForm`
