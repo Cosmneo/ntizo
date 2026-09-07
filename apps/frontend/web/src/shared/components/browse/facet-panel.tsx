@@ -18,7 +18,7 @@ export function facetOptionClass(active: boolean): string {
   const base =
     "type-body-medium flex items-center gap-3 py-1.5 text-[var(--color-foreground)] transition-colors";
   // Headline navy under the cursor, not the brand blue: blue belongs to the
-  // header's nav pill and sign-in and to the search bar's button, and nothing
+  // header's sign-in and to the search bar's button, and nothing
   // inside the results wears it. That covers the states a reader reaches as
   // well as the ones they arrive to — a row that turns blue on hover is the
   // page's one accent moving down a list of six groups.
