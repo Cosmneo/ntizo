@@ -84,7 +84,7 @@ Two panels from `md` up, 640px wide: the listing on the left, the lists on the r
 
 **Modified**
 
-- `shared/components/browse/result-tile.tsx` — a `favourite` slot on `ResultTile`, and the same on `TileMedia` so the button can sit on the photograph
+- `shared/components/browse/result-tile.tsx` — a `favourite` slot on `TileMedia` so the button can sit on the photograph. **Corrected after implementation:** this originally also asked for a slot on `ResultTile`, which was wrong. `ResultTile` takes `media` as an opaque node, so a slot there could only wrap that node in a second positioning context, and `ServiceTile` — its only caller, which builds its media through `TileMedia` — would use one of the two and never the other. `TileMedia` is the right home for the reason this line already gave: it is the positioning context the heart places itself against, and it is the same box whether the listing has a photograph or the site's placeholder
 - `shared/components/browse/result-row.tsx` — the same slot for a provider row
 - `features/directory/services/ui/service-tile.tsx`, `features/directory/ui/provider-row.tsx` — accept and pass a `favourite` node
 - `features/directory/services/ui/services-browse-page.tsx`, `features/directory/ui/directory-page.tsx` — one marks query, the dialog's state, the heart per result
