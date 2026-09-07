@@ -354,15 +354,7 @@ export class DrizzleBookingReadRepository implements BookingReadRepositoryPort {
     ]);
 
     const totals = totalsRows[0];
-    const byDate = new Map<string, ProviderStatsDayRow>();
-    for (const r of requestRows) {
-      byDate.set(r.date, { date: r.date, requests: Number(r.n), confirmed: 0 });
-    }
-    for (const r of confirmedRows) {
-      const hit = byDate.get(r.date);
-      if (hit) hit.confirmed = Number(r.n);
-      else byDate.set(r.date, { date: r.date, requests: 0, confirmed: Number(r.n) });
-    }
+    const perDay = mergeDayRows(requestRows, confirmedRows);
 
     return {
       totals: {
@@ -380,7 +372,7 @@ export class DrizzleBookingReadRepository implements BookingReadRepositoryPort {
         // It is here so the type is honest, not because it is a second answer.
         today: todayRows[0]?.today ?? new Date(now).toISOString().slice(0, 10),
       },
-      perDay: [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date)),
+      perDay,
     };
   }
 
@@ -445,15 +437,7 @@ export class DrizzleBookingReadRepository implements BookingReadRepositoryPort {
     ]);
 
     const totals = totalsRows[0];
-    const byDate = new Map<string, ProviderStatsDayRow>();
-    for (const r of requestRows) {
-      byDate.set(r.date, { date: r.date, requests: Number(r.n), confirmed: 0 });
-    }
-    for (const r of confirmedRows) {
-      const hit = byDate.get(r.date);
-      if (hit) hit.confirmed = Number(r.n);
-      else byDate.set(r.date, { date: r.date, requests: 0, confirmed: Number(r.n) });
-    }
+    const perDay = mergeDayRows(requestRows, confirmedRows);
 
     const row: AdminStatsRow = {
       disputed: Number(totals?.disputed ?? 0),
@@ -465,7 +449,7 @@ export class DrizzleBookingReadRepository implements BookingReadRepositoryPort {
       currency: totals?.currency ?? null,
       today: todayRows[0]?.today ?? new Date(now).toISOString().slice(0, 10),
     };
-    return { totals: row, perDay: [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date)) };
+    return { totals: row, perDay };
   }
 
   async listForAdmin(
@@ -513,6 +497,28 @@ const DEFAULT_TIMEZONE = "Africa/Maputo";
  * is cut at that workspace's midnight, the platform's at the platform's.
  */
 const PLATFORM_TIMEZONE = "Africa/Maputo";
+
+/**
+ * The two per-day series, folded into one row per local day and sorted
+ * oldest first. Days with nothing in either are absent — the projection's
+ * `fillDays` draws those. Shared by the workspace's and the platform's
+ * stats, which cut different windows but merge the same two shapes.
+ */
+function mergeDayRows(
+  requestRows: readonly { date: string; n: number }[],
+  confirmedRows: readonly { date: string; n: number }[],
+): ProviderStatsDayRow[] {
+  const byDate = new Map<string, ProviderStatsDayRow>();
+  for (const r of requestRows) {
+    byDate.set(r.date, { date: r.date, requests: Number(r.n), confirmed: 0 });
+  }
+  for (const r of confirmedRows) {
+    const hit = byDate.get(r.date);
+    if (hit) hit.confirmed = Number(r.n);
+    else byDate.set(r.date, { date: r.date, requests: 0, confirmed: Number(r.n) });
+  }
+  return [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
+}
 
 /**
  * The `booking_change.reason` a submitted booking carries, and the token the
