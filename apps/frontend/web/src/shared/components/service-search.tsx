@@ -162,11 +162,26 @@ export function ServiceSearch({
         aria-label={label ?? t("searchLabel")}
         className="min-w-0 flex-1 bg-transparent text-sm text-[var(--color-foreground)] outline-none placeholder:text-[var(--color-muted-foreground)]"
       />
+      {/*
+        A word from `sm` up, a glyph below it.
+
+        "Pesquisar" is ~110px of a 342px bar on a 390px phone, so the box the
+        reader actually types in had less than half the width of the control
+        and a two-word search scrolled out of sight while they wrote it. The
+        circle gives that back.
+
+        `sr-only`, not a dropped label: the button keeps its accessible name
+        at every width, so a screen reader announces "Search" rather than a
+        button with nothing in it. The magnifier is `aria-hidden` for the same
+        reason — it would otherwise be a second, wordless name for the same
+        control.
+      */}
       <button
         type="submit"
-        className="shrink-0 rounded-full bg-[var(--color-primary)] px-6 py-2.5 text-sm font-semibold text-white hover:opacity-90"
+        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--color-primary)] text-sm font-semibold text-white hover:opacity-90 sm:h-auto sm:w-auto sm:px-6 sm:py-2.5"
       >
-        {t("searchAction")}
+        <Search className="h-[18px] w-[18px] sm:hidden" aria-hidden="true" />
+        <span className="sr-only sm:not-sr-only">{t("searchAction")}</span>
       </button>
     </form>
   );
