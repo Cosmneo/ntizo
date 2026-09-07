@@ -181,6 +181,18 @@ describe("ProviderRow", () => {
     expect(container.querySelector("img")).toHaveAttribute("src", "https://cdn/logo.png");
   });
 
+  it("stands the photograph on the site's own muted ground, not on navy", async () => {
+    // The container's colour is what shows while a photograph is still in
+    // flight and behind the placeholder's own pale blue, so navy was a dark
+    // box flashing in front of a pale mark on every slow or 404ing photo.
+    // `--color-muted` is the ground every other `BrandImage` on the site
+    // paints behind a picture.
+    const { container } = renderRow(provider({ photoUrls: [] }));
+    await screen.findByRole("link", { name: /Estúdio Mavalane/ });
+    const media = container.querySelector("div.relative.overflow-hidden")!;
+    expect(media.className).toContain("bg-[var(--color-muted)]");
+  });
+
   it("is exactly one link, and the chevron is not a second one", async () => {
     renderRow(provider());
     await screen.findByRole("link", { name: /Estúdio Mavalane/ });

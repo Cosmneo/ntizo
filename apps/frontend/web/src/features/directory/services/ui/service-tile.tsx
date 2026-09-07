@@ -95,7 +95,12 @@ export function ServiceTile({ service, locale }: { service: ServiceDTO; locale: 
         </p>
       }
       price={
-        <p className="mt-[3px] flex items-baseline gap-3 text-[13.5px] text-[var(--color-muted-foreground)]">
+        // `flex-wrap` because the phone row's text column is 212px and the
+        // price, the duration and the place do not fit across it: without it
+        // the line ran past the column and the last item was clipped
+        // (measured at 390px). Each item carries `whitespace-nowrap`, so the
+        // line breaks between phrases and never inside one.
+        <p className="mt-[3px] flex flex-wrap items-baseline gap-3 text-[13.5px] text-[var(--color-muted-foreground)]">
           <b className="text-[15.5px] font-bold text-[var(--color-headline)]">
             {line.amount.kind === "words" ? (
               <span className="text-[14px] font-semibold">{t(line.amount.key)}</span>

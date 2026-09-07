@@ -37,12 +37,19 @@ export const TILE_TITLE_LINK_CLASS =
  * It takes no `name`. It used to, to print initials on a listings-only tile;
  * the placeholder is now the one the whole product draws, which says nothing
  * about whose listing it is and does not need to be told.
+ *
+ * The box's own ground is `--color-muted`, the ground every other `BrandImage`
+ * on the site paints behind a picture. It is what a reader sees while a photo
+ * is still in flight and, for the moment before `onError` swaps the
+ * placeholder in, behind a photo that will never arrive: navy there was a dark
+ * box flashing in front of the placeholder's pale blue, on exactly the slow
+ * connections this list is read on.
  */
 export function TileMedia({ src }: { src: string | null }) {
   return (
     <div
       className={cn(
-        "relative aspect-square overflow-hidden rounded-[12px] bg-[var(--color-navy-surface)]",
+        "relative aspect-square overflow-hidden rounded-[12px] bg-[var(--color-muted)]",
         "sm:aspect-[4/3] sm:rounded-[var(--radius-card)]",
       )}
     >

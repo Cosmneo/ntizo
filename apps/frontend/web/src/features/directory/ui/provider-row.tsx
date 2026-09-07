@@ -59,7 +59,13 @@ export function ProviderRow({
         // Sixteen-by-nine on a phone, where the photograph is the full width
         // of a stacked card and a 4:3 crop of it took a third of the screen;
         // four-by-three from `md`, where it is the row's first column.
-        <div className="relative aspect-[16/9] overflow-hidden rounded-[14px] bg-[var(--color-navy-surface)] md:aspect-[4/3] md:rounded-[var(--radius-card)]">
+        //
+        // `--color-muted` is the ground, the one every other `BrandImage` on
+        // the site paints behind a picture: it is what shows while a photo is
+        // in flight and, for the moment before `onError` swaps the placeholder
+        // in, behind a photo that will never arrive. Navy there was a dark box
+        // flashing in front of the placeholder's pale blue.
+        <div className="relative aspect-[16/9] overflow-hidden rounded-[14px] bg-[var(--color-muted)] md:aspect-[4/3] md:rounded-[var(--radius-card)]">
           {/* With no `fallback`, `BrandImage` draws the site's own
               `MediaFallback` both when there is no photograph and when the one
               given 404s — a photo that fails to load is the same "no photo is

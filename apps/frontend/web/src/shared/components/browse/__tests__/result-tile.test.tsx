@@ -44,6 +44,16 @@ describe("TileMedia", () => {
     expect(screen.getByTestId("media-fallback").className).toContain("w-full");
   });
 
+  it("stands the picture on the site's own muted ground, not on navy", () => {
+    // The container's colour is what shows while a photograph is still in
+    // flight and behind the placeholder's own pale blue, so navy was a dark
+    // box flashing in front of a pale mark on every slow or 404ing photo.
+    // `--color-muted` is the ground every other `BrandImage` on the site
+    // paints behind a picture.
+    const { container } = render(<TileMedia src={null} />);
+    expect(container.firstElementChild!.className).toContain("bg-[var(--color-muted)]");
+  });
+
   it("is square on a phone and four-by-three from sm, because the tile changes shape", () => {
     const { container } = render(<TileMedia src={null} />);
     const box = container.firstElementChild!;
