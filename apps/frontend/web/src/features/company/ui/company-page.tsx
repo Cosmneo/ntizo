@@ -2,8 +2,7 @@ import type { ReactNode } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import { ArrowRight } from "lucide-react";
-import { LANDING_VARS } from "@/features/landing/ui/sections";
-import { ACCENT, NAVY, PAGE_TOP } from "@/features/landing/ui/palette";
+import { ACCENT, LANDING_VARS, NAVY, PAGE_TOP } from "@/features/landing/ui/palette";
 import { Footer } from "@/features/landing/ui/footer";
 import { SiteHeader } from "@/shared/components/site-header";
 

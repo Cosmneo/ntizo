@@ -1,9 +1,6 @@
 {
   "signIn": "Accedi",
   "favorites": "Preferiti",
-  "heroLine1": "Trovalo.",
-  "heroLine2": "Prenotalo.",
-  "heroLine3": "Fatto.",
   "nav": {
     "explore": "Esplora",
     "services": "Services",
@@ -33,7 +30,7 @@
   },
   "home": {
     "heroTitle": "Affida il lavoro a chi sa farlo, al prezzo che vedi.",
-    "heroSubtitle": "Idraulici, elettricisti, pulizie, bellezza e altro. Professionisti verificati, con prezzo e durata fissati prima di prenotare.",
+    "heroSubtitle": "Idraulici, elettricisti, pulizie, bellezza e altro. Professionisti verificati a Maputo, con prezzo e durata fissati prima di prenotare.",
     "proofPrice": "Prezzo fisso prima di prenotare",
     "proofVerified": "Professionisti verificati",
     "proofPayment": "Pagamento con M-Pesa",
@@ -78,26 +75,10 @@
     "flowReference": "Riferimento",
     "flowRate": "Com'è andata?"
   },
-  "heroSubtitle": "Il marketplace globale dei servizi locali di fiducia. Scopri fornitori, confronta pacchetti e prenota in pochi secondi.",
-  "place": "Maputo, Mozambico",
-  "seeAll": "Vedi tutte →",
-  "promiseRated": "Fornitori più votati",
-  "promiseVerified": "Identità verificata",
-  "categoriesTitle": "Categorie di servizi",
-  "categoriesBlurb": "Scegli un mestiere per vedere chi lo esercita.",
-  "popularTitle": "Servizi popolari",
-  "popularBlurb": "Fornitori con lavori valutati da chi li ha ingaggiati.",
   "reviewCount": "{{count}} recensione",
   "reviewCount_other": "{{count}} recensioni",
-  "fromPrice": "a partire da",
-  "storiesTitle": "Storie dei clienti",
-  "storiesBlurb": "Recensioni vere, di chi ha ingaggiato tramite Ntizo.",
-  "zeroFeeTitle": "Un prezzo solo, che stabilisci tu. Il cliente paga esattamente quello.",
-  "zeroFeeBody": "La parte della piattaforma viene trattenuta da quanto incassi — una percentuale fissa, mostrata prima di pubblicare un servizio, e mai una sorpresa al pagamento.",
-  "zeroFeeCta": "Crea un account fornitore",
   "badgeVerified": "Verificato",
   "noReviewsYet": "Ancora nessuna recensione",
-  "promiseMessage": "Scrivi prima di prenotare",
   "storyRating": "{{rating}} su 5",
   "storyAnonymous": "Anonimo"
 }

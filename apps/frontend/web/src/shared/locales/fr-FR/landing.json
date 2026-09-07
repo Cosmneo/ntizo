@@ -1,9 +1,6 @@
 {
   "signIn": "Se connecter",
   "favorites": "Favoris",
-  "heroLine1": "Trouvez.",
-  "heroLine2": "Réservez.",
-  "heroLine3": "C'est fait.",
   "nav": {
     "explore": "Explorer",
     "services": "Services",
@@ -33,7 +30,7 @@
   },
   "home": {
     "heroTitle": "Faites appel à quelqu'un qui sait faire, au prix affiché.",
-    "heroSubtitle": "Plomberie, électricité, ménage, beauté et plus encore. Des prestataires vérifiés, avec le prix et la durée fixés avant la réservation.",
+    "heroSubtitle": "Plomberie, électricité, ménage, beauté et plus encore. Des prestataires vérifiés à Maputo, avec le prix et la durée fixés avant la réservation.",
     "proofPrice": "Prix fixe avant de réserver",
     "proofVerified": "Prestataires vérifiés",
     "proofPayment": "Paiement par M-Pesa",
@@ -78,26 +75,10 @@
     "flowReference": "Référence",
     "flowRate": "Comment ça s'est passé ?"
   },
-  "heroSubtitle": "La place de marché mondiale des services locaux de confiance. Découvrez des prestataires, comparez les offres et réservez en quelques secondes.",
-  "place": "Maputo, Mozambique",
-  "seeAll": "Voir tout →",
-  "promiseRated": "Prestataires les mieux notés",
-  "promiseVerified": "Identité vérifiée",
-  "categoriesTitle": "Catégories de services",
-  "categoriesBlurb": "Choisissez un métier pour voir qui l'exerce.",
-  "popularTitle": "Services populaires",
-  "popularBlurb": "Des prestataires dont les interventions ont été notées par leurs clients.",
   "reviewCount": "{{count}} avis",
   "reviewCount_other": "{{count}} avis",
-  "fromPrice": "à partir de",
-  "storiesTitle": "Histoires de clients",
-  "storiesBlurb": "De vrais avis, de personnes ayant réservé via Ntizo.",
-  "zeroFeeTitle": "Un prix, fixé par vous. Le client paie exactement ce prix.",
-  "zeroFeeBody": "La part de la plateforme est prélevée sur ce que vous touchez — un pourcentage fixe, affiché avant que vous ne proposiez un service, et jamais une surprise au paiement.",
-  "zeroFeeCta": "Créer un compte prestataire",
   "badgeVerified": "Vérifié",
   "noReviewsYet": "Pas encore d'avis",
-  "promiseMessage": "Échangez avant de réserver",
   "storyRating": "{{rating}} sur 5",
   "storyAnonymous": "Anonyme"
 }

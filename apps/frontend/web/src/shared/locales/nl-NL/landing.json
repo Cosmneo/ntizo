@@ -1,9 +1,6 @@
 {
   "signIn": "Inloggen",
   "favorites": "Favorieten",
-  "heroLine1": "Vind het.",
-  "heroLine2": "Boek het.",
-  "heroLine3": "Klaar.",
   "nav": {
     "explore": "Ontdekken",
     "services": "Services",
@@ -33,7 +30,7 @@
   },
   "home": {
     "heroTitle": "Huur iemand in die het kan, voor de prijs die je ziet.",
-    "heroSubtitle": "Loodgieters, elektriciens, schoonmaak, beauty en meer. Geverifieerde aanbieders, met prijs en duur vast vóór je boekt.",
+    "heroSubtitle": "Loodgieters, elektriciens, schoonmaak, beauty en meer. Geverifieerde aanbieders in Maputo, met prijs en duur vast vóór je boekt.",
     "proofPrice": "Vaste prijs voor je boekt",
     "proofVerified": "Geverifieerde aanbieders",
     "proofPayment": "Betalen met M-Pesa",
@@ -78,26 +75,10 @@
     "flowReference": "Referentie",
     "flowRate": "Hoe ging het?"
   },
-  "heroSubtitle": "De wereldwijde marktplaats voor betrouwbare lokale diensten. Ontdek aanbieders, vergelijk pakketten en boek in seconden.",
-  "place": "Maputo, Mozambique",
-  "seeAll": "Bekijk alle →",
-  "promiseRated": "Best beoordeelde aanbieders",
-  "promiseVerified": "Geverifieerde identiteit",
-  "categoriesTitle": "Dienstcategorieën",
-  "categoriesBlurb": "Kies een vak en zie wie erin werkt.",
-  "popularTitle": "Populaire diensten",
-  "popularBlurb": "Aanbieders met klussen die beoordeeld zijn door wie ze inhuurde.",
   "reviewCount": "{{count}} beoordeling",
   "reviewCount_other": "{{count}} beoordelingen",
-  "fromPrice": "vanaf",
-  "storiesTitle": "Verhalen van klanten",
-  "storiesBlurb": "Echte beoordelingen van mensen die via Ntizo boekten.",
-  "zeroFeeTitle": "Eén prijs, die jij bepaalt. De klant betaalt precies dat.",
-  "zeroFeeBody": "Het aandeel van het platform gaat af van wat jij uitbetaald krijgt — een vast percentage, dat je te zien krijgt voordat je een dienst aanbiedt, en nooit een verrassing bij uitbetaling.",
-  "zeroFeeCta": "Aanbiedersaccount aanmaken",
   "badgeVerified": "Geverifieerd",
   "noReviewsYet": "Nog geen beoordelingen",
-  "promiseMessage": "Eerst berichten, dan boeken",
   "storyRating": "{{rating}} van 5",
   "storyAnonymous": "Anoniem"
 }

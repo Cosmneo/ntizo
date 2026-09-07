@@ -1,3 +1,5 @@
+import type * as React from "react";
+
 /**
  * The landing page's colours, taken from the design system.
  *
@@ -18,5 +20,19 @@ export const BORDER = "#e5e5e5"; // Border
  * carry — the system has a single soft background, not a ramp.
  */
 export const PAGE_TOP = "#f2f8fe";
-export const PAGE_MID = "#f2f8fe";
-export const PAGE_BOTTOM = "#f2f8fe";
+
+/**
+ * The landing palette as local custom properties, for the two pages that
+ * still paint themselves with it.
+ *
+ * It lived in `sections.tsx` until the home page stopped having a file by
+ * that name. It is a map of palette values, so this is where it belongs.
+ */
+export const LANDING_VARS = {
+  "--l-navy": NAVY,
+  "--l-accent": ACCENT,
+  "--l-card": CARD,
+  "--l-muted": MUTED,
+  "--l-border": BORDER,
+  "--l-band": PAGE_TOP,
+} as React.CSSProperties;

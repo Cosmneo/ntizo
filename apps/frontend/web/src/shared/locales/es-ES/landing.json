@@ -1,9 +1,6 @@
 {
   "signIn": "Iniciar sesión",
   "favorites": "Favoritos",
-  "heroLine1": "Encuéntralo.",
-  "heroLine2": "Resérvalo.",
-  "heroLine3": "Listo.",
   "nav": {
     "explore": "Explorar",
     "services": "Services",
@@ -33,7 +30,7 @@
   },
   "home": {
     "heroTitle": "Contrata a quien sabe hacerlo, al precio que ves.",
-    "heroSubtitle": "Fontaneros, electricistas, limpieza, belleza y más. Profesionales verificados, con el precio y la duración fijados antes de reservar.",
+    "heroSubtitle": "Fontaneros, electricistas, limpieza, belleza y más. Profesionales verificados en Maputo, con el precio y la duración fijados antes de reservar.",
     "proofPrice": "Precio fijo antes de reservar",
     "proofVerified": "Profesionales verificados",
     "proofPayment": "Pago con M-Pesa",
@@ -78,26 +75,10 @@
     "flowReference": "Referencia",
     "flowRate": "¿Qué tal fue?"
   },
-  "heroSubtitle": "El mercado global de servicios locales de confianza. Descubre proveedores, compara paquetes y reserva en segundos.",
-  "place": "Maputo, Mozambique",
-  "seeAll": "Ver todas →",
-  "promiseRated": "Proveedores mejor valorados",
-  "promiseVerified": "Identidad verificada",
-  "categoriesTitle": "Categorías de servicios",
-  "categoriesBlurb": "Elige un oficio para ver quién trabaja en él.",
-  "popularTitle": "Servicios populares",
-  "popularBlurb": "Proveedores con historial de trabajos valorados por quienes los contrataron.",
   "reviewCount": "{{count}} reseña",
   "reviewCount_other": "{{count}} reseñas",
-  "fromPrice": "desde",
-  "storiesTitle": "Historias de clientes",
-  "storiesBlurb": "Reseñas reales de quienes contrataron por Ntizo.",
-  "zeroFeeTitle": "Un precio, que tú fijas. El cliente paga exactamente eso.",
-  "zeroFeeBody": "La parte de la plataforma sale de lo que cobras — un porcentaje fijo, que se te muestra antes de publicar un servicio, y nunca una sorpresa al cobrar.",
-  "zeroFeeCta": "Crear cuenta de proveedor",
   "badgeVerified": "Verificado",
   "noReviewsYet": "Aún sin reseñas",
-  "promiseMessage": "Habla antes de reservar",
   "storyRating": "{{rating}} de 5",
   "storyAnonymous": "Anónimo"
 }
