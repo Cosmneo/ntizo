@@ -1,11 +1,10 @@
 import { Link } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
-import { ArrowRight, Check } from "lucide-react";
-import { ACCENT, CARD, LANDING_VARS, NAVY, PAGE_TOP } from "@/features/landing/ui/palette";
-import { SurfaceArt } from "@/features/landing/ui/surface-art";
+import { ShieldCheck, Smartphone, Tag } from "lucide-react";
 import { useCurrentUser } from "@/features/user/viewmodel/use-current-user";
 import { SiteHeader } from "@/shared/components/site-header";
 import { Footer } from "@/features/landing/ui/footer";
+import { SectionHead } from "@/features/landing/ui/section-head";
 import { CONTACT } from "@/shared/lib/contact";
 
 /**
@@ -15,12 +14,20 @@ import { CONTACT } from "@/shared/lib/contact";
  * menu, so the one person the funnel exists for — someone who has not signed up
  * — could never see it.
  *
- * Built as an editorial page, not a stack of centred cards. The first version
- * of this file was exactly that stack and read as a settings screen with a
- * headline: everything centred, every block the same weight, nothing to look at
- * between one paragraph and the next. What carries a page with no photography
- * is contrast — a dark hero against a light body, one oversized number per
- * card, headings that sit left where the eye already is.
+ * **It is drawn on the home page's rules, and that is the whole of this
+ * file's styling.** It used to have a system of its own — a dark hero under a
+ * generated gradient, a `#f2f8fe` ground, cards with artwork behind an
+ * oversized `01`, a faint square grid, tracked-out uppercase eyebrows, and two
+ * dark bands. The home shed all of that on 2026-09-07 and this page did not,
+ * so the two read as two products. What replaced it is what the home already
+ * does: white ground, `--color-headline` navy, hairlines instead of frames,
+ * one dark band at the end, and no blue of its own — the page's only
+ * `--color-primary` is the search button the header brings with it.
+ *
+ * Nothing here paints with inline styles any more, which is what
+ * `LANDING_VARS` and `PAGE_TOP` existed to supply — every colour is a token,
+ * so this page follows dark mode like the rest of the site rather than staying
+ * light on a dark screen.
  */
 export function BecomeProviderPage() {
   const { t } = useTranslation("becomeProvider");
@@ -35,45 +42,19 @@ export function BecomeProviderPage() {
     : { to: "/sign-up", search: { next: "/onboarding" } };
 
   return (
-    <main
-      style={{ ...LANDING_VARS, background: PAGE_TOP }}
-      className="text-[color:var(--l-navy)]"
-    >
+    <main>
       <Hero cta={cta} t={t} />
       <Paths t={t} />
-      <Pricing cta={cta} t={t} />
+      <Pricing t={t} />
       <Steps t={t} />
       <Requirements t={t} />
-      <Closing cta={cta} t={t} />
+      <ClosingBand cta={cta} t={t} />
       <Footer />
     </main>
   );
 }
 
 type T = (key: string) => string;
-
-/**
- * It used to carry a short accent-coloured rule to its left. The rule left
- * on 2026-09-02 at the owner's request: it is the kind of flourish that
- * reads as machine-made, and it must not appear on any page.
- */
-function Eyebrow({
-  children,
-  onDark = false,
-}: {
-  children: string;
-  onDark?: boolean;
-}) {
-  return (
-    <span
-      className={`font-rounded inline-flex items-center text-[12px] font-bold tracking-[0.18em] uppercase ${
-        onDark ? "text-white/65" : "text-[color:var(--l-muted)]"
-      }`}
-    >
-      {children}
-    </span>
-  );
-}
 
 /**
  * Where the page's call to action goes.
@@ -88,81 +69,93 @@ type CtaTarget =
   | { to: "/onboarding"; search?: undefined }
   | { to: "/sign-up"; search: { next: string } };
 
+/**
+ * The page's primary action — navy, not blue.
+ *
+ * The site spends `--color-primary` on search and sign-in and nothing else,
+ * and `SiteHeader` now draws the search bar on every public page. A blue
+ * button here would be the page's *second* blue, sitting a few hundred pixels
+ * under the first, which is exactly the rule the home keeps by having only
+ * one. Navy is what every other affirmative control on the site already
+ * wears: the filled filter pill, the current page number, the phone's
+ * floating capsule.
+ *
+ * This page used to spend blue three times over — a button repeated in the
+ * hero, the pricing band and the closing band — plus an accent on half the
+ * headline, a tick beside every trust line and an outlined numeral on every
+ * step.
+ *
+ * No arrow after the label: a "→" appended to a button is decoration the
+ * listings dropped everywhere else.
+ */
 function PrimaryCta({ cta, label }: { cta: CtaTarget; label: string }) {
   return (
     <Link
       to={cta.to}
       {...(cta.search ? { search: cta.search } : {})}
-      className="font-rounded inline-flex items-center gap-2.5 rounded-full px-8 py-4 font-extrabold text-white transition-transform duration-200 hover:-translate-y-0.5"
-      style={{ background: ACCENT }}
+      className="font-rounded inline-flex items-center rounded-full bg-[var(--color-navy-surface)] px-7 py-3.5 text-[15px] font-bold text-[var(--color-navy-on)]"
     >
       {label}
-      <ArrowRight className="h-4 w-4" />
     </Link>
   );
 }
 
 /**
- * Full-bleed and dark, with the content sitting low and left.
+ * The claim, on white, with the header solid above it.
  *
- * Centred hero text is what the landing page already does; repeating it here
- * would make the two pages read as one long scroll. Low-and-left also leaves
- * the right half to the artwork, which is the only image this product has.
+ * `SiteHeader` without `overlay`: the overlay variant exists to sit on
+ * artwork, and there is no artwork now. The headline is one navy sentence
+ * rather than half a sentence in blue — colouring a phrase inside a heading is
+ * the tell the listings and the home both removed.
+ *
+ * The three trust lines are the home hero's own shape: a stroked icon at 20px
+ * in headline navy and a short line, not a blue tick.
  */
 function Hero({ cta, t }: { cta: CtaTarget; t: T }) {
+  const proofs = [
+    { Icon: Tag, label: t("trustFree") },
+    { Icon: ShieldCheck, label: t("trustPaid") },
+    { Icon: Smartphone, label: t("trustLocal") },
+  ];
+
   return (
-    <header
-      className="relative isolate flex min-h-[660px] flex-col"
-      style={{ background: NAVY }}
-    >
-      <SurfaceArt
-        seed={17}
-        hero
-        className="absolute inset-0 -z-10 h-full w-full"
-      />
-      <div
-        aria-hidden="true"
-        className="absolute inset-0 -z-10"
-        style={{
-          background:
-            "linear-gradient(180deg, rgba(19,23,27,.82) 0%, rgba(19,23,27,.35) 38%, rgba(19,23,27,.86) 100%)," +
-            "linear-gradient(94deg, rgba(19,23,27,.9) 6%, rgba(19,23,27,.35) 58%, rgba(19,23,27,0) 88%)",
-        }}
-      />
-
-      <SiteHeader overlay />
-
-      <div className="page-shell flex flex-1 flex-col justify-end pt-24 pb-20 text-white">
-        <Eyebrow onDark>{t("eyebrow")}</Eyebrow>
-
-        <h1 className="font-rounded mt-6 max-w-[17ch] text-[clamp(2.6rem,6.2vw,5rem)] leading-[0.98] font-extrabold tracking-[-0.035em]">
-          {t("title")} <span style={{ color: ACCENT }}>{t("titleAccent")}</span>
+    <>
+      <SiteHeader />
+      <section className="page-shell pt-12 pb-14">
+        <h1 className="font-display max-w-[16ch] text-[clamp(2.4rem,5.2vw,3.6rem)] leading-[1.02] font-extrabold tracking-[-0.035em] text-[var(--color-headline)]">
+          {t("title")} {t("titleAccent")}
         </h1>
-
-        <p className="mt-6 max-w-[52ch] text-[17px] leading-relaxed text-white/80">
+        <p className="mt-5 max-w-[52ch] text-[17px] leading-relaxed text-[var(--color-foreground)]">
           {t("subtitle")}
         </p>
 
-        <div className="mt-9 flex flex-col items-stretch gap-3 sm:flex-row sm:items-center">
+        <div className="mt-8 flex flex-wrap items-center gap-6">
           <PrimaryCta cta={cta} label={t("cta")} />
+          {/* Bare text, like every destination in the header: the page's
+              second action is somewhere to go, not a second button competing
+              with the first. */}
           <Link
             to="/providers"
-            className="font-rounded inline-flex items-center justify-center rounded-full border border-white/30 bg-white/5 px-8 py-4 font-bold text-white backdrop-blur transition-colors hover:border-white/70 hover:bg-white/10"
+            className="text-[15px] font-semibold text-[var(--color-headline)] underline decoration-[var(--color-border-strong)] underline-offset-4"
           >
             {t("ctaSecondary")}
           </Link>
         </div>
 
-        <ul className="mt-10 flex flex-col gap-2 border-t border-white/15 p-0 pt-6 text-sm text-white/75 sm:flex-row sm:gap-9">
-          {["trustFree", "trustPaid", "trustLocal"].map((key) => (
-            <li key={key} className="flex list-none items-center gap-2">
-              <Check className="h-4 w-4" style={{ color: ACCENT }} />
-              {t(key)}
+        <ul className="mt-9 flex list-none flex-wrap gap-x-7 gap-y-2.5 p-0">
+          {proofs.map(({ Icon, label }) => (
+            <li key={label} className="flex items-center gap-2.5 text-sm font-medium">
+              <Icon
+                className="h-5 w-5 text-[var(--color-headline)]"
+                strokeWidth={1.7}
+                aria-hidden="true"
+              />
+              {label}
             </li>
           ))}
         </ul>
-      </div>
-    </header>
+      </section>
+    </>
   );
 }
 
@@ -174,161 +167,70 @@ function Hero({ cta, t }: { cta: CtaTarget; t: T }) {
  * calendars and different teams, and someone reading this is working out which
  * one they are.
  *
- * Built to the reference's shape after two attempts that were not. The numeral
- * is two digits sitting on the seam rather than one floating in the middle of
- * the artwork — at the seam it belongs to both halves and joins them; in the
- * middle it belongs to neither. The corners are nearly square, because a pill
- * that size reads as a button. And there is no checklist: three ticks under
- * every card turned a choice into a specification, so the differentiator is one
+ * **No numerals.** They used to carry `01` and `02` over generated artwork,
+ * and a number promises an order the reader has to follow. This is a choice
+ * between two things, not a first and a second — so the hairline that opens
+ * each column is the whole of the structure, and the differentiator stays one
  * sentence and one tag.
  */
 function Paths({ t }: { t: T }) {
   const paths = ["individual", "organization"] as const;
 
   return (
-    <section className="relative isolate py-24">
-      <GridTexture />
-
-      <div className="page-shell relative">
-        <div className="max-w-[62ch]">
-          <Eyebrow>{t("pathsEyebrow")}</Eyebrow>
-          <h2 className="font-rounded mt-5 text-[clamp(2rem,4.2vw,3.2rem)] leading-[1.04] font-extrabold tracking-[-0.03em] text-balance">
-            {t("pathsTitle")}
-          </h2>
-          <p className="mt-4 text-[17px] leading-relaxed text-[color:var(--l-muted)]">
-            {t("pathsBlurb")}
-          </p>
-        </div>
-
-        <div className="mt-12 grid gap-6 md:grid-cols-2">
-          {paths.map((key, i) => (
-            <article
-              key={key}
-              className="overflow-hidden rounded-[10px] border transition-transform duration-300 hover:-translate-y-1"
-              style={{ borderColor: "var(--l-border)", background: CARD }}
-            >
-              <div className="relative h-52">
-                <SurfaceArt seed={31 + i * 7} className="h-full w-full" />
-                {/* Sits ON the seam, and two digits rather than one: at this
-                    size a single glyph reads as a stray character, and floating
-                    it mid-image made it belong to neither half. */}
-                <span
-                  aria-hidden="true"
-                  className="font-rounded absolute bottom-0 left-7 translate-y-[0.14em] text-[5.5rem] leading-[0.78] font-extrabold text-white tabular-nums [text-shadow:0_2px_20px_rgba(19,23,27,.45)]"
-                >
-                  {String(i + 1).padStart(2, "0")}
-                </span>
-              </div>
-
-              <div className="px-8 pt-9 pb-8">
-                <h3 className="font-rounded text-[clamp(1.35rem,2.2vw,1.7rem)] font-extrabold tracking-[-0.02em]">
-                  {t(`path.${key}.title`)}
-                </h3>
-                <p className="mt-3 leading-relaxed text-[color:var(--l-muted)]">
-                  {t(`path.${key}.body`)}
-                </p>
-                {/* One fact, not a list. It is the thing that actually differs
-                    between the two, which is what the reader came for. */}
-                <span
-                  className="font-rounded mt-6 inline-flex items-center rounded-full border px-3.5 py-1.5 text-[11px] font-extrabold tracking-[0.12em] uppercase"
-                  style={{
-                    borderColor: `color-mix(in srgb, ${ACCENT} 35%, transparent)`,
-                    color: ACCENT,
-                  }}
-                >
-                  {t(`path.${key}.tag`)}
-                </span>
-              </div>
-            </article>
-          ))}
-        </div>
+    <section className="page-shell pt-4 pb-16">
+      <SectionHead title={t("pathsTitle")} blurb={t("pathsBlurb")} />
+      <div className="grid gap-x-14 gap-y-9 md:grid-cols-2">
+        {paths.map((key) => (
+          <article key={key} className="border-t border-[var(--color-border)] pt-5">
+            <h3 className="font-display text-[20px] font-bold tracking-[-0.01em] text-[var(--color-headline)]">
+              {t(`path.${key}.title`)}
+            </h3>
+            <p className="mt-2.5 text-[15px] leading-relaxed text-[var(--color-foreground)]">
+              {t(`path.${key}.body`)}
+            </p>
+            {/* One fact, not a list, and set as type rather than a tinted
+                capsule — the thing that actually differs between the two. */}
+            <span className="mt-4 block text-[13px] font-semibold text-[var(--color-muted-foreground)]">
+              {t(`path.${key}.tag`)}
+            </span>
+          </article>
+        ))}
       </div>
     </section>
   );
 }
 
 /**
- * A faint square grid behind a section.
+ * The fee, stated in the reader's own column rather than shouted from a band.
  *
- * The light ground reads as empty at this width — the reference carries a
- * texture for the same reason. Faint enough to be felt rather than seen, and
- * masked at the edges so it does not end in a hard line.
+ * It is the first question anyone asks, so it gets a section of its own — but
+ * on white, because the page now spends its one dark surface on the closing
+ * ask. A second dark band was what made this page read as two pages stapled
+ * together.
+ *
+ * No number, and that is deliberate: the rate is per provider
+ * (`commission_bps`) and administrator-set, not a platform-wide constant safe
+ * to print in JSX. Until 2026-08-31 this said "0%" and called itself
+ * commission-free, which the decision of 2026-08-30 made false.
  */
-function GridTexture() {
+function Pricing({ t }: { t: T }) {
   return (
-    <div
-      aria-hidden="true"
-      className="pointer-events-none absolute inset-0 -z-10 opacity-[0.55]"
-      style={{
-        backgroundImage:
-          "linear-gradient(var(--l-border) 1px, transparent 1px)," +
-          "linear-gradient(90deg, var(--l-border) 1px, transparent 1px)",
-        backgroundSize: "88px 88px",
-        maskImage:
-          "radial-gradient(ellipse 90% 70% at 50% 45%, #000 40%, transparent 100%)",
-        WebkitMaskImage:
-          "radial-gradient(ellipse 90% 70% at 50% 45%, #000 40%, transparent 100%)",
-      }}
-    />
-  );
-}
-
-/**
- * The fee, stated as the page's loudest thing.
- *
- * It is the first question anyone asks, so it earns a full-bleed dark band
- * rather than a card: the provider sets the price, the customer pays exactly
- * that, and the platform's share is deducted from what the provider is paid.
- *
- * Until 2026-08-31 this band led with a giant "0%" and called it
- * commission-free — the decision of 2026-08-30 made that false. No number
- * replaces it: the rate is per provider (`commission_bps`) and
- * administrator-set, not a platform-wide constant safe to print in JSX, so
- * the headline carries the band alone now instead of completing a numeral.
- */
-function Pricing({ cta, t }: { cta: CtaTarget; t: T }) {
-  return (
-    <section
-      className="relative isolate overflow-hidden py-24"
-      style={{ background: NAVY }}
-    >
-      <span
-        aria-hidden="true"
-        className="absolute -top-24 -left-24 -z-10 h-[420px] w-[420px] rounded-full opacity-[0.14]"
-        style={{ background: ACCENT }}
-      />
-      <span
-        aria-hidden="true"
-        className="absolute -right-32 -bottom-32 -z-10 h-[380px] w-[380px] rounded-full opacity-[0.14]"
-        style={{ background: ACCENT }}
-      />
-
-      <div className="page-shell">
-        <div className="max-w-[62ch] text-white">
-          <Eyebrow onDark>{t("pricingEyebrow")}</Eyebrow>
-          <h2 className="font-rounded mt-5 max-w-[20ch] text-[clamp(1.9rem,4vw,3rem)] leading-[1.05] font-extrabold tracking-[-0.03em] text-balance">
-            {t("pricingTitle")}
-          </h2>
-          <p className="mt-5 max-w-[54ch] text-[17px] leading-relaxed text-white/75">
-            {t("pricingBody")}
-          </p>
-          <div className="mt-8">
-            <PrimaryCta cta={cta} label={t("cta")} />
-          </div>
-        </div>
-      </div>
+    <section className="page-shell pb-16">
+      <SectionHead title={t("pricingTitle")} />
+      <p className="max-w-[62ch] text-[17px] leading-relaxed text-[var(--color-foreground)]">
+        {t("pricingBody")}
+      </p>
     </section>
   );
 }
 
 /**
- * What happens after signing up, as an alternating stair.
+ * What happens after signing up.
  *
- * It was a thin four-column rail of small numbered circles, which gave four
- * equal footnotes to the part of the page that explains the whole commitment.
- * Each step is a full row now: an oversized outlined numeral with the words on
- * one side, a panel on the other, and a hairline between rows so the sequence
- * reads as one staircase rather than four cards.
+ * **This one keeps its numbers**, because this one is a sequence: you cannot
+ * publish before you are verified, and the reader needs the order. They are
+ * small navy markers, the same shape the home's flow uses, rather than
+ * outlined numerals the size of the headline they sit above.
  *
  * Step two says the application is reviewed, and that is not decoration:
  * registering creates a pending provider customers cannot find until an
@@ -339,62 +241,32 @@ function Steps({ t }: { t: T }) {
   const steps = ["apply", "review", "publish", "earn"] as const;
 
   return (
-    <section className="py-24">
-      <div className="page-shell">
-        <div className="max-w-[62ch]">
-          <Eyebrow>{t("stepsEyebrow")}</Eyebrow>
-          <h2 className="font-rounded mt-5 text-[clamp(2rem,4.2vw,3.2rem)] leading-[1.04] font-extrabold tracking-[-0.03em] text-balance">
-            {t("stepsTitle")}
-          </h2>
-        </div>
-
-        <ol className="mt-16 grid gap-0 p-0">
-          {steps.map((key, i) => {
-            const artFirst = i % 2 === 1;
-            return (
-              <li
-                key={key}
-                className="grid list-none items-center gap-10 border-t py-14 first:border-t-0 first:pt-0 md:grid-cols-2 md:gap-16"
-                style={{ borderColor: "var(--l-border)" }}
-              >
-                <div className={artFirst ? "md:order-2" : undefined}>
-                  {/* Outlined, not filled: at this size a solid numeral would
-                      outshout the sentence beside it, which is the part that
-                      has something to say. */}
-                  <span
-                    aria-hidden="true"
-                    className="font-rounded block text-[clamp(3.5rem,7vw,5.5rem)] leading-[0.8] font-extrabold tabular-nums"
-                    style={{
-                      color: "transparent",
-                      WebkitTextStroke: `2px ${ACCENT}`,
-                    }}
-                  >
-                    {String(i + 1).padStart(2, "0")}
-                  </span>
-                  <h3 className="font-rounded mt-6 text-[clamp(1.5rem,2.6vw,2rem)] font-extrabold tracking-[-0.02em]">
-                    {t(`step.${key}.title`)}
-                  </h3>
-                  <p className="mt-3 max-w-[46ch] text-[17px] leading-relaxed text-[color:var(--l-muted)]">
-                    {t(`step.${key}.body`)}
-                  </p>
-                </div>
-
-                <div
-                  className={`relative h-56 overflow-hidden rounded-[24px] ${artFirst ? "md:order-1" : ""}`}
-                >
-                  <SurfaceArt seed={53 + i * 11} className="h-full w-full" />
-                  <span
-                    className="font-rounded absolute bottom-4 left-4 rounded-full px-3.5 py-1.5 text-[11px] font-extrabold tracking-[0.1em] text-white uppercase"
-                    style={{ background: NAVY }}
-                  >
-                    {t(`step.${key}.tag`)}
-                  </span>
-                </div>
-              </li>
-            );
-          })}
-        </ol>
-      </div>
+    <section className="page-shell pb-16">
+      {/* `stepsEyebrow` reads as a sentence, not a label — "From signing up to
+          your first booking" — so it becomes the section's line now that the
+          tracked-out uppercase eyebrows are gone. */}
+      <SectionHead title={t("stepsTitle")} blurb={t("stepsEyebrow")} />
+      <ol className="grid list-none gap-x-10 gap-y-9 p-0 sm:grid-cols-2 lg:grid-cols-4">
+        {steps.map((key, i) => (
+          <li key={key} className="border-t border-[var(--color-border)] pt-5">
+            <span
+              aria-hidden="true"
+              className="mb-3.5 grid h-[26px] w-[26px] place-items-center rounded-full bg-[var(--color-navy-surface)] text-[12.5px] font-bold text-[var(--color-navy-on)] tabular-nums"
+            >
+              {i + 1}
+            </span>
+            <h3 className="font-display text-[16.5px] font-bold text-[var(--color-headline)]">
+              {t(`step.${key}.title`)}
+            </h3>
+            <p className="mt-1.5 text-[14.5px] leading-relaxed text-[var(--color-foreground)]">
+              {t(`step.${key}.body`)}
+            </p>
+            <span className="mt-3 block text-[12.5px] font-semibold text-[var(--color-muted-foreground)]">
+              {t(`step.${key}.tag`)}
+            </span>
+          </li>
+        ))}
+      </ol>
     </section>
   );
 }
@@ -402,98 +274,70 @@ function Steps({ t }: { t: T }) {
 /**
  * What you need before starting.
  *
- * A ruled grid rather than a card of paragraphs: these are conditions to check
- * against yourself one at a time, and a table is what people read a checklist
- * in. The hairlines belong to the cells, so the block reads as one object.
+ * Three conditions to check against yourself, so three columns on hairlines —
+ * not a bordered box divided into cells, and no tinted disc with a tick in it
+ * beside each one. A tick says "done"; these are things the reader has yet to
+ * bring.
  */
 function Requirements({ t }: { t: T }) {
   const items = ["identity", "payout", "terms"] as const;
 
   return (
-    <section className="pb-24">
-      <div className="page-shell">
-        <div className="max-w-[62ch]">
-          <Eyebrow>{t("requirementsEyebrow")}</Eyebrow>
-          <h2 className="font-rounded mt-5 text-[clamp(2rem,4.2vw,3.2rem)] leading-[1.04] font-extrabold tracking-[-0.03em] text-balance">
-            {t("requirementsTitle")}
-          </h2>
-          <p className="mt-4 text-[17px] leading-relaxed text-[color:var(--l-muted)]">
-            {t("requirementsBlurb")}
-          </p>
-        </div>
-
-        <div
-          className="mt-12 grid overflow-hidden rounded-[24px] border md:grid-cols-3"
-          style={{ borderColor: "var(--l-border)", background: CARD }}
-        >
-          {items.map((key) => (
-            <article
-              key={key}
-              className="border-t p-8 first:border-t-0 md:border-t-0 md:border-l md:first:border-l-0"
-              style={{ borderColor: "var(--l-border)" }}
-            >
-              <span
-                className="grid h-9 w-9 place-items-center rounded-full"
-                style={{
-                  background: `color-mix(in srgb, ${ACCENT} 12%, transparent)`,
-                }}
-              >
-                <Check className="h-4.5 w-4.5" style={{ color: ACCENT }} />
-              </span>
-              <h3 className="font-rounded mt-5 text-lg font-extrabold tracking-[-0.01em]">
-                {t(`requirement.${key}.title`)}
-              </h3>
-              <p className="mt-2.5 leading-relaxed text-[color:var(--l-muted)]">
-                {t(`requirement.${key}.body`)}
-              </p>
-            </article>
-          ))}
-        </div>
+    <section className="page-shell pb-16">
+      <SectionHead title={t("requirementsTitle")} blurb={t("requirementsBlurb")} />
+      <div className="grid gap-x-12 gap-y-9 md:grid-cols-3">
+        {items.map((key) => (
+          <article key={key} className="border-t border-[var(--color-border)] pt-5">
+            <h3 className="font-display text-[16.5px] font-bold text-[var(--color-headline)]">
+              {t(`requirement.${key}.title`)}
+            </h3>
+            <p className="mt-1.5 text-[14.5px] leading-relaxed text-[var(--color-foreground)]">
+              {t(`requirement.${key}.body`)}
+            </p>
+          </article>
+        ))}
       </div>
     </section>
   );
 }
 
 /**
- * The last ask, full-bleed and dark.
+ * The last ask, and the page's only dark surface.
  *
- * Its own band rather than a button bolted to the requirements block, because
- * the page needs somewhere to end. It also carries the way out for someone not
- * ready to commit — a question answered by a person beats a form abandoned.
+ * Drawn exactly as `ProviderBand` draws the home's: full width, plain navy,
+ * no ornament — the navy ground is the whole of it. The tokens matter as much
+ * as the colour. `--color-navy-on`/`--color-navy-surface` are the dark-aware
+ * pair for putting a light control on this ground; a literal white button with
+ * `--color-headline` text goes near-white on near-white in dark mode, which is
+ * a bug this page's predecessor shipped once already.
+ *
+ * It carries the way out for someone not ready to commit — a question answered
+ * by a person beats a form abandoned.
  */
-function Closing({ cta, t }: { cta: CtaTarget; t: T }) {
+function ClosingBand({ cta, t }: { cta: CtaTarget; t: T }) {
   return (
-    <section
-      className="relative isolate overflow-hidden py-28 text-center"
-      style={{ background: NAVY }}
-    >
-      <SurfaceArt
-        seed={91}
-        hero
-        className="absolute inset-0 -z-10 h-full w-full"
-      />
-      <div
-        aria-hidden="true"
-        className="absolute inset-0 -z-10"
-        style={{
-          background:
-            "linear-gradient(180deg, rgba(19,23,27,.9) 0%, rgba(19,23,27,.72) 50%, rgba(19,23,27,.94) 100%)",
-        }}
-      />
-
-      <div className="page-shell text-white">
-        <h2 className="font-rounded mx-auto max-w-[20ch] text-[clamp(2.2rem,5vw,4rem)] leading-[1.02] font-extrabold tracking-[-0.035em] text-balance">
+    <section className="relative mt-4 overflow-hidden bg-[var(--color-navy-surface)] text-[var(--color-navy-on)]">
+      <div className="page-shell py-16">
+        <h2 className="font-display max-w-[18ch] text-[clamp(1.75rem,3.4vw,2.25rem)] leading-[1.08] font-extrabold tracking-[-0.03em]">
           {t("closingTitle")}
         </h2>
-        <p className="mx-auto mt-5 max-w-[46ch] text-[17px] leading-relaxed text-white/75">
+        <p className="mt-4 max-w-[52ch] text-base leading-relaxed text-[var(--color-navy-on)]/75">
           {t("closingBody")}
         </p>
-
-        <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
-          <PrimaryCta cta={cta} label={t("cta")} />
+        <div className="mt-7 flex flex-wrap items-center gap-6">
+          <Link
+            to={cta.to}
+            {...(cta.search ? { search: cta.search } : {})}
+            className="font-rounded rounded-full bg-[var(--color-navy-on)] px-6 py-3.5 text-[15px] font-bold text-[var(--color-navy-surface)]"
+          >
+            {t("cta")}
+          </Link>
+          {/* No colour class of its own: it inherits `--color-navy-on` from
+              the section, which is already the dark-aware light text this band
+              needs. */}
           <a
             href={`mailto:${CONTACT.general}`}
-            className="font-rounded inline-flex items-center justify-center rounded-full border border-white/25 bg-white/5 px-8 py-4 font-bold text-white backdrop-blur transition-colors hover:border-white/60 hover:bg-white/10"
+            className="text-[14.5px] font-semibold underline decoration-[var(--color-navy-on)]/40 underline-offset-4"
           >
             {t("closingTalk")}
           </a>

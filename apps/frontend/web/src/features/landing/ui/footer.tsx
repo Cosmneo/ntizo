@@ -8,13 +8,7 @@
  */
 import { useTranslation } from "react-i18next";
 import { Link, useRouterState } from "@tanstack/react-router";
-import {
-  BORDER,
-  CARD,
-  MUTED,
-  NAVY,
-  PAGE_TOP,
-} from "@/features/landing/ui/palette";
+import { BORDER, CARD, MUTED, NAVY } from "@/features/landing/ui/palette";
 import { CONTACT } from "@/shared/lib/contact";
 import { useHelpCenter } from "@/features/help-center/viewmodel/use-help-center";
 
@@ -316,7 +310,13 @@ function LinkedInGlyph() {
  */
 const footer: React.CSSProperties = {
   marginTop: 60,
-  background: PAGE_TOP,
+  // White, with a hairline instead of a tint. The footer was the last
+  // `#f2f8fe` surface on the site once the home, the listings and the
+  // provider pitch all went white — a tinted band under a white page reads as
+  // a section that failed to load its background, and it was on every page
+  // including the ones already following the new rules.
+  background: CARD,
+  borderTop: `1px solid ${BORDER}`,
   // 24px, matching `.page-shell`'s gutter. At 48 the footer's content sat
   // inset from every section above it on anything narrower than ~1416px —
   // the same 1320 ceiling, a different edge.

@@ -9,9 +9,10 @@ import { HeroCollage } from "@/features/landing/ui/hero-collage";
  * White, not artwork. The header used to sit on a generated gradient with a
  * wave cut out of the bottom of it, which is why it needed `overlay`; the
  * page now begins where every other public page begins, so the header is the
- * ordinary solid one. `overlay` stays on the component — `become-provider`
- * and the company pages still pass it — and so does `SurfaceArt`, which
- * `become-provider-page.tsx` imports five times.
+ * ordinary solid one. `overlay` stays on the component because the company
+ * pages still pass it; `become-provider` stopped on 2026-09-07, when it moved
+ * onto these same rules, and `SurfaceArt` went with it — that page held its
+ * last five usages.
  *
  * The headline is the offer in a customer's words. "Encontre. Reserve.
  * Feito." was a slogan that said nothing about what is being sold, and is

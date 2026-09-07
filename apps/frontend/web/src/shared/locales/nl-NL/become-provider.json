@@ -1,5 +1,4 @@
 {
-  "eyebrow": "Ntizo-aanbieders",
   "title": "Bied je diensten aan.",
   "titleAccent": "Jij bepaalt de prijs.",
   "subtitle": "Sluit je aan bij de aanbieders die klanten vinden in Maputo, Matola en Beira. Geen maandelijkse kosten — alleen een vast percentage van wat je verdient, dat je te zien krijgt voordat je iets aanbiedt.",
@@ -63,10 +62,7 @@
     }
   },
   "ctaSecondary": "Bekijk aanbieders",
-  "pathsEyebrow": "Kies je pad",
-  "pricingEyebrow": "Wat het je kost",
   "stepsEyebrow": "Van aanmelding tot je eerste boeking",
-  "requirementsEyebrow": "Voordat je begint",
   "closingTitle": "Klaar om te gaan verdienen?",
   "closingBody": "Aanmelden is gratis, en er is niets te betalen tot je eerste boeking.",
   "closingTalk": "Praat met ons"

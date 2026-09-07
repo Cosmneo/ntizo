@@ -1,5 +1,4 @@
 {
-  "eyebrow": "Ntizo providers",
   "title": "Offer your services.",
   "titleAccent": "You set the price.",
   "subtitle": "Join the providers finding customers in Maputo, Matola and Beira. No monthly fee — just a stated percentage of what you earn, shown to you before you list.",
@@ -63,10 +62,7 @@
     }
   },
   "ctaSecondary": "Browse providers",
-  "pathsEyebrow": "Pick your path",
-  "pricingEyebrow": "What it costs you",
   "stepsEyebrow": "From signing up to your first booking",
-  "requirementsEyebrow": "Before you start",
   "closingTitle": "Ready to start earning?",
   "closingBody": "Joining is free, and there is nothing to pay until your first booking.",
   "closingTalk": "Talk to us"

@@ -1,5 +1,4 @@
 {
-  "eyebrow": "Fornitori Ntizo",
   "title": "Offri i tuoi servizi.",
   "titleAccent": "Stabilisci tu il prezzo.",
   "subtitle": "Unisciti ai fornitori che trovano clienti a Maputo, Matola e Beira. Nessuna quota mensile — solo una percentuale fissa su quanto guadagni, mostrata prima di pubblicare.",
@@ -63,10 +62,7 @@
     }
   },
   "ctaSecondary": "Sfoglia i fornitori",
-  "pathsEyebrow": "Scegli il tuo percorso",
-  "pricingEyebrow": "Quanto ti costa",
   "stepsEyebrow": "Dall'iscrizione alla tua prima prenotazione",
-  "requirementsEyebrow": "Prima di iniziare",
   "closingTitle": "Pronto a iniziare a guadagnare?",
   "closingBody": "Iscriversi è gratis, e non c'è nulla da pagare fino alla tua prima prenotazione.",
   "closingTalk": "Parla con noi"

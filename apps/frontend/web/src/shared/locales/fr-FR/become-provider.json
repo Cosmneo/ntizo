@@ -1,5 +1,4 @@
 {
-  "eyebrow": "Prestataires Ntizo",
   "title": "Proposez vos services.",
   "titleAccent": "Vous fixez le prix.",
   "subtitle": "Rejoignez les prestataires qui trouvent des clients à Maputo, Matola et Beira. Pas de frais mensuels — juste un pourcentage fixe sur ce que vous gagnez, affiché avant que vous ne publiiez une annonce.",
@@ -63,10 +62,7 @@
     }
   },
   "ctaSecondary": "Voir les prestataires",
-  "pathsEyebrow": "Choisissez votre voie",
-  "pricingEyebrow": "Ce que cela vous coûte",
   "stepsEyebrow": "De l'inscription à votre première réservation",
-  "requirementsEyebrow": "Avant de commencer",
   "closingTitle": "Prêt à commencer à gagner de l'argent ?",
   "closingBody": "L'inscription est gratuite, et il n'y a rien à payer avant votre première réservation.",
   "closingTalk": "Parlez-nous"

@@ -1,0 +1,295 @@
+<title>Tornar-se prestador</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:ital,wght@0,300..900&display=swap">
+<style>
+  :root{
+    --ground:#ffffff;
+    --headline:#00244C;
+    --fg:#13171b;
+    --muted:#71727a;
+    --line:#e5e5e5;
+    --blue:#006ffd;
+    --navy:#00244C;
+    --navy-on:#ffffff;
+    --shell:1320px;
+    --sans:"Figtree",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:#f6f7f9;color:var(--fg);font-family:var(--sans);-webkit-font-smoothing:antialiased}
+
+  /* ---- the annotation chrome around the mockup, not part of the design ---- */
+  .note{max-width:900px;margin:0 auto;padding:40px 24px 8px}
+  .note h1{font-size:26px;font-weight:800;letter-spacing:-.02em;color:var(--headline);margin:0 0 10px}
+  .note p{font-size:15px;line-height:1.6;color:#4a4f57;margin:0 0 10px}
+  .note code{background:#eceef1;border-radius:4px;padding:1px 5px;font-size:13px}
+  .rules{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0 0;padding:0;list-style:none}
+  .rules li{font-size:12.5px;font-weight:600;color:var(--headline);background:#fff;border:1px solid var(--line);border-radius:999px;padding:6px 12px}
+  .frame-label{max-width:var(--shell);margin:34px auto 10px;padding:0 24px;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+  .frame{max-width:var(--shell);margin:0 auto 8px;background:var(--ground);border-radius:14px;overflow:hidden;box-shadow:0 18px 40px -24px rgba(0,36,76,.28)}
+  .phone-wrap{max-width:430px;margin:0 auto 60px}
+  .phone-wrap .frame{border-radius:26px}
+
+  /* ---- the page itself ---- */
+  .shell{max-width:var(--shell);margin:0 auto;padding-inline:48px}
+  .page{background:var(--ground);color:var(--fg)}
+
+  header.bar{display:flex;align-items:center;gap:24px;padding:18px 48px;border-bottom:1px solid var(--line);background:var(--ground)}
+  .logo{font-weight:800;font-size:22px;letter-spacing:-.04em;color:var(--blue)}
+  .logo span{color:var(--headline)}
+  .searchbar{flex:1;max-width:450px;margin:0 auto;display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:999px;padding:7px 7px 7px 18px}
+  .searchbar .ph{flex:1;font-size:14.5px;color:var(--muted)}
+  .searchbar .go{background:var(--blue);color:#fff;border-radius:999px;padding:9px 20px;font-size:14px;font-weight:700}
+  nav.dest{display:flex;gap:24px;font-size:14.5px;font-weight:500;color:var(--muted)}
+  nav.dest b{color:var(--headline);font-weight:600}
+
+  h1.claim{font-size:clamp(2.4rem,5.2vw,3.6rem);font-weight:800;line-height:1.02;letter-spacing:-.035em;color:var(--headline);margin:0;max-width:15ch}
+  .sub{margin:20px 0 0;max-width:48ch;font-size:17px;line-height:1.6;color:var(--fg)}
+  .actions{display:flex;align-items:center;gap:22px;margin-top:30px}
+  .cta{background:var(--blue);color:#fff;font-size:15.5px;font-weight:700;border-radius:999px;padding:15px 30px}
+  .textlink{font-size:15px;font-weight:600;color:var(--headline);border-bottom:1.5px solid transparent;padding-bottom:3px}
+  .proofs{display:flex;flex-wrap:wrap;gap:10px 28px;margin:34px 0 0;padding:0;list-style:none}
+  .proofs li{display:flex;align-items:center;gap:10px;font-size:14.5px;font-weight:500}
+  .proofs svg{width:20px;height:20px;flex:none;stroke:var(--headline);fill:none;stroke-width:1.7}
+
+  section{padding:74px 0}
+  .head{margin:0 0 34px}
+  .head h2{font-size:27px;font-weight:700;line-height:1.15;letter-spacing:-.02em;color:var(--headline);margin:0}
+  .head p{margin:8px 0 0;max-width:58ch;font-size:14.5px;color:var(--muted)}
+
+  .paths{display:grid;grid-template-columns:1fr 1fr;gap:0 56px}
+  .path{padding-top:22px;border-top:1px solid var(--line)}
+  .path h3{margin:0;font-size:20px;font-weight:700;color:var(--headline);letter-spacing:-.01em}
+  .path p{margin:9px 0 0;font-size:15px;line-height:1.6;color:var(--fg)}
+  .path .tag{display:block;margin-top:14px;font-size:13px;font-weight:600;color:var(--muted)}
+
+  .steps{display:grid;grid-template-columns:repeat(4,1fr);gap:0 40px}
+  .step{padding-top:20px;border-top:1px solid var(--line)}
+  .step .n{display:grid;place-items:center;width:26px;height:26px;border-radius:999px;background:var(--navy);color:#fff;font-size:12.5px;font-weight:700;margin-bottom:14px}
+  .step h3{margin:0;font-size:16.5px;font-weight:700;color:var(--headline)}
+  .step p{margin:7px 0 0;font-size:14.5px;line-height:1.55;color:var(--fg)}
+  .step .tag{display:block;margin-top:12px;font-size:12.5px;font-weight:600;color:var(--muted)}
+
+  .reqs{display:grid;grid-template-columns:repeat(3,1fr);gap:0 48px}
+  .req{padding-top:20px;border-top:1px solid var(--line)}
+  .req h3{margin:0;font-size:16.5px;font-weight:700;color:var(--headline)}
+  .req p{margin:7px 0 0;font-size:14.5px;line-height:1.55;color:var(--fg)}
+
+  .band{background:var(--navy);color:var(--navy-on);position:relative;overflow:hidden;padding:76px 0}
+  .band::before{content:"";position:absolute;inset:0;opacity:.14;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='86' height='86' viewBox='0 0 86 86'%3E%3Cg fill='none' stroke='%23ffffff' stroke-width='2'%3E%3Cpath d='M20 10l8 8-8 26-8-26z'/%3E%3Cpath d='M63 46l8 8-8 26-8-26z'/%3E%3C/g%3E%3C/svg%3E")}
+  .band .shell{position:relative}
+  .band h2{margin:0;font-size:34px;font-weight:800;letter-spacing:-.028em;max-width:16ch}
+  .band p{margin:16px 0 0;max-width:56ch;font-size:16px;line-height:1.6;color:rgba(255,255,255,.86)}
+  .band .actions{margin-top:30px}
+  .band .cta{background:#fff;color:var(--navy)}
+  .band .textlink{color:#fff;border-bottom-color:rgba(255,255,255,.45)}
+  .band .facts{display:flex;gap:56px;margin:40px 0 0;padding:26px 0 0;border-top:1px solid rgba(255,255,255,.22);list-style:none}
+  .band .facts b{display:block;font-size:19px;font-weight:700}
+  .band .facts span{font-size:13.5px;color:rgba(255,255,255,.72)}
+
+  footer.foot{background:var(--ground);border-top:1px solid var(--line);padding:52px 0 40px}
+  .foot .cols{display:flex;gap:64px;font-size:14px}
+  .foot h4{margin:0 0 12px;font-size:12px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);font-weight:700}
+  .foot a{display:block;margin-bottom:8px;color:var(--fg);text-decoration:none}
+  .foot .base{margin-top:34px;padding-top:20px;border-top:1px solid var(--line);font-size:13px;color:var(--muted)}
+
+  /* ---- phone ---- */
+  .p .shell{padding-inline:20px}
+  .p header.bar{padding:14px 20px;gap:14px}
+  .p .searchbar{max-width:none}
+  .p nav.dest{display:none}
+  .p h1.claim{font-size:34px;max-width:none}
+  .p .sub{font-size:16px}
+  .p section{padding:44px 0}
+  .p .paths,.p .steps,.p .reqs{grid-template-columns:1fr;gap:0}
+  .p .path,.p .step,.p .req{margin-top:22px}
+  .p .band h2{font-size:26px}
+  .p .band .facts{flex-direction:column;gap:18px}
+  .p .foot .cols{flex-direction:column;gap:26px}
+</style>
+
+<div class="note">
+  <h1>Tornar-se prestador, nas regras da home</h1>
+  <p>A página vive hoje noutro sistema: herói escuro com uma frase em azul, fundo <code>#f2f8fe</code>, cartões com gradiente e números <code>01</code>/<code>02</code> em cima de arte gerada. A home mudou; esta não.</p>
+  <p>Isto é a mesma página, com o mesmo texto, nas regras da home. O rodapé passa a branco — hoje é <code>#f2f8fe</code> em <em>todas</em> as páginas, home incluída.</p>
+  <ul class="rules">
+    <li>Fundo branco</li>
+    <li>Título navy #00244C</li>
+    <li>Azul uma só vez</li>
+    <li>Sem cartões, sem gradientes</li>
+    <li>Fios em vez de molduras</li>
+    <li>Uma banda escura, no fim</li>
+    <li>Números só onde há sequência</li>
+  </ul>
+</div>
+
+<div class="frame-label">Ecrã largo — 1320px</div>
+<div class="frame">
+<div class="page">
+
+  <header class="bar">
+    <div class="logo">nt<span>izo</span></div>
+    <div class="searchbar"><span class="ph">Procurar serviços…</span><span class="go">Pesquisar</span></div>
+    <nav class="dest"><span>Explorar</span><span>Serviços</span><span>Prestadores</span></nav>
+  </header>
+
+  <section class="shell" style="padding-top:56px">
+    <h1 class="claim">Ofereça os seus serviços. Define o preço.</h1>
+    <p class="sub">Junte-se aos prestadores que encontram clientes em Maputo, Matola e Beira. Sem mensalidade — apenas uma percentagem fixa sobre o que ganha, mostrada antes de listar.</p>
+    <div class="actions">
+      <span class="cta">Começar</span>
+      <span class="textlink">Ver prestadores</span>
+    </div>
+    <ul class="proofs">
+      <li><svg viewBox="0 0 24 24"><path d="M20.6 13.4 12 22l-9-9V3h10l7.6 7.6a2 2 0 0 1 0 2.8Z"/><circle cx="7.5" cy="7.5" r="1.2"/></svg>Inscrição gratuita</li>
+      <li><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/></svg>Pagamento garantido</li>
+      <li><svg viewBox="0 0 24 24"><path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.6"/></svg>Clientes da sua zona</li>
+    </ul>
+  </section>
+
+  <section class="shell">
+    <div class="head">
+      <h2>Duas formas de prestar</h2>
+      <p>Escolhe uma no início. Pode mudar depois — o que muda é como a agenda e a equipa funcionam.</p>
+    </div>
+    <div class="paths">
+      <div class="path">
+        <h3>Por conta própria</h3>
+        <p>Você é o serviço: o seu perfil, os seus preços, as horas que escolher. Trabalha em casa do cliente, no seu espaço ou à distância.</p>
+        <span class="tag">Uma agenda — a sua</span>
+      </div>
+      <div class="path">
+        <h3>Estabelecimento com equipa</h3>
+        <p>Vários funcionários sob um nome, com reservas em paralelo conforme quem está livre. Convide a equipa e defina o que cada um pode fazer.</p>
+        <span class="tag">Uma agenda por funcionário</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="shell">
+    <div class="head">
+      <h2>Como funciona</h2>
+      <p>Do registo à primeira reserva.</p>
+    </div>
+    <div class="steps">
+      <div class="step"><div class="n">1</div><h3>Candidate-se</h3><p>Crie a conta e diga-nos o que faz e onde. Leva alguns minutos.</p><span class="tag">≈ 5 minutos</span></div>
+      <div class="step"><div class="n">2</div><h3>Verificação</h3><p>Confirmamos a sua identidade antes de o mostrar aos clientes. É o que dá valor ao selo de verificado.</p><span class="tag">1 a 2 dias</span></div>
+      <div class="step"><div class="n">3</div><h3>Publique serviços</h3><p>Preços, duração e disponibilidade. Os horários livres são gerados automaticamente.</p><span class="tag">quando quiser</span></div>
+      <div class="step"><div class="n">4</div><h3>Receba</h3><p>O pagamento fica retido até o serviço estar concluído, e depois segue para si.</p><span class="tag">após concluir</span></div>
+    </div>
+  </section>
+
+  <section class="shell">
+    <div class="head">
+      <h2>O que precisa de ter</h2>
+      <p>Nada de papelada complicada. Três coisas.</p>
+    </div>
+    <div class="reqs">
+      <div class="req"><h3>Documento de identidade</h3><p>Bilhete de identidade, passaporte ou carta de condução, para confirmarmos que é quem diz ser.</p></div>
+      <div class="req"><h3>Forma de receber</h3><p>M-Pesa, e-Mola ou conta bancária. É para onde enviamos o que ganhou.</p></div>
+      <div class="req"><h3>Aceitar os termos</h3><p>As regras da plataforma, incluindo o que acontece se uma reserva correr mal.</p></div>
+    </div>
+  </section>
+
+  <section class="band">
+    <div class="shell">
+      <h2>Um preço, que define</h2>
+      <p>O cliente paga exactamente esse preço. A parte da plataforma sai do que recebe — uma percentagem fixa, mostrada antes de publicar um serviço, e nunca uma surpresa no pagamento.</p>
+      <div class="actions">
+        <span class="cta">Começar</span>
+        <span class="textlink">Falar connosco</span>
+      </div>
+      <ul class="facts">
+        <li><b>Sem mensalidade</b><span>Paga só quando ganha</span></li>
+        <li><b>Percentagem fixa</b><span>Mostrada antes de listar</span></li>
+        <li><b>M-Pesa e e-Mola</b><span>Recebe onde já recebe</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <footer class="foot">
+    <div class="shell">
+      <div class="cols">
+        <div><h4>Empresa</h4><a>Sobre</a><a>Contacto</a><a>Ajuda</a></div>
+        <div><h4>Prestadores</h4><a>Tornar-se prestador</a><a>Carreiras</a></div>
+        <div><h4>Legal</h4><a>Termos</a><a>Privacidade</a></div>
+      </div>
+      <div class="base">© 2026 Ntizo · Maputo, Moçambique · Pagamentos por M-Pesa</div>
+    </div>
+  </footer>
+
+</div>
+</div>
+
+<div class="frame-label">Telemóvel — 390px</div>
+<div class="phone-wrap">
+<div class="frame">
+<div class="page p">
+
+  <header class="bar">
+    <div class="logo">nt<span>izo</span></div>
+    <div class="searchbar"><span class="ph">Procurar…</span><span class="go">Ir</span></div>
+  </header>
+
+  <section class="shell" style="padding-top:30px">
+    <h1 class="claim">Ofereça os seus serviços. Define o preço.</h1>
+    <p class="sub">Junte-se aos prestadores que encontram clientes em Maputo, Matola e Beira. Sem mensalidade — apenas uma percentagem fixa sobre o que ganha.</p>
+    <div class="actions"><span class="cta">Começar</span><span class="textlink">Ver prestadores</span></div>
+    <ul class="proofs">
+      <li><svg viewBox="0 0 24 24"><path d="M20.6 13.4 12 22l-9-9V3h10l7.6 7.6a2 2 0 0 1 0 2.8Z"/><circle cx="7.5" cy="7.5" r="1.2"/></svg>Inscrição gratuita</li>
+      <li><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/></svg>Pagamento garantido</li>
+      <li><svg viewBox="0 0 24 24"><path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.6"/></svg>Clientes da sua zona</li>
+    </ul>
+  </section>
+
+  <section class="shell">
+    <div class="head"><h2>Duas formas de prestar</h2><p>Escolhe uma no início. Pode mudar depois.</p></div>
+    <div class="paths">
+      <div class="path"><h3>Por conta própria</h3><p>Você é o serviço: o seu perfil, os seus preços, as horas que escolher.</p><span class="tag">Uma agenda — a sua</span></div>
+      <div class="path"><h3>Estabelecimento com equipa</h3><p>Vários funcionários sob um nome, com reservas em paralelo conforme quem está livre.</p><span class="tag">Uma agenda por funcionário</span></div>
+    </div>
+  </section>
+
+  <section class="shell">
+    <div class="head"><h2>Como funciona</h2><p>Do registo à primeira reserva.</p></div>
+    <div class="steps">
+      <div class="step"><div class="n">1</div><h3>Candidate-se</h3><p>Crie a conta e diga-nos o que faz e onde.</p><span class="tag">≈ 5 minutos</span></div>
+      <div class="step"><div class="n">2</div><h3>Verificação</h3><p>Confirmamos a sua identidade antes de o mostrar aos clientes.</p><span class="tag">1 a 2 dias</span></div>
+      <div class="step"><div class="n">3</div><h3>Publique serviços</h3><p>Preços, duração e disponibilidade.</p><span class="tag">quando quiser</span></div>
+      <div class="step"><div class="n">4</div><h3>Receba</h3><p>O pagamento fica retido até o serviço estar concluído.</p><span class="tag">após concluir</span></div>
+    </div>
+  </section>
+
+  <section class="shell">
+    <div class="head"><h2>O que precisa de ter</h2><p>Nada de papelada complicada. Três coisas.</p></div>
+    <div class="reqs">
+      <div class="req"><h3>Documento de identidade</h3><p>Bilhete de identidade, passaporte ou carta de condução.</p></div>
+      <div class="req"><h3>Forma de receber</h3><p>M-Pesa, e-Mola ou conta bancária.</p></div>
+      <div class="req"><h3>Aceitar os termos</h3><p>As regras da plataforma.</p></div>
+    </div>
+  </section>
+
+  <section class="band" style="padding:52px 0">
+    <div class="shell">
+      <h2>Um preço, que define</h2>
+      <p>O cliente paga exactamente esse preço. A parte da plataforma sai do que recebe — uma percentagem fixa, mostrada antes de publicar.</p>
+      <div class="actions"><span class="cta">Começar</span><span class="textlink">Falar connosco</span></div>
+      <ul class="facts">
+        <li><b>Sem mensalidade</b><span>Paga só quando ganha</span></li>
+        <li><b>Percentagem fixa</b><span>Mostrada antes de listar</span></li>
+        <li><b>M-Pesa e e-Mola</b><span>Recebe onde já recebe</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <footer class="foot">
+    <div class="shell">
+      <div class="cols">
+        <div><h4>Empresa</h4><a>Sobre</a><a>Contacto</a><a>Ajuda</a></div>
+        <div><h4>Prestadores</h4><a>Tornar-se prestador</a><a>Carreiras</a></div>
+      </div>
+      <div class="base">© 2026 Ntizo · Maputo</div>
+    </div>
+  </footer>
+
+</div>
+</div>
+</div>
