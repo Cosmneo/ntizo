@@ -76,10 +76,23 @@ export function FilterPill({
   );
 }
 
-/** The row the pills sit in, above the results and under the heading. */
+/**
+ * The row the pills sit in, above the results and under the heading.
+ *
+ * **The desktop's only.** A toolbar of six popovers does not fit a thumb: below
+ * `lg` it would wrap onto three rows of small targets between the reader and
+ * the first result, and the phone already carries these same filters twice
+ * over — as the quick chips above the results and as the stacked groups inside
+ * the sheet the floating control opens. Three surfaces for one job is two too
+ * many, so this one draws at exactly the width the other two hide at.
+ *
+ * The pills stay in the document either way, which is deliberate: they are
+ * `<Link>`s a crawler should follow, and hiding them in CSS keeps them
+ * followable while taking them off the phone's screen.
+ */
 export function FilterBar({ children }: { children: ReactNode }) {
   return (
-    <div className="mb-6 flex flex-wrap items-center gap-2 border-b border-[var(--color-border)] pt-1.5 pb-5">
+    <div className="mb-6 hidden flex-wrap items-center gap-2 border-b border-[var(--color-border)] pt-1.5 pb-5 lg:flex">
       {children}
     </div>
   );

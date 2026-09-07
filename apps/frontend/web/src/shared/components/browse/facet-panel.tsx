@@ -100,7 +100,15 @@ export function facetOptionClass(active: boolean): string {
   return active ? `${base} font-semibold` : `${base} hover:text-[var(--color-primary)]`;
 }
 
-/** The tick box. Hidden from assistive technology — the link's `aria-pressed` already says this. */
+/**
+ * The tick box. Hidden from assistive technology — the link's `aria-pressed`
+ * already says this.
+ *
+ * Filled headline navy, not the brand blue: blue appears once per browse page,
+ * on the header's search button, and a checked box in every group of a filter
+ * sheet is not once. Navy is what the rest of "this one is on" wears here —
+ * the filled pill, the current page number, the floating control.
+ */
 export function FacetBox({ active }: { active: boolean }) {
   return (
     <span
@@ -108,7 +116,7 @@ export function FacetBox({ active }: { active: boolean }) {
       className={cn(
         "grid h-[17px] w-[17px] shrink-0 place-items-center rounded-[5px] border-[1.5px] transition-colors",
         active
-          ? "border-[var(--color-primary)] bg-[var(--color-primary)]"
+          ? "border-[var(--color-navy-surface)] bg-[var(--color-navy-surface)]"
           : "border-[var(--color-border-strong)] bg-[var(--color-background)]",
       )}
     >
@@ -116,7 +124,7 @@ export function FacetBox({ active }: { active: boolean }) {
         <svg viewBox="0 0 24 24" className="h-2.5 w-2.5" fill="none">
           <path
             d="m4 12 5.5 5.5L20 7"
-            stroke="var(--color-primary-foreground)"
+            stroke="var(--color-navy-on)"
             strokeWidth={3.4}
             strokeLinecap="round"
             strokeLinejoin="round"
