@@ -41,7 +41,7 @@ export function ServiceTile({ service, locale }: { service: ServiceDTO; locale: 
     <ResultTile
       media={<TileMedia src={service.imageUrls[0] ?? null} name={service.providerName} />}
       title={
-        <h3 className="min-w-0 truncate text-[15px] font-semibold text-[var(--color-foreground)] group-hover:underline group-hover:decoration-[1.5px] group-hover:underline-offset-[3px]">
+        <h3 className="min-w-0 truncate text-[15px] font-semibold text-[var(--color-foreground)] group-hover:underline group-hover:decoration-[1.5px] group-hover:underline-offset-[3px] group-focus-within:underline">
           <Link to="/services/$id" params={{ id: service.id }} className={TILE_TITLE_LINK_CLASS}>
             {service.name}
           </Link>

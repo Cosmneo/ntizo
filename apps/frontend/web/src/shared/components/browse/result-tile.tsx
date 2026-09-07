@@ -10,9 +10,18 @@ import { BrandImage } from "@/shared/components/brand-image";
  * The tile is not wrapped in an anchor: a keyboard reader gets one tab stop for
  * the destination this way, and an anchor around the whole thing could not
  * contain a second control if one is ever added back.
+ *
+ * The focus ring is drawn on the `::after` rather than on the link, because
+ * the `::after` is the shape the reader is actually about to open — the whole
+ * tile or row — while the link's own box is a few words of title. Turning the
+ * native outline off without putting anything in its place is what the card
+ * this replaces could afford: its `<article>` carried
+ * `focus-within:border-…`, and the borderless tile carries nothing. Headline
+ * navy, not the ring token, because the ring token is the blue this page
+ * spends on the header's search button and nowhere else.
  */
 export const TILE_TITLE_LINK_CLASS =
-  "after:absolute after:inset-0 after:rounded-[var(--radius-card)] focus-visible:outline-none";
+  "after:absolute after:inset-0 after:rounded-[var(--radius-card)] focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-[var(--color-headline)] focus-visible:after:ring-offset-2";
 
 /** The photograph, or the brand tile when there is none. */
 export function TileMedia({

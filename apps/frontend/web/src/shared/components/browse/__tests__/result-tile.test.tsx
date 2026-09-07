@@ -1,6 +1,25 @@
 import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { RatingMark, ResultTile, TileMedia } from "../result-tile";
+import {
+  RatingMark,
+  ResultTile,
+  TileMedia,
+  TILE_TITLE_LINK_CLASS,
+} from "../result-tile";
+
+describe("TILE_TITLE_LINK_CLASS", () => {
+  it("puts a focus ring back on the shape it turns the outline off for", () => {
+    // The card this replaces could afford `focus-visible:outline-none`
+    // because its `<article>` lit a border on `focus-within`. The borderless
+    // tile has no border to light, so the ring is drawn on the `::after` that
+    // already covers the whole tile — and in headline navy, since the ring
+    // token is the blue this page spends on the header's search button.
+    expect(TILE_TITLE_LINK_CLASS).toContain("focus-visible:after:ring-2");
+    expect(TILE_TITLE_LINK_CLASS).toContain(
+      "focus-visible:after:ring-[var(--color-headline)]",
+    );
+  });
+});
 
 describe("TileMedia", () => {
   it("shows the photograph when there is one", () => {
