@@ -12,6 +12,7 @@ import { reviewReadSchema } from "./review/graphql/schema/queries";
 import { contactReadSchema } from "./contact/graphql/schema/queries";
 import { supportReadSchema } from "./support/graphql/schema/queries";
 import { favouriteReadSchema } from "./favourite/graphql/schema/queries";
+import { quoteReadSchema } from "./quote/graphql/schema/queries";
 
 /** The READ-side schema barrel — queries only, across all bounded contexts. */
 export const readSchema = mergeGraphQLSchemas(
@@ -28,4 +29,5 @@ export const readSchema = mergeGraphQLSchemas(
   contactReadSchema,
   supportReadSchema,
   favouriteReadSchema,
+  quoteReadSchema,
 );

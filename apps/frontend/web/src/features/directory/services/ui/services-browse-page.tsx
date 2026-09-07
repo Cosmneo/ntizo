@@ -1,9 +1,10 @@
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { LayoutGrid, SearchX } from "lucide-react";
 import { EmptyCard } from "@/shared/components/empty-card";
 import { SiteHeader } from "@/shared/components/site-header";
-import { ServiceSearch } from "@/shared/components/service-search";
 import {
   CATEGORY_STRIP_LIMIT,
   CategoryStrip,
@@ -20,6 +21,12 @@ import { EXACT_MATCH } from "@/shared/components/browse/active-match";
 // usually already filled.
 import { useCategoryPreview } from "@/features/landing/viewmodel/use-categories";
 import { useBrowseServices } from "@/features/directory/services/viewmodel/use-browse-services";
+// One question about the hearts for the whole page, and the control that
+// answers it — see the `useFavouriteMarks` call below for why the page owns
+// the query rather than the card.
+import { useFavouriteMarks } from "@/features/favourites/viewmodel/use-favourite-marks";
+import { FavouriteButton } from "@/features/favourites/ui/favourite-button";
+import { SaveToListDialog } from "@/features/favourites/ui/save-to-list-dialog";
 import { ServiceCard } from "@/shared/components/browse/service-card";
 import {
   MobileServiceFilters,
@@ -27,8 +34,14 @@ import {
   chooseServiceSort,
   serviceSortOptions,
 } from "@/features/directory/services/ui/service-filters";
-import { formatHeadlinePrice } from "@/features/directory/services/domain/service-card";
-import { BROWSE_PAGE_SIZE } from "@/features/directory/services/domain/types";
+import {
+  formatHeadlinePrice,
+  servicePriceLine,
+} from "@/features/directory/services/domain/service-card";
+import {
+  BROWSE_PAGE_SIZE,
+  type ServiceDTO,
+} from "@/features/directory/services/domain/types";
 import {
   browseSearch,
   type BrowseSearch,
@@ -43,29 +56,33 @@ import { resultsScope, scopeValues } from "@/features/directory/domain/results-s
  * particular barber — the commoner arrival, and why Services sits before
  * Providers in the nav.
  *
- * Four levels of narrowing, deliberately not the same shape. The search bar
- * under the header asks the opening question — the landing hero's own
- * `ServiceSearch`, so the question is asked in the same words and the same
- * shape here as on the home page. What differs is what a submit keeps: the
- * hero starts a fresh search, and here the bar is handed this page's own
- * `browseSearch`, so a typed term keeps the narrowing under it. The category
- * strip is full-width navigation between whole result sets. The pills under
- * the heading narrow one of those sets. The sort reorders what is left.
- * Making all four a row of chips would say they were peers.
+ * Four levels of narrowing, deliberately not the same shape. The header's own
+ * search bar asks the opening question — the same bar in the same place as on
+ * every other page, so the question is asked in the same words and the same
+ * shape wherever it is asked. What differs is what a submit keeps: from a
+ * page with no list under it the term is the whole URL, and here the bar is
+ * handed this page's own `browseSearch`, so a typed term keeps the narrowing
+ * under it. The category strip is full-width navigation between whole result
+ * sets. The pills under the heading narrow one of those sets. The sort
+ * reorders what is left. Making all four a row of chips would say they were
+ * peers.
  *
  * **Nothing in the results is blue.** The site's one blue goes where the site
- * always puts it — the header's nav pill, the header's sign-in, the search
- * bar's button — and no further down the page than that.
+ * always puts it — the header's sign-in and the search bar's button — and no
+ * further down the page than that. The header's three destinations used to be
+ * a third place and are not any more: they are bare text, and the lit one is
+ * navy.
  * Everything below is headline navy, ink, grey and the amber star, which is
  * why the cards carry no button of their own: what the eye should land on
  * down a grid of results is the photographs and the prices, not twenty-four
  * identical calls to action.
  *
- * **Nothing straddles the strip.** Header, then search bar, then strip, then
- * `main`: four bands stacked, none of them overlapping the next. The card
- * that once sat in a well across the strip's top edge is gone, so the strip
- * is a single positioned layer with no paint-order split — anything
- * reintroduced there on a negative margin would be painted over by it.
+ * **Nothing straddles the strip.** Header, then strip, then `main`: three
+ * bands stacked, none of them overlapping the next — the search band that
+ * used to sit between the first two is inside the header now. The card that
+ * once sat in a well across the strip's top edge is gone, so the strip is a
+ * single positioned layer with no paint-order split — anything reintroduced
+ * there on a negative margin would be painted over by it.
  *
  * **The phone is not this page shrunk.** The pills give way to three one-tap
  * chips above the results and one navy capsule at the thumb holding the
@@ -100,6 +117,33 @@ export function ServicesBrowsePage() {
     sort,
     offset,
   });
+  /**
+   * Which of the cards on this page the reader has already saved — asked
+   * **once, here**, and handed down as a filled or empty heart.
+   *
+   * Never a hook inside the card: every card would ask the same question, and
+   * the heart would cost twenty-four round trips a page instead of one. The
+   * query is disabled for a signed-out reader and for an empty page, so this
+   * costs nothing at all in either case — see `useFavouriteMarks`.
+   */
+  const marks = useFavouriteMarks(
+    "service",
+    page.items.map((item) => item.id),
+  );
+  /**
+   * Which listing the save-to-a-list dialog is about, and what its heart's own
+   * save answered with. `null` is closed.
+   *
+   * The whole DTO rather than an id: the dialog puts the listing on screen —
+   * the photograph, the name and the price — and looking it back up by id
+   * would be this page searching for a row it is already holding.
+   *
+   * Held here and not in the card, for the same reason the marks query is:
+   * one dialog for the page, never one mounted per result.
+   */
+  const [filing, setFiling] = useState<{ service: ServiceDTO; listIds?: string[] } | null>(
+    null,
+  );
   const navigate = useNavigate();
   // A plain query, unlike the services: this is a control, not the content a
   // crawler came for, so it may arrive a beat later.
@@ -135,28 +179,25 @@ export function ServicesBrowsePage() {
 
   return (
     <>
-      <SiteHeader current="services" />
-
-      {/* The site's search, not a search this page invented: the landing
-          hero's own bar, in the page's own column under the header rather
-          than inside it. 760px and centred so it reads as a field over the
-          results it filters and not as a banner across the window. The city
-          is not one of its fields — that is the "City" filter pill below,
-          where a narrowing belongs.
-
-          It builds its URL through `browseSearch` like every other control
-          here, which is what keeps the category, the filters, the city and
-          the sort when a term is typed, and resets the page. */}
-      <div className="page-shell">
-        <ServiceSearch
-          to="/services"
-          placeholder={t("searchPlaceholder")}
-          label={t("searchLabel")}
-          search={(q) => browseSearch(current, { q, offset: undefined })}
-          initialValue={current.q ?? ""}
-          className="mx-auto mt-5 max-w-[760px]"
-        />
-      </div>
+      {/* The site's search, not a search this page invented, and inside the
+          header rather than in a band of its own beneath it: it is the same
+          bar on every page, so it belongs to the chrome. What this page hands
+          it is what the bar should ask for and what a submit should keep —
+          `browseSearch`, like every other control here, which is what holds
+          on to the category, the filters, the city and the sort when a term
+          is typed, and resets the page. The city is not one of the bar's own
+          fields: that is the "City" filter pill below, where a narrowing
+          belongs. */}
+      <SiteHeader
+        current="services"
+        search={{
+          to: "/services",
+          placeholder: t("searchPlaceholder"),
+          label: t("searchLabel"),
+          search: (q) => browseSearch(current, { q, offset: undefined }),
+          initialValue: current.q ?? "",
+        }}
+      />
 
       <CategoryStrip label={t("categoryStripLabel")}>
         <StripItem
@@ -290,7 +331,25 @@ export function ServicesBrowsePage() {
             <ul className="grid list-none grid-cols-1 gap-x-6 gap-y-8 p-0 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
               {page.items.map((service) => (
                 <li key={service.id}>
-                  <ServiceCard service={service} locale={locale} />
+                  <ServiceCard
+                    service={service}
+                    locale={locale}
+                    favourite={
+                      <FavouriteButton
+                        targetType="service"
+                        targetId={service.id}
+                        saved={marks.isMarked(service.id)}
+                        // Fires when the save answers, never on the press:
+                        // the lists come from the mutation's own data, so the
+                        // dialog opens already knowing which are ticked. A
+                        // press on an already-filled heart brings none, and
+                        // the dialog asks for itself.
+                        onSaved={({ listIds }) =>
+                          setFiling({ service, ...(listIds ? { listIds } : {}) })
+                        }
+                      />
+                    }
+                  />
                 </li>
               ))}
             </ul>
@@ -353,8 +412,45 @@ export function ServicesBrowsePage() {
       </main>
 
       <MobileServiceFilters current={current} total={page.total} />
+
+      {/* Mounted only while it is open, so its focus trap and the return of
+          focus to the heart run on mount and unmount rather than off a prop. */}
+      {filing && (
+        <SaveToListDialog
+          open
+          onOpenChange={(open) => !open && setFiling(null)}
+          targetType="service"
+          targetId={filing.service.id}
+          listing={serviceListing(filing.service, t, locale)}
+          {...(filing.listIds ? { savedListIds: filing.listIds } : {})}
+        />
+      )}
     </>
   );
+}
+
+/**
+ * What the dialog draws down its left panel: this service, said the way the
+ * card beside it says it.
+ *
+ * Here rather than in the dialog, which is handed a listing and knows nothing
+ * about services: the price is a `ServicePriceLine`, whose amount is either
+ * money to format in the reader's locale or a phrase to translate, and that
+ * branch belongs where the DTO does. It reads `servicePriceLine` — the same
+ * function `ServiceCard` prints from — so the dialog and the card behind it
+ * can never come to disagree about what this listing costs.
+ */
+function serviceListing(service: ServiceDTO, t: TFunction, locale: string) {
+  const line = servicePriceLine(service);
+  return {
+    imageUrl: service.imageUrls[0] ?? null,
+    name: service.name,
+    byline: service.providerName,
+    price:
+      line.amount.kind === "words"
+        ? t(line.amount.key)
+        : formatHeadlinePrice(line.amount.amountMinor, line.amount.currency, locale),
+  };
 }
 
 /**

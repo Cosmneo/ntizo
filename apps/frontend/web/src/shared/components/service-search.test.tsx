@@ -243,6 +243,25 @@ describe("ServiceSearch", () => {
     await renderSearch();
     expect(screen.getByRole("button", { name: "Search" })).toHaveAttribute("type", "submit");
   });
+
+  /**
+   * The button is a circled magnifier on a phone and the word from `sm` up.
+   * The word is still in the DOM at every width, `sr-only` rather than
+   * dropped, because a button whose only content is a decorative glyph has no
+   * accessible name — and the obvious way to shrink this control is to delete
+   * the text, which is what this pins against.
+   *
+   * jsdom applies no stylesheet, so the *rendered* width is not testable
+   * here; what is testable is that the name survives however it is drawn.
+   */
+  it("keeps the button's name at every width, however narrow it is drawn", async () => {
+    await renderSearch();
+
+    const button = screen.getByRole("button", { name: "Search" });
+    expect(button).toHaveAccessibleName("Search");
+    // The glyph must not be a second, wordless name for the same control.
+    expect(button.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
+  });
 });
 
 describe("ServiceSearch, on a coloured background", () => {

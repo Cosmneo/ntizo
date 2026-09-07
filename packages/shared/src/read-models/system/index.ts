@@ -12,3 +12,4 @@ export * from "./review";
 export * from "./contact";
 export * from "./support";
 export * from "./favourite";
+export * from "./quote";

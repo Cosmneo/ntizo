@@ -37,9 +37,11 @@ export const providerBookingReadModel = z.object({
   createdAt: z.string(),
 
   serviceId: z.string().min(1),
-  serviceOptionId: z.string().min(1),
+  /** Null on a booking born from a quote: the price is the proposal's, not an option's. Screens render the service name alone in that case. */
+  serviceOptionId: z.string().nullable(),
   serviceName: z.string(),
-  optionName: z.string(),
+  /** Null on a booking born from a quote: the price is the proposal's, not an option's. Screens render the service name alone in that case. */
+  optionName: z.string().nullable(),
   durationMinutes: z.number().int().positive(),
   locationType: z.string().nullable(),
 

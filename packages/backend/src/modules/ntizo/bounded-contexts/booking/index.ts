@@ -1,7 +1,16 @@
 export * from "./bootstrap";
 export { Booking } from "./domain/aggregates/booking.aggregate";
+// The one exception the quote context's own boundary crossing needs
+// re-exported: `bookingOpenerOver`
+// (apps/backend/api/src/booking-opener.adapter.ts) catches it and
+// translates it into the quote context's own `QuoteSlotTakenError`.
+export { SlotAlreadyTakenError } from "./domain/exceptions";
 export { CreateBookingCommand } from "./app/use-cases/create-booking.command";
 export type { CreateBookingInput } from "./app/use-cases/create-booking.command";
+export {
+  CreateBookingFromQuoteCommand,
+  type CreateBookingFromQuoteInput,
+} from "./app/use-cases/create-booking-from-quote.command";
 export { SubmitBookingCommand } from "./app/use-cases/submit-booking.command";
 export type { SubmitBookingInput } from "./app/use-cases/submit-booking.command";
 export { AcceptBookingCommand } from "./app/use-cases/accept-booking.command";

@@ -1,0 +1,633 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ntizo — the heart and the dialog</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* ============ presentation chrome, follows the viewer's theme ============ */
+:root{
+  --dc-bg:#eef0f4; --dc-fg:#141a24; --dc-muted:#5b6474; --dc-line:#d9dee7; --dc-card:#ffffff;
+  --dc-accent:#006ffd; --dc-bar:#0d1626; --dc-bar-fg:#f4f6fa; --dc-bar-muted:#9aa5ba; --dc-chip:#1b2740;
+  --dc-frame-shadow:0 30px 70px -40px rgba(9,20,45,.45);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --dc-bg:#0e1219; --dc-fg:#e8ecf3; --dc-muted:#9aa4b6; --dc-line:#262d3a; --dc-card:#151b25;
+    --dc-accent:#3d9bff; --dc-bar:#05080e; --dc-bar-fg:#f4f6fa; --dc-bar-muted:#8b96ab; --dc-chip:#1a2233;
+    --dc-frame-shadow:0 30px 70px -40px rgba(0,0,0,.9);
+  }
+}
+:root[data-theme="dark"]{
+  --dc-bg:#0e1219; --dc-fg:#e8ecf3; --dc-muted:#9aa4b6; --dc-line:#262d3a; --dc-card:#151b25;
+  --dc-accent:#3d9bff; --dc-bar:#05080e; --dc-bar-fg:#f4f6fa; --dc-bar-muted:#8b96ab; --dc-chip:#1a2233;
+  --dc-frame-shadow:0 30px 70px -40px rgba(0,0,0,.9);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{background:var(--dc-bg);color:var(--dc-fg);font-family:Figtree,"Segoe UI",Roboto,system-ui,sans-serif;font-size:15px;line-height:1.55}
+img{max-width:100%;display:block}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+a{color:inherit;text-decoration:none}
+ul,ol{list-style:none}
+h1,h2,h3{text-wrap:balance}
+:focus-visible{outline:2px solid var(--dc-accent);outline-offset:2px;border-radius:4px}
+@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
+
+.doc-bar{position:sticky;top:0;z-index:100;background:var(--dc-bar);color:var(--dc-bar-fg);padding:12px 24px;display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+.doc-bar strong{font-weight:700;font-size:14px}
+.doc-bar span{font-size:12px;color:var(--dc-bar-muted)}
+.doc-bar nav{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}
+.doc-bar nav a{font-size:12px;font-weight:600;padding:6px 12px;border-radius:999px;background:var(--dc-chip);color:#cfd7e6}
+.doc-bar nav a:hover{color:#fff}
+.doc-h{max-width:1100px;margin:56px auto 20px;padding:0 24px}
+.doc-h h2{font-weight:700;font-size:28px;letter-spacing:-.02em;line-height:1.15}
+.doc-h p{color:var(--dc-muted);font-size:15px;margin-top:8px;max-width:66ch}
+.doc-h .kick{font-size:13px;font-weight:600;color:var(--dc-accent);margin-bottom:8px}
+.intro{max-width:1100px;margin:0 auto;padding:0 24px 8px;display:grid;gap:16px}
+.intro p{color:var(--dc-muted);max-width:74ch}
+.intro b{color:var(--dc-fg);font-weight:600}
+.frame{max-width:1480px;margin:0 auto 6px;padding:0 24px}
+.frame-inner{position:relative;overflow:hidden;border-radius:18px;box-shadow:var(--dc-frame-shadow);border:1px solid var(--dc-line);background:#fff}
+.note{max-width:1100px;margin:18px auto 0;padding:0 24px;display:grid;gap:10px}
+.note p{font-size:14px;color:var(--dc-muted);padding-left:20px;position:relative;max-width:78ch}
+.note p::before{content:"";position:absolute;left:4px;top:9px;width:6px;height:6px;border-radius:50%;background:var(--dc-accent)}
+.note b{color:var(--dc-fg);font-weight:600}
+.pick{max-width:1100px;margin:20px auto 0;padding:0 24px;display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.pick > div{background:var(--dc-card);border:1px solid var(--dc-line);border-radius:14px;padding:18px}
+.pick h3{font-size:15px;font-weight:700;margin-bottom:6px}
+.pick p{font-size:13.5px;color:var(--dc-muted);line-height:1.5}
+.pick .rec{display:inline-block;font-size:11.5px;font-weight:700;color:#0a4fbd;background:#e8f1ff;border-radius:999px;padding:2px 9px;margin-bottom:8px}
+.foot{max-width:1100px;margin:70px auto;padding:0 24px;color:var(--dc-muted);font-size:13.5px}
+@media (max-width:780px){.pick{grid-template-columns:1fr}}
+
+/* ============ the product, painted light on purpose ============ */
+.app{
+  --blue:#006ffd; --navy:#00244c; --ink:#13171b; --muted:#71727a; --line:#e5e5e5; --line2:#d7dbe3;
+  --tint:#f2f8fe; --amber:#ffb020; --white:#fff; --rose:#e5397a;
+  background:#fff;color:var(--ink);
+  font-family:Figtree,"Segoe UI",Roboto,system-ui,sans-serif;font-size:14px;line-height:1.5;
+}
+.app *{box-sizing:border-box}
+.shell{max-width:1200px;margin:0 auto;padding:0 40px}
+
+/* --- the site header, abbreviated: it is context, not the subject --- */
+.hdr{border-bottom:1px solid var(--line);padding:14px 0}
+.hdr-in{display:flex;align-items:center;gap:24px}
+.logo{font-weight:800;font-size:19px;letter-spacing:-.02em;color:var(--navy)}
+.searchpill{flex:1;max-width:520px;display:flex;align-items:center;gap:0;border:1px solid var(--line2);border-radius:999px;padding:5px 5px 5px 18px;box-shadow:0 1px 2px rgba(9,20,45,.04)}
+.searchpill .f{font-size:13.5px;color:var(--muted)}
+.searchpill .f b{color:var(--ink);font-weight:600}
+.searchpill .sep{width:1px;height:20px;background:var(--line);margin:0 14px}
+.searchpill button{margin-left:auto;width:32px;height:32px;border-radius:999px;background:var(--blue);color:#fff;display:grid;place-items:center}
+.hdr-nav{margin-left:auto;display:flex;align-items:center;gap:22px;font-size:13.5px;font-weight:600;color:var(--muted)}
+.hdr-nav .on{color:var(--navy)}
+.avatar{width:30px;height:30px;border-radius:999px;background:var(--navy);color:#fff;display:grid;place-items:center;font-size:11.5px;font-weight:700}
+
+/* --- category strip --- */
+.strip{border-bottom:1px solid var(--line);padding:10px 0 0}
+.strip-in{display:flex;gap:34px;justify-content:center}
+.strip i{display:block;width:22px;height:22px;margin:0 auto 5px;opacity:.62;
+  background:currentColor;-webkit-mask-size:contain;mask-size:contain;-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat}
+.strip a{display:block;text-align:center;font-size:12.5px;font-weight:500;color:var(--muted);padding-bottom:9px;border-bottom:2px solid transparent}
+.strip a.on{color:var(--navy);font-weight:700;border-bottom-color:var(--navy)}
+.strip a.on i{opacity:1}
+
+/* --- heading + toolbar --- */
+.head{padding:26px 0 0}
+.head h1{font-size:25px;font-weight:700;letter-spacing:-.02em;color:var(--navy)}
+.head .count{margin-top:3px;font-size:13.5px;color:var(--muted)}
+.head .count b{color:var(--ink);font-weight:600}
+.toolbar{display:flex;align-items:center;gap:8px;padding:16px 0 14px;border-bottom:1px solid var(--line)}
+.pillf{font-size:13px;font-weight:600;color:var(--ink);border:1px solid var(--line2);border-radius:999px;padding:7px 14px}
+.pillf.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+.sortr{margin-left:auto;font-size:13.5px;color:var(--muted)}
+.sortr b{color:var(--navy);font-weight:600}
+
+/* --- the grid of tiles --- */
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:26px 22px;padding:22px 0 40px}
+.tile{position:relative}
+.media{position:relative;aspect-ratio:4/3;border-radius:16px;overflow:hidden;background:var(--tint)}
+.media .ph{width:100%;height:100%;display:block}
+.tile h3{margin-top:10px;font-size:15px;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.byl{margin-top:3px;display:flex;align-items:center;gap:6px;font-size:13.5px;color:var(--muted)}
+.byl .nm{font-weight:500;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.seal{width:15px;height:15px;border-radius:999px;background:var(--navy);color:#fff;display:grid;place-items:center;flex:none}
+.seal svg{width:9px;height:9px}
+.rate{margin-left:auto;display:inline-flex;align-items:center;gap:4px;font-size:13.5px;font-weight:600;color:var(--ink);flex:none}
+.rate svg{width:12px;height:12px;fill:var(--amber);color:var(--amber)}
+.rate span{font-weight:400;color:var(--muted)}
+.prc{margin-top:4px;display:flex;flex-wrap:wrap;align-items:baseline;gap:12px;font-size:13.5px;color:var(--muted)}
+.prc b{font-size:15.5px;font-weight:700;color:var(--navy)}
+
+/* --- THE HEART --- */
+.heart{
+  position:absolute;top:10px;right:10px;width:32px;height:32px;border-radius:999px;
+  display:grid;place-items:center;background:rgba(255,255,255,.92);
+  box-shadow:0 1px 3px rgba(9,20,45,.18);
+  transition:transform .16s ease, background .16s ease;
+}
+.heart svg{width:17px;height:17px;fill:none;stroke:var(--navy);stroke-width:1.9}
+.heart:hover{transform:scale(1.08)}
+.heart.on svg{fill:var(--navy);stroke:var(--navy)}
+/* option B, the rose */
+.heart.rose svg{stroke:#2b3038}
+.heart.rose.on svg{fill:var(--rose);stroke:var(--rose)}
+
+/* the brand fallback, for a listing with no photograph */
+.fallback{width:100%;height:100%;background:var(--tint);display:grid;place-items:center}
+.fallback svg{width:38px;height:38px;opacity:.5}
+
+/* --- phone --- */
+.p-shell{padding:0 16px}
+.p-hdr{display:flex;align-items:center;gap:10px;padding:11px 0}
+.p-pill{flex:1;display:flex;align-items:center;gap:8px;border:1px solid var(--line2);border-radius:999px;padding:8px 14px;font-size:13px;box-shadow:0 1px 2px rgba(9,20,45,.05)}
+.p-pill b{font-weight:600}
+.p-pill .m{color:var(--muted)}
+.p-filt{width:36px;height:36px;border-radius:999px;border:1px solid var(--line2);display:grid;place-items:center;position:relative}
+.p-strip{display:flex;gap:24px;padding:4px 0 0;overflow:hidden}
+.p-rows{padding-top:2px}
+.p-row{display:grid;grid-template-columns:116px minmax(0,1fr);gap:14px;padding:14px 0;border-top:1px solid var(--line);position:relative}
+.p-row:first-child{border-top:0}
+.p-media{position:relative;aspect-ratio:1;border-radius:12px;overflow:hidden;background:var(--tint)}
+.p-row h3{font-size:15px;font-weight:600;line-height:1.3;margin-bottom:2px}
+.p-body{padding-top:2px;min-width:0}
+
+/* --- the dialog --- */
+.scrim{position:absolute;inset:0;background:rgba(9,20,45,.42);display:grid;place-items:center;padding:40px}
+.dlg{width:640px;background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 40px 90px -30px rgba(9,20,45,.55);display:grid;grid-template-columns:236px minmax(0,1fr)}
+.dlg-l{padding:22px;border-right:1px solid var(--line)}
+/* Square, not 4:3. The right column's height is set by the list of lists, and
+   a 4:3 photo left a band of white under the price that read as a panel that
+   had failed to finish loading. */
+.dlg-l .media{aspect-ratio:1;border-radius:14px}
+.dlg-l h4{margin-top:12px;font-size:14.5px;font-weight:600;line-height:1.35}
+.dlg-l .who{margin-top:3px;font-size:13px;color:var(--muted)}
+.dlg-l .pr{margin-top:9px;font-size:15px;font-weight:700;color:var(--navy)}
+.dlg-r{display:flex;flex-direction:column;min-height:0}
+.dlg-hd{padding:20px 22px 14px}
+.dlg-hd h3{font-size:18px;font-weight:700;letter-spacing:-.01em;color:var(--navy)}
+.saved-note{margin-top:6px;display:inline-flex;align-items:center;gap:6px;font-size:13px;color:#1c7a4a;font-weight:600}
+.saved-note svg{width:14px;height:14px}
+.dlg-list{padding:0 12px;overflow:auto;flex:1}
+.lrow{display:flex;align-items:center;gap:12px;padding:9px 10px;border-radius:11px;cursor:pointer}
+.lrow:hover{background:#f7f9fc}
+.cover{width:42px;height:42px;border-radius:9px;overflow:hidden;flex:none;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:1px;background:var(--line)}
+.cover i{display:block;background:var(--tint)}
+.cover.empty{background:var(--tint);display:grid;place-items:center}
+.cover.empty svg{width:16px;height:16px;opacity:.42}
+.lrow .txt{min-width:0;flex:1}
+.lrow .txt b{display:block;font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lrow .txt span{font-size:12.5px;color:var(--muted)}
+.box{width:20px;height:20px;border-radius:6px;border:1.6px solid var(--line2);flex:none;display:grid;place-items:center}
+.box.on{background:var(--navy);border-color:var(--navy)}
+.box svg{width:12px;height:12px;color:#fff}
+.newrow{display:flex;align-items:center;gap:12px;padding:11px 10px;margin:2px 0 6px;border-radius:11px;font-size:14px;font-weight:600;color:var(--navy)}
+.newrow .plus{width:42px;height:42px;border-radius:9px;border:1.5px dashed var(--line2);display:grid;place-items:center;flex:none}
+.newrow .plus svg{width:16px;height:16px;color:var(--muted)}
+.dlg-ft{padding:14px 22px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px}
+.dlg-ft .warn{font-size:12.5px;color:#9a5b00;line-height:1.35;max-width:38ch}
+.done{margin-left:auto;background:var(--navy);color:#fff;font-size:14px;font-weight:600;padding:9px 22px;border-radius:999px;flex:none}
+.inline-new{padding:4px 10px 10px}
+.inline-new label{display:block;font-size:12.5px;font-weight:600;color:var(--muted);margin-bottom:5px}
+.inline-new .fld{display:flex;gap:8px}
+.inline-new input{flex:1;border:1.5px solid var(--navy);border-radius:10px;padding:9px 12px;font:inherit;font-size:14px;outline:none}
+.inline-new .add{background:var(--navy);color:#fff;font-size:13.5px;font-weight:600;padding:0 16px;border-radius:10px}
+.srch{margin:0 12px 8px;display:flex;align-items:center;gap:8px;border:1px solid var(--line2);border-radius:10px;padding:8px 12px}
+.srch svg{width:15px;height:15px;color:var(--muted)}
+.srch span{font-size:13.5px;color:var(--muted)}
+
+/* the phone sheet */
+.p-scrim{position:absolute;inset:0;background:rgba(9,20,45,.42);display:flex;align-items:flex-end}
+.sheet{width:100%;background:#fff;border-radius:20px 20px 0 0;max-height:82%;display:flex;flex-direction:column;overflow:hidden}
+.grab{width:38px;height:4px;border-radius:999px;background:var(--line2);margin:9px auto 2px}
+.sheet .dlg-hd{padding:8px 18px 12px}
+.sheet .dlg-hd h3{font-size:17px}
+.sheet .sub{margin-top:2px;font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+</style>
+</head>
+<body>
+
+<div class="doc-bar">
+  <strong>Ntizo — the heart and the dialog</strong>
+  <span>Tasks 10–11 · 7 Sep 2026 · sits inside the approved listings refresh</span>
+  <nav>
+    <a href="#tiles">The heart</a>
+    <a href="#colour">Which heart</a>
+    <a href="#phone">Phone</a>
+    <a href="#dialog">The dialog</a>
+    <a href="#sheet">Sheet</a>
+  </nav>
+</div>
+
+<div class="doc-h">
+  <p class="kick">The problem</p>
+  <h2>A tile that was designed to have no buttons now needs one</h2>
+</div>
+<div class="intro">
+  <p>The listings refresh removed every control from a result. Its own note says it plainly: <b>“There is no second control on the tile.”</b> The price carries the eye, the tile is the link, and the page spends its single blue exactly once, on the search button. Adding a heart means adding back the thing that design deliberately took away, so it has to cost as little as possible.</p>
+  <p>Three rules came out of that. The heart lives <b>on the photograph</b>, never in the three lines of text, so the words keep their column and the grid keeps its rhythm. It is <b>the only control on a result</b>, so it never has to compete. And it borrows the language the design already uses for “this one is chosen” — the filled navy of an active filter pill, the current page number, the verified seal — rather than introducing a colour that appears nowhere else.</p>
+</div>
+
+<div class="doc-h" id="tiles">
+  <p class="kick">1440 · services</p>
+  <h2>The heart on the grid</h2>
+  <p>Second and fourth are saved. The fourth has no photograph, which is the common case on this platform and a designed state rather than a gap.</p>
+</div>
+
+<div class="frame">
+  <div class="frame-inner" style="height:598px">
+    <div class="app" style="width:1440px;transform:scale(.995);transform-origin:0 0">
+      <header class="hdr"><div class="shell hdr-in">
+        <div class="logo">ntizo</div>
+        <form class="searchpill">
+          <div class="f"><b>Corte de cabelo</b></div><div class="sep"></div><div class="f">Maputo</div>
+          <button type="button" aria-label="Search"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.2-3.2"/></svg></button>
+        </form>
+        <nav class="hdr-nav"><span class="on">Serviços</span><span>Prestadores</span><span class="avatar">SF</span></nav>
+      </div></header>
+
+      <div class="strip"><div class="shell strip-in">
+        <a class="on"><i style="-webkit-mask-image:url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%221.7%22><circle cx=%2212%22 cy=%2212%22 r=%229%22/></svg>');mask-image:url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%221.7%22><circle cx=%2212%22 cy=%2212%22 r=%229%22/></svg>')"></i>Todos</a>
+        <a><i style="-webkit-mask-image:url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%221.7%22><path d=%22M6 4v8a3 3 0 006 0V4M9 12v8%22/></svg>');mask-image:url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%221.7%22><path d=%22M6 4v8a3 3 0 006 0V4M9 12v8%22/></svg>')"></i>Beleza</a>
+        <a><i style="-webkit-mask-image:url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%221.7%22><path d=%22M4 20l7-7M14 4l6 6-3 3-6-6z%22/></svg>');mask-image:url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%221.7%22><path d=%22M4 20l7-7M14 4l6 6-3 3-6-6z%22/></svg>')"></i>Canalização</a>
+        <a><i style="-webkit-mask-image:url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%221.7%22><path d=%22M13 2 4 14h7l-1 8 9-12h-7z%22/></svg>');mask-image:url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%221.7%22><path d=%22M13 2 4 14h7l-1 8 9-12h-7z%22/></svg>')"></i>Electricista</a>
+        <a><i style="-webkit-mask-image:url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%221.7%22><path d=%22M12 3l2 5 5 2-5 2-2 5-2-5-5-2 5-2z%22/></svg>');mask-image:url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%221.7%22><path d=%22M12 3l2 5 5 2-5 2-2 5-2-5-5-2 5-2z%22/></svg>')"></i>Limpeza</a>
+      </div></div>
+
+      <div class="shell">
+        <div class="head">
+          <h1>Corte de cabelo em Maputo</h1>
+          <p class="count"><b>96 serviços</b> em Maputo</p>
+        </div>
+        <div class="toolbar">
+          <span class="pillf on">Preço fixo ✕</span>
+          <span class="pillf">Preço ⌄</span>
+          <span class="pillf">Onde acontece ⌄</span>
+          <span class="pillf">Quem presta ⌄</span>
+          <span class="pillf">Mais ⌄</span>
+          <span class="sortr">Ordenar: <b>Sugeridos ⌄</b></span>
+        </div>
+
+        <div class="grid">
+          <!-- 1 unsaved -->
+          <article class="tile">
+            <div class="media">
+              <div class="ph" style="background:linear-gradient(150deg,#2b3a55,#6b7f9e 55%,#c3ccda)"></div>
+              <button class="heart" aria-label="Save"><svg viewBox="0 0 24 24"><path d="M12 20.5 4.3 13a4.8 4.8 0 1 1 7.7-5.6A4.8 4.8 0 1 1 19.7 13z"/></svg></button>
+            </div>
+            <h3>Corte de cabelo com barba</h3>
+            <p class="byl"><span class="nm">Estúdio Mavalane</span><span class="seal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4"><path d="m5 12 5 5L19 7"/></svg></span><span class="rate"><svg viewBox="0 0 24 24"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg>4,7 <span>(6)</span></span></p>
+            <p class="prc"><b>800 MZN</b><span>45 min</span><span>No salão</span></p>
+          </article>
+
+          <!-- 2 SAVED -->
+          <article class="tile">
+            <div class="media">
+              <div class="ph" style="background:linear-gradient(150deg,#7a5230,#c08b52 55%,#e7d3b8)"></div>
+              <button class="heart on" aria-label="Saved"><svg viewBox="0 0 24 24"><path d="M12 20.5 4.3 13a4.8 4.8 0 1 1 7.7-5.6A4.8 4.8 0 1 1 19.7 13z"/></svg></button>
+            </div>
+            <h3>Tranças box braids médias</h3>
+            <p class="byl"><span class="nm">Salão Nyeleti</span><span class="rate"><svg viewBox="0 0 24 24"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg>4,9 <span>(23)</span></span></p>
+            <p class="prc"><b>1 500 MZN</b><span>3 h</span><span>No salão</span></p>
+          </article>
+
+          <!-- 3 unsaved -->
+          <article class="tile">
+            <div class="media">
+              <div class="ph" style="background:linear-gradient(150deg,#1f4636,#4a7f62 55%,#cfe0d4)"></div>
+              <button class="heart" aria-label="Save"><svg viewBox="0 0 24 24"><path d="M12 20.5 4.3 13a4.8 4.8 0 1 1 7.7-5.6A4.8 4.8 0 1 1 19.7 13z"/></svg></button>
+            </div>
+            <h3>Manicure e pedicure completa</h3>
+            <p class="byl"><span class="nm">Beleza Polana</span><span class="seal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4"><path d="m5 12 5 5L19 7"/></svg></span><span style="margin-left:auto;font-size:13px;color:#71727a">Novo</span></p>
+            <p class="prc"><b>650 MZN</b><span>1 h 20 min</span><span>Em tua casa</span></p>
+          </article>
+
+          <!-- 4 SAVED, no photo -->
+          <article class="tile">
+            <div class="media">
+              <div class="fallback">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#00244c" stroke-width="1.5"><path d="M4 19V7l8-4 8 4v12"/><path d="M9 19v-6h6v6"/></svg>
+              </div>
+              <button class="heart on" aria-label="Saved"><svg viewBox="0 0 24 24"><path d="M12 20.5 4.3 13a4.8 4.8 0 1 1 7.7-5.6A4.8 4.8 0 1 1 19.7 13z"/></svg></button>
+            </div>
+            <h3>Instalação eléctrica residencial</h3>
+            <p class="byl"><span class="nm">Electro Sommerschield</span><span class="seal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4"><path d="m5 12 5 5L19 7"/></svg></span><span class="rate"><svg viewBox="0 0 24 24"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg>4,8 <span>(11)</span></span></p>
+            <p class="prc"><b>desde 2 500 MZN</b><span>3 opções</span></p>
+          </article>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="note">
+  <p><b>On the photograph, top-right.</b> The three text lines keep their column, so a saved tile and an unsaved one are exactly the same height and the grid never shifts.</p>
+  <p><b>A white disc, not a bare icon.</b> The photographs are somebody else's and can be any colour; a stroke-only heart disappears on a pale one. The disc is the smallest chrome that survives every photo, and it is the only chrome on the tile.</p>
+  <p><b>The empty-photo tile keeps it.</b> The heart sits on the brand fallback exactly as it sits on a photograph, so the control does not move depending on whether a business uploaded a picture.</p>
+</div>
+
+<div class="doc-h" id="colour">
+  <p class="kick">The one open question</p>
+  <h2>Which heart is a saved heart?</h2>
+  <p>The 2026-08-27 spec chose a rose that deliberately left the palette. That spec was written against a blue-accented design where a blue heart would have read as a second call to action. This design is different, so the reasoning needs re-testing rather than inheriting.</p>
+</div>
+
+<div class="frame">
+  <div class="frame-inner" style="height:296px;display:grid;place-items:center;background:#fff">
+    <div class="app" style="width:900px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:60px;padding:10px 40px">
+        <div>
+          <div class="media" style="aspect-ratio:16/9">
+            <div class="ph" style="background:linear-gradient(150deg,#7a5230,#c08b52 55%,#e7d3b8)"></div>
+            <button class="heart on" aria-label="Saved"><svg viewBox="0 0 24 24"><path d="M12 20.5 4.3 13a4.8 4.8 0 1 1 7.7-5.6A4.8 4.8 0 1 1 19.7 13z"/></svg></button>
+          </div>
+          <p style="margin-top:10px;font-size:13.5px;color:#71727a"><b style="color:#13171b">Navy.</b> The colour this design already uses for “chosen”.</p>
+        </div>
+        <div>
+          <div class="media" style="aspect-ratio:16/9">
+            <div class="ph" style="background:linear-gradient(150deg,#7a5230,#c08b52 55%,#e7d3b8)"></div>
+            <button class="heart rose on" aria-label="Saved"><svg viewBox="0 0 24 24"><path d="M12 20.5 4.3 13a4.8 4.8 0 1 1 7.7-5.6A4.8 4.8 0 1 1 19.7 13z"/></svg></button>
+          </div>
+          <p style="margin-top:10px;font-size:13.5px;color:#71727a"><b style="color:#13171b">Rose #e5397a.</b> The web’s convention for a saved thing.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="pick">
+  <div>
+    <span class="rec">Recommended</span>
+    <h3>Navy</h3>
+    <p>In this design, filled navy already means <b>chosen</b>: the active filter pill, the current page number, the verified seal. A filled navy heart says “on” in a sentence the page is already speaking, and the palette stays at two colours plus the amber star. The risk is that it is quieter than a red heart, and a person scanning fast may not register the state as instantly.</p>
+  </div>
+  <div>
+    <h3>Rose</h3>
+    <p>Unmistakable, and every other site on the web has taught it. The cost is a third hue that appears on nothing else — not a filter, not a badge, not a link — so it reads as imported rather than designed, and it competes with the navy price directly beneath it, which is the one thing on the tile meant to catch the eye.</p>
+  </div>
+</div>
+
+<div class="doc-h" id="phone">
+  <p class="kick">390 · services and providers</p>
+  <h2>The phone keeps the same rule</h2>
+  <p>Below <code>sm</code> a result is a hairline row with a 116px square photograph. The heart stays on the photograph, smaller, so there is one rule to learn and the text column is never asked to give up width.</p>
+</div>
+
+<div class="frame" style="max-width:560px">
+  <div class="frame-inner" style="height:620px;width:390px;margin:0 auto">
+    <div class="app" style="width:390px">
+      <div class="p-shell">
+        <div class="p-hdr">
+          <div class="p-pill"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="#71727a" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.2-3.2"/></svg><b>Corte de cabelo</b><span class="m">· Maputo</span></div>
+          <div class="p-filt"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#13171b" stroke-width="2"><path d="M3 6h18M7 12h10M10 18h4"/></svg></div>
+        </div>
+        <div class="p-rows">
+          <div class="p-row">
+            <div class="p-media">
+              <div class="ph" style="background:linear-gradient(150deg,#2b3a55,#6b7f9e 55%,#c3ccda);height:100%"></div>
+              <button class="heart" style="width:27px;height:27px;top:6px;right:6px" aria-label="Save"><svg viewBox="0 0 24 24" style="width:14px;height:14px"><path d="M12 20.5 4.3 13a4.8 4.8 0 1 1 7.7-5.6A4.8 4.8 0 1 1 19.7 13z"/></svg></button>
+            </div>
+            <div class="p-body">
+              <h3>Corte de cabelo com barba</h3>
+              <p class="byl"><span class="nm">Estúdio Mavalane</span><span class="seal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4"><path d="m5 12 5 5L19 7"/></svg></span><span class="rate"><svg viewBox="0 0 24 24"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg>4,7</span></p>
+              <p class="prc"><b>800 MZN</b><span>45 min</span></p>
+            </div>
+          </div>
+          <div class="p-row">
+            <div class="p-media">
+              <div class="ph" style="background:linear-gradient(150deg,#7a5230,#c08b52 55%,#e7d3b8);height:100%"></div>
+              <button class="heart on" style="width:27px;height:27px;top:6px;right:6px" aria-label="Saved"><svg viewBox="0 0 24 24" style="width:14px;height:14px"><path d="M12 20.5 4.3 13a4.8 4.8 0 1 1 7.7-5.6A4.8 4.8 0 1 1 19.7 13z"/></svg></button>
+            </div>
+            <div class="p-body">
+              <h3>Tranças box braids médias</h3>
+              <p class="byl"><span class="nm">Salão Nyeleti</span><span class="rate"><svg viewBox="0 0 24 24"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg>4,9</span></p>
+              <p class="prc"><b>1 500 MZN</b><span>3 h</span></p>
+            </div>
+          </div>
+          <div class="p-row">
+            <div class="p-media">
+              <div class="fallback"><svg viewBox="0 0 24 24" fill="none" stroke="#00244c" stroke-width="1.5" style="width:26px;height:26px"><path d="M4 19V7l8-4 8 4v12"/><path d="M9 19v-6h6v6"/></svg></div>
+              <button class="heart" style="width:27px;height:27px;top:6px;right:6px" aria-label="Save"><svg viewBox="0 0 24 24" style="width:14px;height:14px"><path d="M12 20.5 4.3 13a4.8 4.8 0 1 1 7.7-5.6A4.8 4.8 0 1 1 19.7 13z"/></svg></button>
+            </div>
+            <div class="p-body">
+              <h3>Instalação eléctrica residencial</h3>
+              <p class="byl"><span class="nm">Electro Sommerschield</span><span class="seal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4"><path d="m5 12 5 5L19 7"/></svg></span></p>
+              <p class="prc"><b>desde 2 500 MZN</b><span>3 opções</span></p>
+            </div>
+          </div>
+          <div class="p-row">
+            <div class="p-media">
+              <div class="ph" style="background:linear-gradient(150deg,#1f4636,#4a7f62 55%,#cfe0d4);height:100%"></div>
+              <button class="heart" style="width:27px;height:27px;top:6px;right:6px" aria-label="Save"><svg viewBox="0 0 24 24" style="width:14px;height:14px"><path d="M12 20.5 4.3 13a4.8 4.8 0 1 1 7.7-5.6A4.8 4.8 0 1 1 19.7 13z"/></svg></button>
+            </div>
+            <div class="p-body">
+              <h3>Manicure e pedicure completa</h3>
+              <p class="byl"><span class="nm">Beleza Polana</span><span class="seal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4"><path d="m5 12 5 5L19 7"/></svg></span></p>
+              <p class="prc"><b>650 MZN</b><span>1 h 20 min</span></p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="note">
+  <p><b>27px on the phone, 32px on the desktop.</b> Both clear the 24px minimum for a touch target once the photo's own padding is counted, and the smaller disc keeps a 116px photograph from becoming mostly button.</p>
+</div>
+
+<div class="doc-h" id="dialog">
+  <p class="kick">1440 · after the heart is pressed</p>
+  <h2>The dialog files it; it never asks permission</h2>
+  <p>Pressing the heart saves. This opens afterwards, already knowing the answer, and its only button is Done. That is why the green line says <b>saved</b> in the past tense and why there is no Cancel: there is nothing to cancel, and a Cancel would imply the save had not happened.</p>
+</div>
+
+<div class="frame">
+  <div class="frame-inner" style="height:560px">
+    <div class="app" style="width:1440px;transform:scale(.995);transform-origin:0 0;position:relative;height:563px;overflow:hidden">
+      <!-- the page behind, dimmed -->
+      <div class="shell" style="padding-top:22px;filter:saturate(.9)">
+        <div class="head"><h1>Corte de cabelo em Maputo</h1><p class="count"><b>96 serviços</b> em Maputo</p></div>
+        <div class="toolbar"><span class="pillf on">Preço fixo ✕</span><span class="pillf">Preço ⌄</span><span class="pillf">Onde acontece ⌄</span><span class="sortr">Ordenar: <b>Sugeridos ⌄</b></span></div>
+        <div class="grid">
+          <article class="tile"><div class="media"><div class="ph" style="background:linear-gradient(150deg,#2b3a55,#6b7f9e 55%,#c3ccda)"></div></div><h3>Corte de cabelo com barba</h3><p class="prc"><b>800 MZN</b></p></article>
+          <article class="tile"><div class="media"><div class="ph" style="background:linear-gradient(150deg,#7a5230,#c08b52 55%,#e7d3b8)"></div></div><h3>Tranças box braids médias</h3><p class="prc"><b>1 500 MZN</b></p></article>
+          <article class="tile"><div class="media"><div class="ph" style="background:linear-gradient(150deg,#1f4636,#4a7f62 55%,#cfe0d4)"></div></div><h3>Manicure e pedicure completa</h3><p class="prc"><b>650 MZN</b></p></article>
+          <article class="tile"><div class="media"><div class="fallback"><svg viewBox="0 0 24 24" fill="none" stroke="#00244c" stroke-width="1.5"><path d="M4 19V7l8-4 8 4v12"/><path d="M9 19v-6h6v6"/></svg></div></div><h3>Instalação eléctrica</h3><p class="prc"><b>desde 2 500 MZN</b></p></article>
+        </div>
+      </div>
+
+      <div class="scrim">
+        <div class="dlg">
+          <div class="dlg-l">
+            <div class="media"><div class="ph" style="background:linear-gradient(150deg,#7a5230,#c08b52 55%,#e7d3b8);height:100%"></div></div>
+            <h4>Tranças box braids médias</h4>
+            <p class="who">Salão Nyeleti · Polana</p>
+            <p class="pr">1 500 MZN</p>
+          </div>
+          <div class="dlg-r">
+            <div class="dlg-hd">
+              <h3>Guardar numa lista</h3>
+              <p class="saved-note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="m5 12 5 5L19 7"/></svg>Guardado em Favoritos</p>
+            </div>
+            <div class="dlg-list">
+              <div class="lrow">
+                <span class="cover"><i style="background:linear-gradient(150deg,#7a5230,#c08b52)"></i><i style="background:linear-gradient(150deg,#2b3a55,#6b7f9e)"></i><i style="background:linear-gradient(150deg,#1f4636,#4a7f62)"></i><i style="background:#eaf1f8"></i></span>
+                <span class="txt"><b>Favoritos</b><span>12 itens</span></span>
+                <span class="box on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2"><path d="m5 12 5 5L19 7"/></svg></span>
+              </div>
+              <div class="lrow">
+                <span class="cover"><i style="background:linear-gradient(150deg,#3a2b55,#7e6b9e)"></i><i style="background:linear-gradient(150deg,#55452b,#9e8a6b)"></i><i style="background:#eaf1f8"></i><i style="background:#eaf1f8"></i></span>
+                <span class="txt"><b>Casa nova</b><span>2 itens</span></span>
+                <span class="box on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2"><path d="m5 12 5 5L19 7"/></svg></span>
+              </div>
+              <div class="lrow">
+                <span class="cover empty"><svg viewBox="0 0 24 24" fill="none" stroke="#00244c" stroke-width="1.6"><path d="M12 20.5 4.3 13a4.8 4.8 0 1 1 7.7-5.6A4.8 4.8 0 1 1 19.7 13z"/></svg></span>
+                <span class="txt"><b>Urgente</b><span>Vazia</span></span>
+                <span class="box"></span>
+              </div>
+              <div class="newrow">
+                <span class="plus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg></span>
+                Criar uma lista nova
+              </div>
+            </div>
+            <div class="dlg-ft">
+              <button class="done">Concluído</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="note">
+  <p><b>The listing is on screen, on the left.</b> The dialog can be opened from a grid of twenty-four; without the photograph and the name, nothing on screen says which one this is about.</p>
+  <p><b>Checkboxes, not radios.</b> “Casa nova” and “Urgente” are both true about the same electrician, and making somebody choose is making them lose one of the two facts.</p>
+  <p><b>The mosaic is the list's own most recent items</b>, up to four. Two items draw two squares — it never pads to four, and a list with items but no photographs is not the same as an empty one, which draws the outline heart instead.</p>
+  <p><b>Creating a list happens in place</b>, on the row that offers it. A modal over a modal hides the thing being saved behind the thing deciding where to put it.</p>
+</div>
+
+<div class="doc-h">
+  <p class="kick">Two states worth drawing</p>
+  <h2>Naming a new list, and unticking the last one</h2>
+</div>
+
+<div class="frame">
+  <div class="frame-inner" style="height:430px;background:#eef1f6;display:grid;place-items:center">
+    <div class="app" style="width:1340px;display:grid;grid-template-columns:1fr 1fr;gap:30px;padding:0 30px;background:transparent">
+
+      <div class="dlg" style="width:100%;box-shadow:0 20px 50px -28px rgba(9,20,45,.4)">
+        <div class="dlg-l">
+          <div class="media"><div class="ph" style="background:linear-gradient(150deg,#7a5230,#c08b52 55%,#e7d3b8);height:100%"></div></div>
+          <h4>Tranças box braids médias</h4>
+          <p class="who">Salão Nyeleti · Polana</p>
+          <p class="pr">1 500 MZN</p>
+        </div>
+        <div class="dlg-r">
+          <div class="dlg-hd">
+            <h3>Guardar numa lista</h3>
+            <p class="saved-note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="m5 12 5 5L19 7"/></svg>Guardado em Favoritos</p>
+          </div>
+          <div class="inline-new">
+            <label>Nome da lista</label>
+            <div class="fld"><input value="Aniversário da Nara" readonly><button class="add">Criar</button></div>
+          </div>
+          <div class="dlg-list" style="padding-top:2px">
+            <div class="lrow"><span class="cover"><i style="background:linear-gradient(150deg,#7a5230,#c08b52)"></i><i style="background:linear-gradient(150deg,#2b3a55,#6b7f9e)"></i><i style="background:linear-gradient(150deg,#1f4636,#4a7f62)"></i><i style="background:#eaf1f8"></i></span><span class="txt"><b>Favoritos</b><span>12 itens</span></span><span class="box on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2"><path d="m5 12 5 5L19 7"/></svg></span></div>
+            <div class="lrow"><span class="cover"><i style="background:linear-gradient(150deg,#3a2b55,#7e6b9e)"></i><i style="background:linear-gradient(150deg,#55452b,#9e8a6b)"></i><i style="background:#eaf1f8"></i><i style="background:#eaf1f8"></i></span><span class="txt"><b>Casa nova</b><span>2 itens</span></span><span class="box on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2"><path d="m5 12 5 5L19 7"/></svg></span></div>
+          </div>
+          <div class="dlg-ft"><button class="done">Concluído</button></div>
+        </div>
+      </div>
+
+      <div class="dlg" style="width:100%;box-shadow:0 20px 50px -28px rgba(9,20,45,.4)">
+        <div class="dlg-l">
+          <div class="media"><div class="ph" style="background:linear-gradient(150deg,#7a5230,#c08b52 55%,#e7d3b8);height:100%"></div></div>
+          <h4>Tranças box braids médias</h4>
+          <p class="who">Salão Nyeleti · Polana</p>
+          <p class="pr">1 500 MZN</p>
+        </div>
+        <div class="dlg-r">
+          <div class="dlg-hd">
+            <h3>Guardar numa lista</h3>
+            <p class="saved-note" style="color:#71727a;font-weight:500">Desmarca tudo para deixar de guardar</p>
+          </div>
+          <div class="dlg-list">
+            <div class="lrow"><span class="cover"><i style="background:linear-gradient(150deg,#7a5230,#c08b52)"></i><i style="background:linear-gradient(150deg,#2b3a55,#6b7f9e)"></i><i style="background:linear-gradient(150deg,#1f4636,#4a7f62)"></i><i style="background:#eaf1f8"></i></span><span class="txt"><b>Favoritos</b><span>12 itens</span></span><span class="box"></span></div>
+            <div class="lrow"><span class="cover"><i style="background:linear-gradient(150deg,#3a2b55,#7e6b9e)"></i><i style="background:linear-gradient(150deg,#55452b,#9e8a6b)"></i><i style="background:#eaf1f8"></i><i style="background:#eaf1f8"></i></span><span class="txt"><b>Casa nova</b><span>2 itens</span></span><span class="box"></span></div>
+            <div class="lrow"><span class="cover empty"><svg viewBox="0 0 24 24" fill="none" stroke="#00244c" stroke-width="1.6"><path d="M12 20.5 4.3 13a4.8 4.8 0 1 1 7.7-5.6A4.8 4.8 0 1 1 19.7 13z"/></svg></span><span class="txt"><b>Urgente</b><span>Vazia</span></span><span class="box"></span></div>
+          </div>
+          <div class="dlg-ft">
+            <p class="warn"><b style="color:#13171b">Já não está guardado.</b> Marca uma lista para o guardar outra vez.</p>
+            <button class="done">Concluído</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div class="note">
+  <p><b>Unticking every list is how somebody removes a favourite</b>, and it does not look like a delete, so the footer says what just happened in plain words rather than asking “are you sure” about a thing already done.</p>
+  <p><b>The new-list field takes the place of the row that opened it</b>, directly under the header, so the list it is about to join stays visible underneath.</p>
+</div>
+
+<div class="doc-h" id="sheet">
+  <p class="kick">390 · after the heart is pressed</p>
+  <h2>On a phone it is a sheet</h2>
+  <p>The two-panel dialog does not fit, and the listing's photograph is the first thing to go: the name and the price carry the identification instead, in the subtitle.</p>
+</div>
+
+<div class="frame" style="max-width:560px">
+  <div class="frame-inner" style="height:620px;width:390px;margin:0 auto">
+    <div class="app" style="width:390px;position:relative;height:620px;overflow:hidden">
+      <div class="p-shell" style="filter:saturate(.9)">
+        <div class="p-hdr">
+          <div class="p-pill"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="#71727a" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.2-3.2"/></svg><b>Corte de cabelo</b><span class="m">· Maputo</span></div>
+          <div class="p-filt"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#13171b" stroke-width="2"><path d="M3 6h18M7 12h10M10 18h4"/></svg></div>
+        </div>
+        <div class="p-rows">
+          <div class="p-row"><div class="p-media"><div class="ph" style="background:linear-gradient(150deg,#2b3a55,#6b7f9e 55%,#c3ccda);height:100%"></div></div><div class="p-body"><h3>Corte de cabelo com barba</h3><p class="prc"><b>800 MZN</b></p></div></div>
+          <div class="p-row"><div class="p-media"><div class="ph" style="background:linear-gradient(150deg,#7a5230,#c08b52 55%,#e7d3b8);height:100%"></div></div><div class="p-body"><h3>Tranças box braids médias</h3><p class="prc"><b>1 500 MZN</b></p></div></div>
+          <div class="p-row"><div class="p-media"><div class="fallback"><svg viewBox="0 0 24 24" fill="none" stroke="#00244c" stroke-width="1.5" style="width:26px;height:26px"><path d="M4 19V7l8-4 8 4v12"/><path d="M9 19v-6h6v6"/></svg></div></div><div class="p-body"><h3>Instalação eléctrica</h3><p class="prc"><b>desde 2 500 MZN</b></p></div></div>
+        </div>
+      </div>
+
+      <div class="p-scrim">
+        <div class="sheet">
+          <div class="grab"></div>
+          <div class="dlg-hd">
+            <h3>Guardar numa lista</h3>
+            <p class="sub">Tranças box braids médias · 1 500 MZN</p>
+            <p class="saved-note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="m5 12 5 5L19 7"/></svg>Guardado em Favoritos</p>
+          </div>
+          <div class="dlg-list">
+            <div class="lrow"><span class="cover"><i style="background:linear-gradient(150deg,#7a5230,#c08b52)"></i><i style="background:linear-gradient(150deg,#2b3a55,#6b7f9e)"></i><i style="background:linear-gradient(150deg,#1f4636,#4a7f62)"></i><i style="background:#eaf1f8"></i></span><span class="txt"><b>Favoritos</b><span>12 itens</span></span><span class="box on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2"><path d="m5 12 5 5L19 7"/></svg></span></div>
+            <div class="lrow"><span class="cover"><i style="background:linear-gradient(150deg,#3a2b55,#7e6b9e)"></i><i style="background:linear-gradient(150deg,#55452b,#9e8a6b)"></i><i style="background:#eaf1f8"></i><i style="background:#eaf1f8"></i></span><span class="txt"><b>Casa nova</b><span>2 itens</span></span><span class="box on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2"><path d="m5 12 5 5L19 7"/></svg></span></div>
+            <div class="lrow"><span class="cover empty"><svg viewBox="0 0 24 24" fill="none" stroke="#00244c" stroke-width="1.6"><path d="M12 20.5 4.3 13a4.8 4.8 0 1 1 7.7-5.6A4.8 4.8 0 1 1 19.7 13z"/></svg></span><span class="txt"><b>Urgente</b><span>Vazia</span></span><span class="box"></span></div>
+            <div class="newrow"><span class="plus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg></span>Criar uma lista nova</div>
+          </div>
+          <div class="dlg-ft"><button class="done" style="width:100%;margin-left:0">Concluído</button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="note">
+  <p><b>Full-width Done on the phone</b>, at the thumb, because the sheet has no second action to sit beside.</p>
+  <p><b>The search field appears only above six lists.</b> A search box over three rows is a control with nothing to do.</p>
+</div>
+
+<div class="foot">
+  <p>Behaviour is already settled by the 2026-08-27 spec and built: the heart saves into the default list on press, <code>setLists</code> replaces the whole membership, and the default list's name is translated rather than stored. This mockup decides only what those things look like inside the listings refresh.</p>
+</div>
+
+</body>
+</html>

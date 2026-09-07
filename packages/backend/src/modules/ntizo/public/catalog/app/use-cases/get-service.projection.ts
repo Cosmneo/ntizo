@@ -86,6 +86,7 @@ export class GetServiceProjection {
           isDefault: o.isDefault,
         };
       }),
+      quoteForm: r.quoteForm,
       performers: performers.map((p) => ({
         id: p.id,
         firstName: p.firstName,

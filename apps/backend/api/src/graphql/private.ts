@@ -67,6 +67,12 @@ import {
 import { bootstrapFavourite } from "@ntizo/backend/modules/ntizo/bounded-contexts/favourite";
 import { createBookingWriteHandlers } from "@ntizo/backend/modules/ntizo/write/booking";
 import { bootstrapBooking } from "@ntizo/backend/modules/ntizo/bounded-contexts/booking";
+import { createQuoteWriteHandlers } from "@ntizo/backend/modules/ntizo/write/quote";
+import {
+  bootstrapQuoteRead,
+  createQuoteReadHandlers,
+} from "@ntizo/backend/modules/ntizo/read/quote";
+import { bootstrapQuote } from "@ntizo/backend/modules/ntizo/bounded-contexts/quote";
 import { createUserWriteHandlers } from "@ntizo/backend/modules/ntizo/write/user";
 import { bootstrapProvider } from "@ntizo/backend/modules/ntizo/bounded-contexts/provider";
 import { bootstrapProviderWorkflows } from "@ntizo/backend/modules/ntizo/orchestrations/workflows/provider";
@@ -78,6 +84,8 @@ import { graphqlCorsFetch } from "./cors";
 import { AttachmentStorageAdapter, runWithAttachmentsBucket } from "../attachment-storage.adapter";
 import { disputeThreadOver } from "../dispute-thread.adapter";
 import { bookingCompletionOver } from "../booking-completion.adapter";
+import { bookingOpenerOver } from "../booking-opener.adapter";
+import { startThreadOver } from "../start-thread.adapter";
 import type { AppBindings } from "../types";
 
 /**
@@ -133,6 +141,7 @@ export function buildPrivateGraphQLFields(): {
   const activityRead = bootstrapActivityRead();
   const communicationRead = bootstrapCommunicationRead();
   const supportRead = bootstrapSupportRead();
+  const quoteRead = bootstrapQuoteRead();
   // Hoisted above `bootstrapBooking`, which now takes one of its use cases:
   // a dispute is a support request that moves a booking, and this is the one
   // place allowed to know both halves exist — see `disputeThreadOver`.
@@ -148,6 +157,23 @@ export function buildPrivateGraphQLFields(): {
   const booking = bootstrapBooking({
     raiseNotification: notification.useCases.internal.raiseNotification,
     openDisputeThread: disputeThreadOver(communication.useCases.openSupportRequest),
+  });
+  // Below both `bootstrapBooking` and `bootstrapCommunication`, because it
+  // consumes both: accepting a quote opens a booking
+  // (`bookingOpenerOver(booking.useCases.createBookingFromQuote)`) and a
+  // request starts the thread it will be discussed on
+  // (`startThreadOver(communication.useCases.startThread)`) — the same two
+  // ports `QuoteBootstrapDeps` declares and this is the one place allowed to
+  // know both fillers exist.
+  //
+  // `createQuoteWriteHandlers` and `createQuoteReadHandlers` are both spread
+  // into `fields` below; `quoteRead` is bootstrapped up with the other reads,
+  // because it takes nothing from this context.
+  const quote = bootstrapQuote({
+    raiseNotification: notification.useCases.internal.raiseNotification,
+    openBooking: bookingOpenerOver(booking.useCases.createBookingFromQuote),
+    startThread: startThreadOver(communication.useCases.startThread),
+    attachmentStorage: new AttachmentStorageAdapter(),
   });
   // Below `bootstrapBooking` rather than up with the other reads, because it
   // now takes one of its use cases: the customer's review is what ends a
@@ -192,6 +218,8 @@ export function buildPrivateGraphQLFields(): {
       ...createFavouriteWriteHandlers({ favourite }),
       ...createBookingWriteHandlers({ booking }),
       ...createBookingReadHandlers({ bookingRead }),
+      ...createQuoteWriteHandlers({ quote }),
+      ...createQuoteReadHandlers({ quoteRead }),
       ...createNotificationWriteHandlers({ notification }),
       ...createUserWriteHandlers({
         updateMyProfile: user.useCases.updateMyProfile,

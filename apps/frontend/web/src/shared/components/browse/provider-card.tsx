@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import { Check } from "lucide-react";
@@ -30,8 +31,32 @@ import { formatHeadlinePrice } from "@/features/directory/services/domain/servic
  * same formatter `ServiceCard` prices with, and `RatingMark`/`ratingNew` are
  * the same mark and the same "New" label every caller shares, from the
  * `directory` namespace.
+ *
+ * **No button, and one exception.** The rating and the price are what the eye
+ * lands on and the card is the link. The favourite earns its exception by
+ * costing almost nothing: it stands on the photograph rather than in the
+ * words, so the body's lines keep their column and a saved card is exactly as
+ * tall as an unsaved one.
  */
-export function ProviderCard({ provider, locale }: { provider: ProviderPublicDTO; locale: string }) {
+export function ProviderCard({
+  provider,
+  locale,
+  favourite,
+}: {
+  provider: ProviderPublicDTO;
+  locale: string;
+  /**
+   * The heart, drawn on the photograph — or nothing, for a caller that wants
+   * a card with no control on it at all, which is what the home page's rails
+   * pass.
+   *
+   * A node the page builds rather than a `saved` flag this card turns into
+   * one: the marks for a page come from a single `useFavouriteMarks` call up
+   * there, so the page is what knows the answer, and the card goes on being a
+   * thing that is handed a `ProviderPublicDTO` and asks nobody anything.
+   */
+  favourite?: ReactNode;
+}) {
   const { t } = useTranslation("landing"); // t:ProviderCard
   // The rating's accessible label lives in the directory namespace, next to
   // `RatingMark`'s other caller: duplicating the string into `landing` here
@@ -48,12 +73,20 @@ export function ProviderCard({ provider, locale }: { provider: ProviderPublicDTO
 
   return (
     <article className="group relative flex h-full flex-col overflow-hidden rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-card-foreground)]">
+      {/* `relative` is the positioning context the heart resolves against, and
+          this box rather than the `<article>` is the slot's home: it is the
+          same box whether the business has a photograph or the site's
+          placeholder, so the control does not move depending on whether one
+          was uploaded. The heart carries `z-[3]`, which is what keeps it above
+          the logo badge below (`z-[2]`) as well as above the title link's
+          full-card `::after`. */}
       <div className="relative aspect-[16/10] w-full overflow-hidden bg-[var(--color-muted)]">
         <BrandImage
           src={photo}
           alt=""
           className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.035]"
         />
+        {favourite}
         {/* The badge draws whenever there is a logo, independent of whether a
             photograph sits behind it. With no photo the background is
             `BrandImage`'s own `MediaFallback`, not the logo, so the two can

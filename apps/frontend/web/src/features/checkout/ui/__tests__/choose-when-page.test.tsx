@@ -243,6 +243,9 @@ function serviceFixture(id: string, over: Partial<ServiceDetailDTO> = {}): Servi
         isDefault: true,
       },
     ],
+    // Null, matching this fixture's own `bookingMode: "priced"` — a priced
+    // service has no quote form row at all.
+    quoteForm: null,
     performers: [],
     isFallback: false,
     ...over,

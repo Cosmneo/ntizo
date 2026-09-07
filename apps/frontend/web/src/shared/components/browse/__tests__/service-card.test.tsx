@@ -1,5 +1,6 @@
+import type { ReactNode } from "react";
 import { describe, expect, it } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import {
   RouterProvider,
   createMemoryHistory,
@@ -55,7 +56,7 @@ function service(over: Partial<ServiceDTO> = {}): ServiceDTO {
 
 const option = service().defaultOption!;
 
-function renderCard(dto: ServiceDTO, locale = "en-US") {
+function renderCard(dto: ServiceDTO, locale = "en-US", favourite?: ReactNode) {
   const rootRoute = createRootRoute();
   const indexRoute = createRoute({
     getParentRoute: () => rootRoute,
@@ -63,7 +64,7 @@ function renderCard(dto: ServiceDTO, locale = "en-US") {
     component: () => (
       <ul>
         <li>
-          <ServiceCard service={dto} locale={locale} />
+          <ServiceCard service={dto} locale={locale} favourite={favourite} />
         </li>
       </ul>
     ),
@@ -155,5 +156,45 @@ describe("ServiceCard", () => {
     renderCard(service({ imageUrls: [] }));
     await screen.findByRole("listitem");
     expect(screen.getByTestId("media-fallback")).toBeInTheDocument();
+  });
+
+  /**
+   * The favourite slot, carried across from the tile this card replaced.
+   *
+   * The heart is the one control a result carries, and these are the two
+   * things about it the card is responsible for; whether it fills, what a
+   * press does and how many questions a page asks are `FavouriteButton`'s and
+   * the pages' own suites.
+   */
+  describe("the favourite slot", () => {
+    it("stands the heart on the photograph, never in the words", async () => {
+      // "On the photograph, never in the words": the body's lines keep their
+      // column, so a saved card and an unsaved one are exactly the same
+      // height and the grid never shifts when a mark arrives.
+      renderCard(service(), "en-US", <button type="button">Save</button>);
+      await screen.findByRole("listitem");
+
+      const media = screen.getByRole("article").firstElementChild as HTMLElement;
+      expect(within(media).getByRole("button", { name: "Save" })).toBeInTheDocument();
+    });
+
+    it("is the positioning context the heart resolves against", async () => {
+      // The heart positions itself absolutely. Without `relative` on the
+      // picture frame it would resolve against whichever ancestor happens to
+      // be positioned — the `<article>`, whose top-right corner is the frame
+      // only by accident of this card's shape.
+      renderCard(service(), "en-US", <button type="button">Save</button>);
+      await screen.findByRole("listitem");
+
+      const media = screen.getByRole("article").firstElementChild!;
+      expect(media.className).toContain("relative");
+    });
+
+    it("draws no control at all for a caller that passes none", async () => {
+      // The home page's rail is that caller: a card with nothing on it.
+      renderCard(service());
+      await screen.findByRole("listitem");
+      expect(screen.queryByRole("button")).toBeNull();
+    });
   });
 });

@@ -1,11 +1,10 @@
 import { useTranslation } from "react-i18next";
 import { Tag, ShieldCheck, Smartphone } from "lucide-react";
 import { SiteHeader } from "@/shared/components/site-header";
-import { ServiceSearch } from "@/shared/components/service-search";
 import { HeroCollage } from "@/features/landing/ui/hero-collage";
 
 /**
- * The offer, the search, and three photographs.
+ * The offer and three photographs.
  *
  * White, not artwork. The header used to sit on a generated gradient with a
  * wave cut out of the bottom of it, which is why it needed `overlay`; the
@@ -18,6 +17,17 @@ import { HeroCollage } from "@/features/landing/ui/hero-collage";
  * Feito." was a slogan that said nothing about what is being sold, and is
  * gone rather than moved — the section it used to title, "Como funciona",
  * was removed from the page outright.
+ *
+ * The search is gone from here too, and for the same reason: it is in the
+ * header on every page now, so a field under the subtitle would be the same
+ * question asked twice in one screenful.
+ *
+ * The provider's door stays, and this is the one page that asks for it. The
+ * footer's Company column carries the link on every page, but the home page is
+ * the only one whose second reader arrives wanting to *sell* rather than to
+ * buy, and asking them to scroll the whole page to find that out is asking too
+ * much. It is a fourth bare word among the destinations now, not the block
+ * beside `HeaderActions` it used to be — see `providerCta`.
  */
 export function Hero() {
   const { t } = useTranslation("landing"); // t:Hero
@@ -33,11 +43,10 @@ export function Hero() {
           <p className="mt-5 max-w-[46ch] text-[17px] leading-relaxed text-[var(--color-foreground)]">
             {t("home.heroSubtitle")}
           </p>
-          <ServiceSearch className="mt-7 max-w-[640px]" />
           {/* Three claims the read models can support today. The version this
               replaces promised "payment held until it's done", which nothing
               on the platform does. */}
-          <ul className="mt-6 flex flex-wrap gap-x-7 gap-y-2.5">
+          <ul className="mt-7 flex flex-wrap gap-x-7 gap-y-2.5">
             {[
               { Icon: Tag, label: t("home.proofPrice") },
               { Icon: ShieldCheck, label: t("home.proofVerified") },

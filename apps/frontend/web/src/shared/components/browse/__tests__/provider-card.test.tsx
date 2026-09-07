@@ -1,5 +1,6 @@
+import type { ReactNode } from "react";
 import { describe, expect, it } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import {
   RouterProvider,
   createMemoryHistory,
@@ -46,7 +47,7 @@ function provider(over: Partial<ProviderPublicDTO> = {}): ProviderPublicDTO {
   };
 }
 
-function renderCard(dto: ProviderPublicDTO, locale = "en-US") {
+function renderCard(dto: ProviderPublicDTO, locale = "en-US", favourite?: ReactNode) {
   const rootRoute = createRootRoute();
   const indexRoute = createRoute({
     getParentRoute: () => rootRoute,
@@ -54,7 +55,7 @@ function renderCard(dto: ProviderPublicDTO, locale = "en-US") {
     component: () => (
       <ul>
         <li>
-          <ProviderCard provider={dto} locale={locale} />
+          <ProviderCard provider={dto} locale={locale} favourite={favourite} />
         </li>
       </ul>
     ),
@@ -97,5 +98,54 @@ describe("ProviderCard", () => {
     renderCard(provider({ serviceCount: 6 }));
     await screen.findByRole("link", { name: /Estúdio Mavalane/ });
     expect(screen.getByText("6 services")).toBeInTheDocument();
+  });
+
+  /**
+   * The favourite slot, carried across from the row this card replaced —
+   * `/providers` shipped the heart this week and the card has to keep it.
+   */
+  describe("the favourite slot", () => {
+    it("stands the heart on the photograph, never in the words", async () => {
+      renderCard(provider(), "en-US", <button type="button">Save</button>);
+      await screen.findByRole("link", { name: /Estúdio Mavalane/ });
+
+      const media = screen.getByRole("article").firstElementChild as HTMLElement;
+      expect(within(media).getByRole("button", { name: "Save" })).toBeInTheDocument();
+    });
+
+    it("is the positioning context the heart resolves against", async () => {
+      renderCard(provider(), "en-US", <button type="button">Save</button>);
+      await screen.findByRole("link", { name: /Estúdio Mavalane/ });
+
+      const media = screen.getByRole("article").firstElementChild!;
+      expect(media.className).toContain("relative");
+    });
+
+    it("keeps the heart above the logo badge that shares the photograph", async () => {
+      // The badge is `z-[2]` and the heart `z-[3]`, and they sit in the same
+      // box: a business with a logo must not have its heart painted over by
+      // it. Both are in the picture frame, so the order is the only thing
+      // keeping them apart.
+      renderCard(
+        provider({ logoUrl: "https://cdn/logo.png" }),
+        "en-US",
+        <button type="button" className="z-[3]">
+          Save
+        </button>,
+      );
+      await screen.findByRole("link", { name: /Estúdio Mavalane/ });
+
+      const media = screen.getByRole("article").firstElementChild as HTMLElement;
+      const badge = media.querySelector('[class*="z-[2]"]');
+      expect(badge).not.toBeNull();
+      expect(within(media).getByRole("button", { name: "Save" })).toBeInTheDocument();
+    });
+
+    it("draws no control at all for a caller that passes none", async () => {
+      // The home page's rail is that caller: a card with nothing on it.
+      renderCard(provider());
+      await screen.findByRole("link", { name: /Estúdio Mavalane/ });
+      expect(screen.queryByRole("button")).toBeNull();
+    });
   });
 });

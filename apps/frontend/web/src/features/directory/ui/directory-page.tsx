@@ -1,9 +1,11 @@
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { SearchX, Store } from "lucide-react";
+import type { ProviderPublicDTO } from "@ntizo/shared";
 import { EmptyCard } from "@/shared/components/empty-card";
 import { SiteHeader } from "@/shared/components/site-header";
-import { ServiceSearch } from "@/shared/components/service-search";
 import {
   CATEGORY_STRIP_LIMIT,
   CategoryStrip,
@@ -15,12 +17,19 @@ import { QuickChips, quickChipClass } from "@/shared/components/browse/quick-chi
 import { PAGER_EDGE_CLASS, Pager, pagerPageClass } from "@/shared/components/browse/pager";
 import { EXACT_MATCH } from "@/shared/components/browse/active-match";
 import { formatRating } from "@/shared/domain/rating";
+import { formatHeadlinePrice } from "@/features/directory/services/domain/service-card";
 // Categories are platform data that happens to be fetched under `landing/`.
 // Reached through its viewmodel rather than its repository — `ui` may not
 // touch `data`, and going through the hook reuses the cache the home page has
 // usually already filled.
 import { useCategoryPreview } from "@/features/landing/viewmodel/use-categories";
 import { useDirectory } from "@/features/directory/viewmodel/use-directory";
+// One question about the hearts for the whole page, and the control that
+// answers it — see the `useFavouriteMarks` call below for why the page owns
+// the query rather than the card.
+import { useFavouriteMarks } from "@/features/favourites/viewmodel/use-favourite-marks";
+import { FavouriteButton } from "@/features/favourites/ui/favourite-button";
+import { SaveToListDialog } from "@/features/favourites/ui/save-to-list-dialog";
 import { ProviderCard } from "@/shared/components/browse/provider-card";
 import {
   MobileProviderFilters,
@@ -61,30 +70,32 @@ import { resultsScope, scopeValues } from "@/features/directory/domain/results-s
  * and both drop with it. See `ProviderCard`'s own doc comment for exactly
  * what else a row could say that a card cannot.
  *
- * Four levels of narrowing, deliberately not the same shape. The search bar
- * under the header asks the opening question — the landing hero's own
- * `ServiceSearch`, pointed here and asking for a business by name, so the
- * question is asked in the same shape as on the home page. What differs is
- * what a submit keeps: the hero starts a fresh search, and here the bar is
- * handed this page's own `directorySearch`, so a typed name keeps the
- * narrowing under it. The category strip is full-width navigation between
- * whole result sets. The pills under the heading narrow one of those sets.
- * The sort reorders what is left. Making all four a row of chips would say
- * they were peers.
+ * Four levels of narrowing, deliberately not the same shape. The header's own
+ * search bar asks the opening question, pointed here and asking for a
+ * business by name, so the question is asked in the same shape as everywhere
+ * else. What differs is what a submit keeps: from a page with no list under
+ * it the name is the whole URL, and here the bar is handed this page's own
+ * `directorySearch`, so a typed name keeps the narrowing under it. The
+ * category strip is full-width navigation between whole result sets. The
+ * pills under the heading narrow one of those sets. The sort reorders what is
+ * left. Making all four a row of chips would say they were peers.
  *
  * **Nothing in the results is blue.** The site's one blue goes where the site
- * always puts it — the header's nav pill, the header's sign-in, the search
- * bar's button — and no further down the page than that.
+ * always puts it — the header's sign-in and the search bar's button — and no
+ * further down the page than that. The header's three destinations used to be
+ * a third place and are not any more: they are bare text, and the lit one is
+ * navy.
  * Everything below is headline navy, ink, grey and the amber star, which is
  * why the cards carry no button of their own: what the eye should land on
  * down a grid of results is the photographs, the ratings and the prices,
  * not twenty identical calls to action.
  *
- * **Nothing straddles the strip.** Header, then search bar, then strip, then
- * `main`: four bands stacked, none of them overlapping the next. The card
- * that once sat in a well across the strip's top edge is gone, so the strip
- * is a single positioned layer with no paint-order split — anything
- * reintroduced there on a negative margin would be painted over by it.
+ * **Nothing straddles the strip.** Header, then strip, then `main`: three
+ * bands stacked, none of them overlapping the next — the search band that
+ * used to sit between the first two is inside the header now. The card that
+ * once sat in a well across the strip's top edge is gone, so the strip is a
+ * single positioned layer with no paint-order split — anything reintroduced
+ * there on a negative margin would be painted over by it.
  *
  * **The phone is not this page shrunk.** The pills give way to four one-tap
  * chips above the results and one navy capsule at the thumb holding the
@@ -113,6 +124,32 @@ export function DirectoryPage() {
   const current = useSearch({ strict: false }) as DirectorySearch;
   const { category, q, sort, offset = 0 } = current;
   const page = useDirectory(current, locale);
+  /**
+   * Which of the businesses on this page the reader has already saved — asked
+   * **once, here**, and handed down as a filled or empty heart.
+   *
+   * `"provider"` and not `"service"`: a service and a business may
+   * legitimately share an id, so the type rides along on every question and
+   * every write, or one page's marks fill the other's hearts. Never a hook
+   * inside the card, which would be one round trip per result. See
+   * `useFavouriteMarks`.
+   */
+  const marks = useFavouriteMarks(
+    "provider",
+    page.items.map((item) => item.id),
+  );
+  /**
+   * Which business the save-to-a-list dialog is about, and what its heart's
+   * own save answered with. `null` is closed.
+   *
+   * The whole DTO rather than an id, and one dialog for the page rather than
+   * one per card — the same two rulings `ServicesBrowsePage` records, since
+   * these two pages differ only in what they list.
+   */
+  const [filing, setFiling] = useState<{
+    provider: ProviderPublicDTO;
+    listIds?: string[];
+  } | null>(null);
   const navigate = useNavigate();
   // A plain query, unlike the listings: this is a control, not the content a
   // crawler came for, so it may arrive a beat later.
@@ -142,30 +179,26 @@ export function DirectoryPage() {
 
   return (
     <>
-      <SiteHeader current="providers" />
-
-      {/* The site's search, not a search this page invented: the landing
-          hero's own bar, in the page's own column under the header rather
-          than inside it. 760px and centred so it reads as a field over the
-          results it filters and not as a banner across the window. Pointed at
-          this list and asking for a name, because that is what a reader has
-          in hand when they come looking for a business rather than a job. The
-          city is not one of its fields — that is the "City" filter pill
-          below, where a narrowing belongs.
-
-          It builds its URL through `directorySearch` like every other control
-          here, which is what keeps the category, the filters, the city and
-          the sort when a name is typed, and resets the page. */}
-      <div className="page-shell">
-        <ServiceSearch
-          to="/providers"
-          placeholder={t("searchFieldProviderEmpty")}
-          label={t("searchLabelProviders")}
-          search={(q) => directorySearch(current, { q, offset: undefined })}
-          initialValue={current.q ?? ""}
-          className="mx-auto mt-5 max-w-[760px]"
-        />
-      </div>
+      {/* The site's search, not a search this page invented, and inside the
+          header rather than in a band of its own beneath it: it is the same
+          bar on every page, so it belongs to the chrome. Pointed at this list
+          and asking for a name, because that is what a reader has in hand
+          when they come looking for a business rather than a job. A submit
+          builds its URL through `directorySearch` like every other control
+          here, which is what holds on to the category, the filters, the city
+          and the sort when a name is typed, and resets the page. The city is
+          not one of the bar's own fields: that is the "City" filter pill
+          below, where a narrowing belongs. */}
+      <SiteHeader
+        current="providers"
+        search={{
+          to: "/providers",
+          placeholder: t("searchFieldProviderEmpty"),
+          label: t("searchLabelProviders"),
+          search: (q) => directorySearch(current, { q, offset: undefined }),
+          initialValue: current.q ?? "",
+        }}
+      />
 
       <CategoryStrip label={t("categoryStripLabel")}>
         <StripItem
@@ -304,7 +337,25 @@ export function DirectoryPage() {
             <ul className="grid list-none grid-cols-1 gap-x-6 gap-y-8 p-0 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
               {page.items.map((provider) => (
                 <li key={provider.id}>
-                  <ProviderCard provider={provider} locale={locale} />
+                  <ProviderCard
+                    provider={provider}
+                    locale={locale}
+                    favourite={
+                      <FavouriteButton
+                        targetType="provider"
+                        targetId={provider.id}
+                        saved={marks.isMarked(provider.id)}
+                        // Fires when the save answers, never on the press:
+                        // the lists come from the mutation's own data, so the
+                        // dialog opens already knowing which are ticked. A
+                        // press on an already-filled heart brings none, and
+                        // the dialog asks for itself.
+                        onSaved={({ listIds }) =>
+                          setFiling({ provider, ...(listIds ? { listIds } : {}) })
+                        }
+                      />
+                    }
+                  />
                 </li>
               ))}
             </ul>
@@ -372,6 +423,19 @@ export function DirectoryPage() {
       </main>
 
       <MobileProviderFilters current={current} total={page.total} />
+
+      {/* Mounted only while it is open, so its focus trap and the return of
+          focus to the heart run on mount and unmount rather than off a prop. */}
+      {filing && (
+        <SaveToListDialog
+          open
+          onOpenChange={(open) => !open && setFiling(null)}
+          targetType="provider"
+          targetId={filing.provider.id}
+          listing={providerListing(filing.provider, t, locale)}
+          {...(filing.listIds ? { savedListIds: filing.listIds } : {})}
+        />
+      )}
     </>
   );
 }
@@ -385,6 +449,42 @@ export function DirectoryPage() {
  * come back on when the pill was used instead.
  */
 const QUICK_MIN_RATING: RatingThreshold = 4.5;
+
+/**
+ * What the dialog draws down its left panel: this business, said the way the
+ * card beside it says it.
+ *
+ * Here rather than in the dialog, which is handed a listing and knows nothing
+ * about providers. The photograph falls back to the logo — a business with no
+ * cover photo usually has one, and the dialog's whole job is saying *which*
+ * listing this is about.
+ *
+ * The price is `priceFrom`, never a bare amount: `fromAmountMinor` is the
+ * cheapest of everything the business sells, and printing it alone would read
+ * as a fixed price for whatever the reader was looking at.
+ */
+function providerListing(provider: ProviderPublicDTO, t: TFunction, locale: string) {
+  const place = [provider.district, provider.city].filter(Boolean).join(", ");
+  return {
+    imageUrl: provider.photoUrls[0] ?? provider.logoUrl ?? null,
+    name: provider.name,
+    byline:
+      place ||
+      provider.categories[0]?.name ||
+      t(`filterProviderKindOption.${provider.type}`),
+    ...(provider.fromAmountMinor !== null && provider.fromCurrency !== null
+      ? {
+          price: t("priceFrom", {
+            amount: formatHeadlinePrice(
+              provider.fromAmountMinor,
+              provider.fromCurrency,
+              locale,
+            ),
+          }),
+        }
+      : {}),
+  };
+}
 
 /** One category, as a chip in the strip: its icon beside its name. */
 function StripItem({

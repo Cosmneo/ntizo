@@ -45,16 +45,35 @@ describe("Hero", () => {
     expect(screen.getByText("Pay with M-Pesa")).toBeInTheDocument();
   });
 
-  it("carries the search that reaches the catalogue", async () => {
+  /**
+   * The search reaches the catalogue from the header, not from the hero.
+   * It used to be both: a field in the bar and a wider one under the
+   * subtitle, which is two boxes asking the same question in one screenful.
+   * The hero kept the big one only while the header had none.
+   */
+  it("leaves the search to the header rather than repeating it", async () => {
     await renderHero();
-    expect(screen.getByLabelText("Search services")).toBeInTheDocument();
+
+    const box = screen.getByRole("searchbox");
+    expect(box).toHaveAccessibleName("Search services");
+    expect(screen.getByRole("banner")).toContainElement(box);
   });
 
-  it("offers the provider their own door", async () => {
+  /**
+   * The home page is the one page that opens a door for a provider in the
+   * chrome, because it is the one page whose second reader came to sell. The
+   * footer carries the same link everywhere, `footer.test.tsx` included.
+   *
+   * A destination among the destinations, and no longer the block it was in
+   * the same cell as the account controls, where it stacked above them
+   * instead of standing beside them.
+   */
+  it("opens the provider's door among the header's destinations", async () => {
     await renderHero();
-    expect(
-      screen.getByRole("link", { name: "Become a Provider" }).getAttribute("href"),
-    ).toBe("/become-provider");
+
+    const door = screen.getByRole("link", { name: "Become a Provider" });
+    expect(door).toHaveAttribute("href", "/become-provider");
+    expect(screen.getByRole("navigation")).toContainElement(door);
   });
 
   // The collage stands in for photographs nobody has uploaded. A grey box
