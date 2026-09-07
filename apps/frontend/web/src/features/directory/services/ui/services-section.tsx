@@ -23,9 +23,10 @@ import { ServiceRow } from "@/features/directory/services/ui/service-row";
  * scatters those prices across the page at whatever height each photograph
  * happens to end; a row gives every price the same horizontal position, and
  * fits more services on screen than four cards ever did because a row is not
- * as tall as a photograph. It is also the shape the platform-wide services
- * browse already reached for on its own, in `ServiceListingCard` — the two
- * lists had drifted into different answers to the same question.
+ * as tall as a photograph. It is also the shape the platform-wide browse
+ * reached for at the time, in the since-deleted `ServiceListingCard`, and
+ * the one its phone rows use today — the two lists had drifted into different
+ * answers to the same question.
  *
  * `id="servicos"` is the rail's "See services" anchor, and `scroll-mt-[100px]`
  * keeps the heading clear of the 84px sticky header once it has jumped.

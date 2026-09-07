@@ -8,10 +8,8 @@ import { BrandImage } from "@/shared/components/brand-image";
 import { EmptyCard } from "@/shared/components/empty-card";
 import { initialsFrom } from "@/shared/lib/initials";
 import { slotWording } from "@/features/checkout/domain/slot-wording";
-import {
-  formatAmount,
-  formatRating,
-} from "@/features/directory/services/domain/service-card";
+import { formatRating } from "@/shared/domain/rating";
+import { formatAmount } from "@/features/directory/services/domain/service-card";
 import { MessageProviderButton } from "@/features/directory/ui/provider-rail";
 import { useCurrentUser } from "@/features/user/viewmodel/use-current-user";
 import {
@@ -232,7 +230,7 @@ export function BookingPage() {
                 ~270px this column has beside the thumbnail, and a heading
                 that tall pushed the status and the actions below the fold.
                 The overriding utility wins because `type-h1` lives in the
-                components layer; `overview-cards.tsx` does the same thing
+                components layer; `stat-card.tsx` does the same thing
                 for the same reason. */}
             <h1 className="type-h1 text-[22px] sm:text-[28px]">
               {b.serviceName}

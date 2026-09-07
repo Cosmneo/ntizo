@@ -7,3 +7,4 @@ export * from "./payment-enums";
 export * from "./provider-enums";
 export * from "./wallet-enums";
 export * from "./contact-enums";
+export * from "./activity-enums";

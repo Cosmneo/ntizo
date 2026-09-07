@@ -74,11 +74,12 @@ export class ListSupportRequestsProjection {
   async execute(input: {
     status?: SupportStatus | undefined;
     audience?: SupportAudience | undefined;
+    search?: string | undefined;
     limit?: number | undefined;
     cursor?: string | null | undefined;
   }): Promise<SupportRequestPageDTO> {
     const page = await this.requests.listForAdmin(
-      { status: input.status, audience: input.audience },
+      { status: input.status, audience: input.audience, search: input.search },
       clampLimit(input.limit),
       input.cursor ?? null,
     );

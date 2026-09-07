@@ -10,11 +10,18 @@ import {
 export function useAdminProviders(input: {
   status?: string;
   search?: string;
+  /** Fewer than the page when a caller wants a glance — the dashboard asks for five. */
+  limit?: number;
 }) {
   // Server-side, not filtered in the browser: this is the one list that grows
   // without bound, and deciding which fifty of ten thousand to draw is not a
   // decision the browser can make.
   return useQuery(adminProviderQueries.all(input));
+}
+
+/** How many providers stand in each status; `pending` is the queue. */
+export function useProviderStatusCounts() {
+  return useQuery(adminProviderQueries.counts());
 }
 
 export function useAdminProviderDetail(providerId: string) {

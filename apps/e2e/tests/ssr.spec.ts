@@ -50,7 +50,7 @@ test("/admin and /provider/overview render no authenticated content with JavaScr
   expect(adminResponse?.status()).toBe(200);
   const adminHtml = await noJsPage.content();
   expect(adminHtml).not.toContain(admin.email);
-  expect(adminHtml).not.toContain("Ntizo Admin Dashboard");
+  expect(adminHtml).not.toContain("Latest applications");
 
   const providerResponse = await noJsPage.goto("/provider/overview");
   expect(providerResponse?.status()).toBe(200);

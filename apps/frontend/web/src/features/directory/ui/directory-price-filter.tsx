@@ -91,7 +91,18 @@ export function DirectoryPriceFilter({ current }: { current: DirectorySearch }) 
         inputMode="numeric"
         className="h-9 min-w-0 flex-1 px-2.5 text-center"
       />
-      <Button type="submit" className="h-9 shrink-0 px-3">
+      {/* Navy, not the kit's default blue: `--color-primary` is spent on the
+          header's search button and nothing else on these two pages, and this
+          submit shows up twice — in the desktop pill's popover and in the
+          phone sheet, whose own footer button already wears the navy. `cn` is
+          `twMerge`, so these `bg-`/`text-` classes replace the variant's
+          rather than racing them. The focus ring stays as it is: an
+          affordance, not a surface. */}
+      <Button
+        type="submit"
+        variant="outline"
+        className="h-9 shrink-0 border-transparent bg-[var(--color-navy-surface)] px-3 text-[var(--color-navy-on)] hover:bg-[var(--color-navy-surface)]/90"
+      >
         {t("filterPriceApply")}
       </Button>
     </form>

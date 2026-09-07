@@ -157,11 +157,13 @@ describe("createSupportReadHandlers", () => {
     const field = handlers.find((h) => h.key === "support.requests")!;
 
     await field.handler(
-      { status: "open", audience: "provider", limit: 10, cursor: "c1" },
+      { status: "open", audience: "provider", search: "Reembolso", limit: 10, cursor: "c1" },
       ctx({ requesterUserId: "u-admin", role: "admin" }),
     );
 
-    expect(listSupportRequests.calls).toEqual([{ status: "open", audience: "provider", limit: 10, cursor: "c1" }]);
+    expect(listSupportRequests.calls).toEqual([
+      { status: "open", audience: "provider", search: "Reembolso", limit: 10, cursor: "c1" },
+    ]);
   });
 
   it("support.request reaches the use case with the input passed through, for an admin caller", async () => {

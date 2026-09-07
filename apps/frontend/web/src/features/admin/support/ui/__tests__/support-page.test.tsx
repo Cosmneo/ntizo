@@ -15,13 +15,13 @@ function row(over: Partial<SupportRequestSummaryDTO> = {}): SupportRequestSummar
   };
 }
 
-async function renderPage(items: SupportRequestSummaryDTO[], nextCursor: string | null = null) {
+async function renderPage(items: SupportRequestSummaryDTO[], nextCursor: string | null = null, openCount = items.length) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   qc.setQueryData(["admin", "support", { status: "open" }], {
     pages: [{ items, nextCursor }],
     pageParams: [null],
   });
-  qc.setQueryData(["admin", "support", "openCount"], items.length);
+  qc.setQueryData(["admin", "support", "openCount"], openCount);
   const rootRoute = createRootRoute();
   const router = createRouter({
     routeTree: rootRoute.addChildren([
@@ -63,21 +63,35 @@ describe("AdminSupportPage", () => {
     );
   });
 
-  it("does not claim a total it cannot know while another page remains", async () => {
-    // A non-null `nextCursor` means the backend has more — "1 of 1 shown"
-    // would be a lie the queue cannot back up, since `supportRequests` never
-    // returns a count. The header must fall back to a plain "N shown".
-    await renderPage([row()], "2026-09-03T10:00:00.000Z|t-1");
-    expect(screen.getByText("1 shown")).toBeInTheDocument();
-    expect(screen.queryByText(/of 1/)).not.toBeInTheDocument();
+  it("counts the page against the platform's open requests while the queue is on open", async () => {
+    // `supportRequests` never returns a count, but the open count is the
+    // whole this page exists to bring down — so with more pages behind a
+    // one-row page, the header says "1 of 3 shown" rather than "1 shown".
+    await renderPage([row()], "2026-09-03T10:00:00.000Z|t-1", 3);
+    expect(screen.getByText("1 of 3 shown")).toBeInTheDocument();
   });
 
-  it("defaults to open and lets the filter change", async () => {
+  it("keeps its filters in the shared panel, and asks for resolved requests as a different list", async () => {
     const user = userEvent.setup();
     const qc = await renderPage([row()]);
-    // Switching to "resolved" is a different key, unseeded — the page must
-    // ask for it rather than showing the open list under a new label.
-    await user.click(screen.getByRole("button", { name: /^resolved$/i }));
+    // Nothing loose above the card: the only way to a filter is the card's own button.
+    expect(screen.queryByRole("button", { name: /^resolved$/i })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /^filter/i }));
+    const panel = screen.getByRole("dialog", { name: "Filter requests" });
+    await user.click(within(panel).getByRole("button", { name: "Status" }));
+    await user.click(within(panel).getByRole("option", { name: "Resolved" }));
+
+    // A different key, unseeded — the page must ask for it rather than show
+    // the open list under a new label.
     expect(qc.getQueryData(["admin", "support", { status: "resolved" }])).toBeUndefined();
+    expect(within(screen.getByRole("button", { name: /^filter/i })).getByText("1")).toBeInTheDocument();
+  });
+
+  it("searches on the server, by subject", async () => {
+    const user = userEvent.setup();
+    const qc = await renderPage([row()]);
+    await user.type(screen.getByPlaceholderText("Search by subject"), "Reembolso");
+    expect(qc.getQueryCache().find({ queryKey: ["admin", "support", { status: "open", search: "Reembolso" }] })).toBeDefined();
   });
 });

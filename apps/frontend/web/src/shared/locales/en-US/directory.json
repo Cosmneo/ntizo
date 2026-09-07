@@ -60,7 +60,6 @@
   "servicesSubtitle": "Everything the platform's providers offer.",
   "servicesPrevious": "← Previous",
   "servicesNext": "Next →",
-  "servicesFilterByCategory": "Filter by category",
   "servicesAllCategories": "All",
   "filtersTitle": "Filters",
   "filterWhere": "Where it happens",
@@ -79,7 +78,6 @@
   "emptyTitle": "No providers listed yet",
   "noResultsTitle": "No matches",
   "providersAllCategories": "All",
-  "providersFilterByCategory": "Filter by category",
   "providersFound": "{{count}} business found",
   "providersFound_other": "{{count}} businesses found",
   "providersPrevious": "Previous",
@@ -176,8 +174,6 @@
   "chipPriceMax": "up to {{max}}",
   "chipRating": "{{score}}+ stars",
   "chipVerified": "Verified only",
-  "chipRemove": "Remove filter",
-  "activeFiltersLabel": "Active filters",
   "filtersClearAll": "Clear all",
   "sortOption": {
     "default": "Suggested",
@@ -193,8 +189,6 @@
     "city": "in {{city}}",
     "categoryCity": "in {{category}}, {{city}}"
   },
-  "heroSubtitleServices": "Pick the job, see what it costs and how long it takes, and agree a time.",
-  "heroSubtitleProviders": "People and businesses with prices in the open and reviews written by the customers who hired them.",
   "searchFieldService": "Service",
   "searchFieldServiceEmpty": "What do you need done?",
   "searchFieldProvider": "Provider",
@@ -204,10 +198,6 @@
   "searchFieldCityToggle": "Show cities",
   "searchFieldCityNoResults": "No city found",
   "pagerLabel": "Pages",
-  "stubProviderRating": "provider rating",
-  "listingByProvider": "by {{name}}",
-  "stubQuoteAmount": "To agree",
-  "stubPerService": "per service",
   "mobileSearchTitle": "What are you looking for?",
   "mobileSearchApply": "Show results",
   "factCategory": "Category",
@@ -233,5 +223,39 @@
   "quoteAction": "Request a quote",
   "pricingModeFixed": "Fixed price",
   "pricingModeHourly": "Hourly",
-  "reviewsSeeAll": "See all reviews"
+  "reviewsSeeAll": "See all reviews",
+  "titleServicesTerm": "{{term}}",
+  "titleServicesTermCity": "{{term}} in {{city}}",
+  "titleProvidersTerm": "{{term}}",
+  "titleProvidersTermCity": "{{term}} in {{city}}",
+
+  "priceToAgree": "Price to agree",
+  "priceQuoteHint": "Ask for a quote",
+  "priceOptionCount_one": "{{count}} option",
+  "priceOptionCount_other": "{{count}} options",
+  "priceFromPrefix": "from",
+  "pricePerHourUnit": "/h",
+
+  "ratingNew": "New",
+  "providerKindSentence": {
+    "individual": "{{category}} in {{place}}",
+    "organization": "{{category}} in {{place}}"
+  },
+  "providerServicesMore": "{{count}} more",
+  "providerOpenBusiness": "View business",
+  "providerOpenPerson": "View profile",
+
+  "searchPillSubmit": "Search",
+  "searchPillOpen": "Change your search",
+  "categoryStripLabel": "Categories",
+  "categoryStripScrollLeft": "Previous categories",
+  "categoryStripScrollRight": "Next categories",
+
+  "filterPillRemove": "Remove {{filter}}",
+  "filterSheetApply_one": "Show {{count}} result",
+  "filterSheetApply_other": "Show {{count}} results",
+  "sortTrigger": "Sort:",
+
+  "quickChipMaxPrice": "Up to {{amount}}",
+  "quickChipsLabel": "Quick filters"
 }

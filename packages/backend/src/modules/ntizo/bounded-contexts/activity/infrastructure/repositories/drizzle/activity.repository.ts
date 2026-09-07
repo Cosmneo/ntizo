@@ -1,7 +1,9 @@
-import { and, desc, eq, lt, or } from "drizzle-orm";
+import { and, desc, eq, ilike, lt, or, sql, type SQL } from "drizzle-orm";
 import { getDb } from "../../../../../../better-auth/infrastructure/client/drizzle";
 import { activity } from "../../../../../shared/infrastructure/database/activity/schemas";
+import { containsFolded, unaccented } from "../../../../../shared/infrastructure/database/search-fold";
 import { Activity } from "../../../domain/aggregates/activity.aggregate";
+import type { ActivityType } from "../../../domain/activity-type";
 import { CursorInvalidError } from "../../../domain/exceptions";
 import type { ActivityPage, ActivityRepositoryPort } from "../../../app/ports/outbound/activity.repository.port";
 
@@ -47,29 +49,59 @@ export class DrizzleActivityRepository implements ActivityRepositoryPort {
     limit: number;
     cursor?: string | null;
   }): Promise<ActivityPage> {
-    // A cursor that fails to decode is rejected, not treated as absent.
-    // Silently falling back to page one would hand a paginating client the
-    // newest page and a fresh `nextCursor` under a cursor it thought was
-    // mid-list — nothing distinguishes that from a normal first call, so a
-    // client that loops on "cursor in, cursor out" until `nextCursor` is
-    // null would loop forever on a truncated or tampered token instead of
-    // ever finding out something was wrong.
-    //
-    // This is a deliberate trade, not a free improvement: a cursor is an
-    // opaque string a client holds onto between requests, and if the
-    // `<occurredAt ISO>|<id>` encoding above ever changes, every
-    // previously-issued cursor becomes undecodable at once. Before this
-    // change that would have quietly restarted every one of those clients at
-    // page one; now it hard-errors all of them. A loud, simultaneous failure
-    // on a format change is still the outcome to want — the alternative is a
-    // client that can loop forever and never finds out — but it is the
-    // consequence of picking this over silence, not a side effect nobody
-    // decided.
+    return this.page(eq(activity.actorUserId, params.actorUserId), params.limit, params.cursor);
+  }
+
+  async listAll(params: {
+    limit: number;
+    cursor?: string | null;
+    type?: ActivityType | undefined;
+    search?: string | undefined;
+  }): Promise<ActivityPage> {
+    const needle = params.search?.trim();
+    return this.page(
+      and(
+        params.type ? eq(activity.type, params.type) : undefined,
+        // The payload as text: a service name, a provider name, an email —
+        // whatever the sentence will print is in there and nowhere else.
+        // Folded the way every other search here is folded.
+        needle ? ilike(unaccented(sql`${activity.payload}::text`), containsFolded(needle)) : undefined,
+      ),
+      params.limit,
+      params.cursor,
+    );
+  }
+
+  /**
+   * One page, newest first, from wherever `cursor` points — the half of both
+   * reads that must not be written twice, because the cursor's meaning is
+   * the one thing a client holds across calls.
+   *
+   * A cursor that fails to decode is rejected, not treated as absent.
+   * Silently falling back to page one would hand a paginating client the
+   * newest page and a fresh `nextCursor` under a cursor it thought was
+   * mid-list — nothing distinguishes that from a normal first call, so a
+   * client that loops on "cursor in, cursor out" until `nextCursor` is
+   * null would loop forever on a truncated or tampered token instead of
+   * ever finding out something was wrong.
+   *
+   * This is a deliberate trade, not a free improvement: a cursor is an
+   * opaque string a client holds onto between requests, and if the
+   * `<occurredAt ISO>|<id>` encoding above ever changes, every
+   * previously-issued cursor becomes undecodable at once. Before this
+   * change that would have quietly restarted every one of those clients at
+   * page one; now it hard-errors all of them. A loud, simultaneous failure
+   * on a format change is still the outcome to want — the alternative is a
+   * client that can loop forever and never finds out — but it is the
+   * consequence of picking this over silence, not a side effect nobody
+   * decided.
+   */
+  private async page(where: SQL | undefined, limit: number, cursor: string | null | undefined): Promise<ActivityPage> {
     let after: { occurredAt: Date; id: string } | null = null;
-    if (params.cursor) {
-      after = decodeCursor(params.cursor);
+    if (cursor) {
+      after = decodeCursor(cursor);
       if (!after) {
-        throw new CursorInvalidError(params.cursor);
+        throw new CursorInvalidError(cursor);
       }
     }
     // One more than asked for: its existence is what says another page exists,
@@ -78,21 +110,21 @@ export class DrizzleActivityRepository implements ActivityRepositoryPort {
       .select()
       .from(activity)
       .where(
-        after
-          ? and(
-              eq(activity.actorUserId, params.actorUserId),
-              or(
+        and(
+          where,
+          after
+            ? or(
                 lt(activity.occurredAt, after.occurredAt),
                 and(eq(activity.occurredAt, after.occurredAt), lt(activity.id, after.id)),
-              ),
-            )
-          : eq(activity.actorUserId, params.actorUserId),
+              )
+            : undefined,
+        ),
       )
       .orderBy(desc(activity.occurredAt), desc(activity.id))
-      .limit(params.limit + 1);
+      .limit(limit + 1);
 
-    const hasMore = rows.length > params.limit;
-    const page = hasMore ? rows.slice(0, params.limit) : rows;
+    const hasMore = rows.length > limit;
+    const page = hasMore ? rows.slice(0, limit) : rows;
     const last = page[page.length - 1];
 
     return {

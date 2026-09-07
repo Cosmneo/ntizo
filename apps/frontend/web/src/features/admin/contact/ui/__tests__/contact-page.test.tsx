@@ -75,8 +75,20 @@ describe("AdminContactPage", () => {
     expect(t.getByText(/joana@exemplo\.com/)).toBeInTheDocument();
     expect(t.getByText("Partnership")).toBeInTheDocument();
     expect(t.getByText("#7F3A2C")).toBeInTheDocument();
-    // Not part of a row, so it appears once regardless.
-    expect(screen.getByText(/1 open request/)).toBeInTheDocument();
+  });
+
+  it("keeps its filters in the shared panel, and asks for resolved requests as a different list", async () => {
+    const qc = await renderPage([row()]);
+    // Nothing loose above the card: the only way to a filter is the card's own button.
+    expect(screen.queryByRole("button", { name: /^resolved$/i })).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: /^filter/i }));
+    const panel = screen.getByRole("dialog", { name: "Filter requests" });
+    await userEvent.click(within(panel).getByRole("button", { name: "Status" }));
+    await userEvent.click(within(panel).getByRole("option", { name: "Resolved" }));
+
+    expect(qc.getQueryData(["admin", "contact", { offset: 0, status: "resolved" }])).toBeUndefined();
+    expect(within(screen.getByRole("button", { name: /^filter/i })).getByText("1")).toBeInTheDocument();
   });
 
   it("offers a reply by email with the reference in the subject", async () => {

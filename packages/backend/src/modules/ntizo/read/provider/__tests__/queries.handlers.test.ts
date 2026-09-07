@@ -33,6 +33,11 @@ function makeModule(calls: string[] = []) {
     },
     listProvidersForAdmin: { async execute() { return []; } },
     getProviderDetailForAdmin: { async execute() { return {}; } } as never,
+    countProvidersByStatus: {
+      async execute() {
+        return { pending: 2, active: 5, rejected: 0, suspended: 0, archived: 0 };
+      },
+    },
   getProviderDetail: {
       execute: async (input: { providerId: string; requestedByUserId: string }) => {
         calls.push(`detail:${input.providerId}:${input.requestedByUserId}`);
@@ -46,9 +51,8 @@ describe("createProviderReadHandlers", () => {
   it("builds a handler for every read field", () => {
     const handlers = createProviderReadHandlers(makeModule());
     expect(Array.isArray(handlers)).toBe(true);
-    // Three: the two member-scoped reads plus the admin queue.
-    // Four now: my list, my detail, the admin list and the admin detail.
-    expect(handlers.length).toBe(4);
+    // Five: my list, my detail, the admin list, the admin detail, and the admin counts.
+    expect(handlers.length).toBe(5);
   });
 
   it("stamps requestedByUserId from the session, never from args", async () => {
@@ -143,4 +147,41 @@ describe("mapGetProviderDetailInput", () => {
 
     expect(mapped).toEqual({ providerId: "p1", requestedByUserId: "u-session" });
   });
+});
+
+function ctx(over: Partial<NtizoGraphqlContext> = {}): NtizoGraphqlContext {
+  return {
+    requesterUserId: "u-session", email: null, firstName: null, lastName: null,
+    role: "customer", requestId: null, ipAddress: null, userAgent: null, ...over,
+  };
+}
+
+/**
+ * The counts span every workspace and take no input, so the handler's role
+ * check is the field's whole security surface — as `provider.allForAdmin`'s
+ * is. Refused callers are refused identically, before the projection runs.
+ */
+describe("provider.countByStatusForAdmin", () => {
+  const handlerFor = () => {
+    const found = createProviderReadHandlers(makeModule()).find((h) => h.key === "provider.countByStatusForAdmin");
+    if (!found) throw new Error("no handler mounted for provider.countByStatusForAdmin");
+    return found;
+  };
+
+  it("answers an administrator with the five counts", async () => {
+    const out = await handlerFor().handler({}, ctx({ requesterUserId: "u-admin", role: "admin" }));
+    expect(out).toEqual({ pending: 2, active: 5, rejected: 0, suspended: 0, archived: 0 });
+  });
+
+  const refused = [
+    { name: "a customer", over: { requesterUserId: "u-cust", role: "customer" } as const },
+    { name: "a provider", over: { requesterUserId: "u-member", role: "individual_provider" } as const },
+    { name: "an anonymous caller", over: { requesterUserId: null, role: "customer" } as const },
+    { name: "an admin role with nobody behind it", over: { requesterUserId: null, role: "admin" } as const },
+  ];
+  for (const who of refused) {
+    it(`refuses ${who.name} with ADMIN_ONLY`, async () => {
+      await expect(handlerFor().handler({}, ctx(who.over))).rejects.toMatchObject({ code: "ADMIN_ONLY" });
+    });
+  }
 });

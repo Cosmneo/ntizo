@@ -5,10 +5,9 @@ import type { ReviewAdminDTO } from "@ntizo/shared/read-models";
 import { Badge, Button } from "@ntizo/frontend-ui";
 import { CollectionCard } from "@/shared/components/collection-card";
 import { usePageHeader } from "@/shared/lib/page-header";
-import {
-  ADMIN_REVIEW_PAGE_SIZE,
-} from "../data/admin-review.repository";
+import { ADMIN_REVIEW_PAGE_SIZE } from "../data/admin-review.repository";
 import { useAdminReviews, useSetReviewFeatured } from "../viewmodel/use-admin-reviews";
+import { ReviewsFilterSheet } from "./reviews-filters";
 
 /**
  * How many the home page draws. Mirrors `MAX_FEATURED` on the server, which is
@@ -33,6 +32,7 @@ export function AdminReviewsPage() {
   const [featuredOnly, setFeaturedOnly] = useState(false);
   const [search, setSearch] = useState("");
   const [offset, setOffset] = useState(0);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const query = useAdminReviews({
     offset,
     ...(featuredOnly ? { featuredOnly: true } : {}),
@@ -40,11 +40,19 @@ export function AdminReviewsPage() {
   });
   const setFeatured = useSetReviewFeatured();
 
-  usePageHeader(t("reviewsTitle"), t("reviewsSubtitle"));
-
   const rows = query.data?.items ?? [];
   const total = query.data?.total ?? 0;
   const featuredCount = query.data?.featuredCount ?? 0;
+
+  // The count is the one bounded thing on this screen, and it goes in the
+  // header rather than in a line of its own above the card: every list here
+  // is a header and a card, and a sentence floating between the two was the
+  // one place this list looked unlike the ones beside it. Until the first
+  // read lands the header says what the page is for, as the others do.
+  usePageHeader(
+    t("reviewsTitle"),
+    query.data ? t("reviewsFeaturedCount", { count: featuredCount, max: MAX_FEATURED }) : t("reviewsSubtitle"),
+  );
   const dateFormat = new Intl.DateTimeFormat(locale, {
     day: "numeric",
     month: "short",
@@ -64,29 +72,6 @@ export function AdminReviewsPage() {
         </p>
       )}
 
-      {/* The count and the filter above the table rather than inside it: this
-          is the number the whole screen is about, and burying it in a column
-          header would make the one bounded thing here look incidental. */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="type-body">
-          {t("reviewsFeaturedCount", { count: featuredCount, max: MAX_FEATURED })}
-        </p>
-        <Button
-          variant={featuredOnly ? "default" : "outline"}
-          size="sm"
-          onClick={() => {
-            setFeaturedOnly((v) => !v);
-            // Back to the first page: page three of the unfiltered list is
-            // past the end of a four-row one, which renders as empty and
-            // reads as the filter having found nothing.
-            setOffset(0);
-          }}
-        >
-          <Star className="h-4 w-4" aria-hidden="true" />
-          {t("reviewsOnHomeFilter")}
-        </Button>
-      </div>
-
       <CollectionCard
         title={t("reviewsTitle")}
         shown={rows.length}
@@ -101,6 +86,8 @@ export function AdminReviewsPage() {
           setOffset(0);
         }}
         searchPlaceholder={t("reviewsSearchPlaceholder")}
+        onOpenFilters={() => setFiltersOpen(true)}
+        activeFilterCount={featuredOnly ? 1 : 0}
         columns={[
           { key: "review", label: t("reviewsReview"), className: "pl-5" },
           { key: "business", label: t("reviewsBusiness"), skeletonWidth: "w-32" },
@@ -169,6 +156,19 @@ export function AdminReviewsPage() {
           },
           actions: <FeatureToggle review={review} />,
         }))}
+      />
+
+      <ReviewsFilterSheet
+        open={filtersOpen}
+        onOpenChange={setFiltersOpen}
+        featuredOnly={featuredOnly}
+        onFeaturedOnlyChange={(next) => {
+          setFeaturedOnly(next);
+          // Back to the first page: page three of the unfiltered list is
+          // past the end of a four-row one, which renders as empty and
+          // reads as the filter having found nothing.
+          setOffset(0);
+        }}
       />
 
       {/* Plain previous/next rather than numbered pages: the backend answers

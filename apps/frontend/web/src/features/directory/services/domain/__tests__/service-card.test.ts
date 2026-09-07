@@ -8,6 +8,7 @@ import {
   servicePriceCell,
   serviceCardImage,
   serviceDetailPanel,
+  servicePriceLine,
 } from "../service-card";
 import type { ServiceDTO, ServicePublicOptionDTO } from "../types";
 
@@ -301,5 +302,71 @@ describe("serviceDetailPanel", () => {
     expect(
       serviceDetailPanel(detailService({ bookingMode: "quote", options: [detailOption()] })),
     ).toEqual({ kind: "quote" });
+  });
+});
+
+describe("servicePriceLine", () => {
+  const base: ServiceDTO = service({
+    id: "s1",
+    providerId: "p1",
+    providerName: "Estúdio Mavalane",
+    providerSlug: "estudio",
+    categoryCode: "hair",
+    categoryName: "Beleza",
+    name: "Corte",
+    defaultOption: {
+      amountMinor: 80_000,
+      currency: "MZN",
+      durationMinutes: 45,
+      minMinutes: null,
+      stepMinutes: null,
+      pricingMode: "fixed",
+    },
+  });
+
+  it("prints a fixed price with its duration beside it", () => {
+    expect(servicePriceLine(base)).toEqual({
+      amount: { kind: "money", amountMinor: 80_000, currency: "MZN", from: false, perHour: false },
+      meta: { key: "serviceDurationMinutes", values: { count: 45 } },
+    });
+  });
+
+  it("marks an hourly price so the unit can be drawn inside the amount", () => {
+    const hourly = servicePriceLine({
+      ...base,
+      defaultOption: { ...base.defaultOption!, pricingMode: "hourly", durationMinutes: null, minMinutes: 60 },
+    });
+    expect(hourly.amount).toMatchObject({ perHour: true });
+    expect(hourly.meta).toEqual({ key: "serviceMinimumMinutes", values: { count: 60 } });
+  });
+
+  it("leads with the cheapest option and says how many there are", () => {
+    expect(servicePriceLine({ ...base, optionCount: 3, fromAmountMinor: 250_000 })).toEqual({
+      amount: { kind: "money", amountMinor: 250_000, currency: "MZN", from: true, perHour: false },
+      meta: { key: "priceOptionCount", values: { count: 3 } },
+    });
+  });
+
+  it("answers a quote with words, never with a zero", () => {
+    expect(servicePriceLine({ ...base, bookingMode: "quote" })).toEqual({
+      amount: { kind: "words", key: "priceToAgree" },
+      meta: { key: "priceQuoteHint" },
+    });
+  });
+
+  it("says the price is unavailable, not that it is by quote, when the options are gone", () => {
+    // A `priced` service whose last option was deactivated. Telling this
+    // customer to ask for a price is wrong advice: the price exists, its
+    // packages do not.
+    expect(servicePriceLine({ ...base, defaultOption: null })).toEqual({
+      amount: { kind: "words", key: "priceUnavailable" },
+      meta: null,
+    });
+  });
+
+  it("omits the meta phrase when an option carries no minutes", () => {
+    expect(
+      servicePriceLine({ ...base, defaultOption: { ...base.defaultOption!, durationMinutes: null } }).meta,
+    ).toBeNull();
   });
 });

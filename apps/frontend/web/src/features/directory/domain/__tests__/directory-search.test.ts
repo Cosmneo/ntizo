@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  activeDirectoryFilterCount,
-  directorySearch,
-  type DirectorySearch,
-} from "../directory-search";
+import { directorySearch, type DirectorySearch } from "../directory-search";
 
 /**
  * Every control on the directory is a link to the same route with a different
@@ -53,39 +49,5 @@ describe("directorySearch", () => {
     expect(directorySearch({}, { verified: true })).toEqual({ verified: true });
     // `verified=false` and no `verified` at all are the same page.
     expect(directorySearch({ verified: true }, { verified: false })).toEqual({});
-  });
-});
-
-describe("activeDirectoryFilterCount", () => {
-  it("counts a price range once, however many of its bounds are set", () => {
-    // Counting the bounds separately shows "2" for a single range.
-    expect(activeDirectoryFilterCount({ minPrice: 100 })).toBe(1);
-    expect(activeDirectoryFilterCount({ minPrice: 100, maxPrice: 900 })).toBe(1);
-  });
-
-  it("does not count the category", () => {
-    // On a phone the band is still on screen above the results, so counting it
-    // would badge something the reader can already see and clear.
-    expect(activeDirectoryFilterCount({ category: "plumbing" })).toBe(0);
-  });
-
-  it("counts each of the others once", () => {
-    expect(
-      activeDirectoryFilterCount({
-        q: "x",
-        city: "Maputo",
-        providerType: "individual",
-        minRating: 4,
-        verified: true,
-        maxPrice: 900,
-      }),
-    ).toBe(6);
-  });
-
-  it("is zero for an untouched page", () => {
-    expect(activeDirectoryFilterCount({})).toBe(0);
-    // A sort is an ordering, not a narrowing — badging it would tell a reader
-    // they had filtered something when they had not.
-    expect(activeDirectoryFilterCount({ sort: "rating", offset: 20 })).toBe(0);
   });
 });

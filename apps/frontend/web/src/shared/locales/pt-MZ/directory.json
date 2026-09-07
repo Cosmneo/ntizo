@@ -60,7 +60,6 @@
   "servicesSubtitle": "Tudo o que os prestadores da plataforma oferecem.",
   "servicesPrevious": "← Anteriores",
   "servicesNext": "Seguintes →",
-  "servicesFilterByCategory": "Filtrar por categoria",
   "servicesAllCategories": "Todas",
   "filtersTitle": "Filtros",
   "filterWhere": "Onde acontece",
@@ -79,7 +78,6 @@
   "emptyTitle": "Ainda sem prestadores listados",
   "noResultsTitle": "Sem correspondências",
   "providersAllCategories": "Todas",
-  "providersFilterByCategory": "Filtrar por categoria",
   "providersFound": "{{count}} negócio encontrado",
   "providersFound_other": "{{count}} negócios encontrados",
   "providersPrevious": "Anterior",
@@ -176,8 +174,6 @@
   "chipPriceMax": "até {{max}}",
   "chipRating": "{{score}}+ estrelas",
   "chipVerified": "Só verificados",
-  "chipRemove": "Remover filtro",
-  "activeFiltersLabel": "Filtros activos",
   "filtersClearAll": "Limpar tudo",
   "sortOption": {
     "default": "Sugeridos",
@@ -193,8 +189,6 @@
     "city": "em {{city}}",
     "categoryCity": "em {{category}}, {{city}}"
   },
-  "heroSubtitleServices": "Escolha o trabalho, veja quanto custa e quanto demora, e combine a hora.",
-  "heroSubtitleProviders": "Pessoas e negócios com preços à vista e avaliações escritas por quem já os contratou.",
   "searchFieldService": "Serviço",
   "searchFieldServiceEmpty": "O que precisa de fazer?",
   "searchFieldProvider": "Prestador",
@@ -204,10 +198,6 @@
   "searchFieldCityToggle": "Mostrar cidades",
   "searchFieldCityNoResults": "Nenhuma cidade encontrada",
   "pagerLabel": "Páginas",
-  "stubProviderRating": "nota do prestador",
-  "listingByProvider": "por {{name}}",
-  "stubQuoteAmount": "A combinar",
-  "stubPerService": "por serviço",
   "mobileSearchTitle": "O que procura?",
   "mobileSearchApply": "Ver resultados",
   "factCategory": "Categoria",
@@ -233,5 +223,39 @@
   "quoteAction": "Pedir orçamento",
   "pricingModeFixed": "Preço fixo",
   "pricingModeHourly": "Por hora",
-  "reviewsSeeAll": "Ver todas as avaliações"
+  "reviewsSeeAll": "Ver todas as avaliações",
+  "titleServicesTerm": "{{term}}",
+  "titleServicesTermCity": "{{term}} em {{city}}",
+  "titleProvidersTerm": "{{term}}",
+  "titleProvidersTermCity": "{{term}} em {{city}}",
+
+  "priceToAgree": "Preço a combinar",
+  "priceQuoteHint": "Pede um orçamento",
+  "priceOptionCount_one": "{{count}} opção",
+  "priceOptionCount_other": "{{count}} opções",
+  "priceFromPrefix": "desde",
+  "pricePerHourUnit": "/h",
+
+  "ratingNew": "Novo",
+  "providerKindSentence": {
+    "individual": "{{category}} em {{place}}",
+    "organization": "{{category}} em {{place}}"
+  },
+  "providerServicesMore": "mais {{count}}",
+  "providerOpenBusiness": "Ver negócio",
+  "providerOpenPerson": "Ver perfil",
+
+  "searchPillSubmit": "Procurar",
+  "searchPillOpen": "Alterar a procura",
+  "categoryStripLabel": "Categorias",
+  "categoryStripScrollLeft": "Categorias anteriores",
+  "categoryStripScrollRight": "Categorias seguintes",
+
+  "filterPillRemove": "Remover {{filter}}",
+  "filterSheetApply_one": "Ver {{count}} resultado",
+  "filterSheetApply_other": "Ver {{count}} resultados",
+  "sortTrigger": "Ordenar:",
+
+  "quickChipMaxPrice": "Até {{amount}}",
+  "quickChipsLabel": "Filtros rápidos"
 }

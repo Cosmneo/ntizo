@@ -14,6 +14,7 @@ export interface ListAdminBookingsInput {
   offset: number;
   /** The edge's instant, handed down so `unclosed` means something a test can state. */
   now: Date;
+  search?: string | undefined;
 }
 
 /**
@@ -39,7 +40,7 @@ export class ListAdminBookingsProjection {
   async execute(input: ListAdminBookingsInput): Promise<AdminBookingPageDTO> {
     const limit = Math.min(Math.max(input.limit, 1), MAX_ADMIN_PAGE);
     const offset = Math.max(input.offset, 0);
-    const filter = { tab: input.tab, now: input.now };
+    const filter = { tab: input.tab, now: input.now, search: input.search };
 
     const [rows, total] = await Promise.all([
       this.repo.listForAdmin(filter, limit + 1, offset),

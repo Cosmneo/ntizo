@@ -90,6 +90,8 @@ export const ADMIN_BOOKINGS_PAGE_SIZE = 20;
 export interface AdminBookingsPageInput {
   tab: AdminBookingTab;
   offset: number;
+  /** Over the workspace, the customer and the service, on the server. Trimmed and non-empty, or absent. */
+  search?: string;
 }
 
 export const adminBookingQueries = {
@@ -102,13 +104,14 @@ export const adminBookingQueries = {
    */
   page: (input: AdminBookingsPageInput) =>
     queryOptions({
-      queryKey: ["admin", "bookings", input.tab, input.offset] as const,
+      queryKey: ["admin", "bookings", input.tab, input.offset, input.search ?? ""] as const,
       queryFn: async (): Promise<AdminBookingQueuePage> => {
         const d = await sessionGraphql<{ bookingNeedsAttentionForAdmin: AdminBookingQueuePage }>(PAGE, {
           input: {
             tab: input.tab,
             limit: ADMIN_BOOKINGS_PAGE_SIZE,
             offset: input.offset,
+            ...(input.search ? { search: input.search } : {}),
           },
         });
         return d.bookingNeedsAttentionForAdmin;
