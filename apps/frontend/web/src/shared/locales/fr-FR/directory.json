@@ -178,7 +178,7 @@
   "filtersClearAll": "Tout effacer",
   "sortOption": { "default": "Suggérés", "newest": "Plus récents", "price": "Prix", "rating": "Mieux notés", "reviews": "Plus d'avis", "name": "Nom (A–Z)" },
   "resultsScope": { "all": "dans toutes les catégories", "category": "en {{category}}", "city": "à {{city}}", "categoryCity": "en {{category}}, à {{city}}" },
-  "searchFieldProviderEmpty": "Nom de l'entreprise ou du professionnel",
+  "searchFieldProviderEmpty": "Nom de l'entreprise ou du professionnel…",
   "pagerLabel": "Pages",
   "factCategory": "Catégorie",
   "factWhere": "Lieu d'intervention",

@@ -178,7 +178,7 @@
   "filtersClearAll": "Cancella tutto",
   "sortOption": { "default": "Consigliati", "newest": "Più recenti", "price": "Prezzo", "rating": "Più votati", "reviews": "Più recensiti", "name": "Nome (A–Z)" },
   "resultsScope": { "all": "in tutte le categorie", "category": "in {{category}}", "city": "a {{city}}", "categoryCity": "in {{category}}, a {{city}}" },
-  "searchFieldProviderEmpty": "Nome dell'attività o del professionista",
+  "searchFieldProviderEmpty": "Nome dell'attività o del professionista…",
   "pagerLabel": "Pagine",
   "factCategory": "Categoria",
   "factWhere": "Dove interviene",

@@ -190,7 +190,7 @@
     "city": "em {{city}}",
     "categoryCity": "em {{category}}, {{city}}"
   },
-  "searchFieldProviderEmpty": "Nome do negócio ou profissional",
+  "searchFieldProviderEmpty": "Nome do negócio ou profissional…",
   "pagerLabel": "Páginas",
   "factCategory": "Categoria",
   "factWhere": "Onde atende",

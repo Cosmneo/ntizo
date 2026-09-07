@@ -178,7 +178,7 @@
   "filtersClearAll": "Alles wissen",
   "sortOption": { "default": "Aanbevolen", "newest": "Nieuwste", "price": "Prijs", "rating": "Best beoordeeld", "reviews": "Meest beoordeeld", "name": "Naam (A–Z)" },
   "resultsScope": { "all": "in alle categorieën", "category": "voor {{category}}", "city": "in {{city}}", "categoryCity": "voor {{category}} in {{city}}" },
-  "searchFieldProviderEmpty": "Naam van het bedrijf of de vakman",
+  "searchFieldProviderEmpty": "Naam van het bedrijf of de vakman…",
   "pagerLabel": "Pagina's",
   "factCategory": "Categorie",
   "factWhere": "Werkt",
