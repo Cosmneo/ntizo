@@ -35,12 +35,15 @@ export interface QuoteLike {
  * same status because they are asking different questions — the customer at
  * `REQUESTED` is waiting, the provider at `REQUESTED` is owed.
  *
- * **`becameBooking` and `closedReason` render nothing on the provider side.**
- * `clock.provider.*` carries no keys for either: a provider who declined or
- * withdrew already knows their own reason without this line repeating it
- * back, and `status.provider.ACCEPTED` ("Aceite") already says the job is
- * theirs without a second sentence pointing at the booking. The customer
- * gets both, because for them each is new information.
+ * **`becameBooking` and `closedReason` render on both sides.** They used to
+ * render nothing under a provider's accepted or refused rows — `clock.
+ * provider.*` carried no keys for either — leaving a status word with no
+ * line beneath it while the customer's own history got both. Both sides now
+ * have their own wording: `clock.provider.becameBooking` reads the
+ * acceptance from the workspace's side rather than repeating the customer's
+ * "passou a reserva", and `clock.provider.closedReason` takes the same
+ * `{{reason}}` the customer's does — useful on a `REJECTED` row, where the
+ * reason is the customer's, not something the provider already knows.
  */
 export function QuoteStatusLine({
   quote,
@@ -89,19 +92,16 @@ export function QuoteStatusLine({
           : t("clock.provider.validUntil", { when: at(clock.at) });
       break;
     case "becameBooking":
-      line = side === "customer" ? t("clock.customer.becameBooking") : null;
+      line = t(`clock.${side}.becameBooking`);
       break;
     case "closedReason":
       // The reason is a raw token off the write side (a decline or reject
       // reason, or the fixed "withdrawn"). `close.reason.*` translates the
       // seven decline/reject tokens; a token with no entry there — only
       // "withdrawn" — falls back to itself rather than to a bare key id.
-      line =
-        side === "customer"
-          ? t("clock.customer.closedReason", {
-              reason: t(`close.reason.${clock.reason}`, { defaultValue: clock.reason }),
-            })
-          : null;
+      line = t(`clock.${side}.closedReason`, {
+        reason: t(`close.reason.${clock.reason}`, { defaultValue: clock.reason }),
+      });
       break;
     case "expired":
       if (side === "customer") {

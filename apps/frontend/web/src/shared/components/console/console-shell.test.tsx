@@ -19,6 +19,9 @@ import { ConsoleShell } from "./console-shell";
 vi.mock("@/features/provider/bookings/viewmodel/use-provider-bookings", () => ({
   useAwaitingCount: () => 0,
 }));
+vi.mock("@/features/provider/quotes/viewmodel/use-provider-quotes", () => ({
+  useQuoteToAnswerCount: () => 0,
+}));
 
 /**
  * Ported from `provider-shell.test.tsx`, whose two assertions this keeps
@@ -151,7 +154,7 @@ describe("ConsoleShell · workspace", () => {
     renderWorkspace("/provider/bela-vista/overview");
     await screen.findByText("Overview page");
     const links = sidebar().getAllByRole("link").map((a) => a.textContent?.trim());
-    expect(links).toEqual(["Overview", "Bookings", "Messages", "Availability", "Services", "Members", "Wallet", "Activity", "Settings"]);
+    expect(links).toEqual(["Overview", "Bookings", "Quotes", "Messages", "Availability", "Services", "Members", "Wallet", "Activity", "Settings"]);
     expect(sidebar().getByRole("link", { name: "Messages" })).toHaveAttribute("href", "/provider/bela-vista/messages");
     expect(sidebar().queryByRole("link", { name: "Notifications" })).not.toBeInTheDocument();
     expect(sidebar().getByRole("link", { name: "Overview" })).toHaveAttribute("data-active", "true");

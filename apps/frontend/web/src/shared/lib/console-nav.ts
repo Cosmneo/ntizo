@@ -4,6 +4,7 @@ import {
   Briefcase,
   CalendarCheck,
   CalendarClock,
+  FileText,
   LayoutDashboard,
   LifeBuoy,
   Mail,
@@ -29,6 +30,7 @@ export type ConsoleZone = "workspace" | "platform";
 export type ConsoleCountSource =
   | "unreadThreads"
   | "bookingRequests"
+  | "quoteRequests"
   | "pendingProviders"
   | "flaggedReviews";
 
@@ -79,8 +81,12 @@ const WORKSPACE: ConsoleNav = {
     // zone exists to answer. The tab bar takes the three marked `primary`;
     // Services is a seven-step wizard, a desk job, and lives in the sheet.
     { key: "bookings", titleKey: "nav.bookings", shortKey: "navShort.bookings", url: "/provider/$slug/bookings", icon: CalendarCheck, primary: true, count: "bookingRequests" },
+    { key: "quotes", titleKey: "nav.quotes", shortKey: "navShort.quotes", url: "/provider/$slug/quotes", icon: FileText, primary: true, count: "quoteRequests" },
     { key: "messages", titleKey: "nav.messages", shortKey: "navShort.messages", url: "/provider/$slug/messages", icon: MessageSquare, primary: true, count: "unreadThreads" },
-    { key: "availability", titleKey: "nav.availability", shortKey: "navShort.availability", url: "/provider/$slug/availability", icon: CalendarClock, primary: true },
+    // Availability keeps its place in the sidebar and the sheet but gives up
+    // the phone's tab bar: a request with a 48-hour clock on it is owed
+    // sooner than a week of availability is, and PRIMARY_TAB_COUNT stays 3.
+    { key: "availability", titleKey: "nav.availability", shortKey: "navShort.availability", url: "/provider/$slug/availability", icon: CalendarClock },
     { key: "services", titleKey: "nav.services", shortKey: "navShort.services", url: "/provider/$slug/services", icon: Briefcase },
   ],
   manage: [

@@ -22,6 +22,9 @@ vi.mock("@/features/messaging/viewmodel/use-provider-threads", () => ({
 vi.mock("@/features/provider/bookings/viewmodel/use-provider-bookings", () => ({
   useAwaitingCount: () => 0,
 }));
+vi.mock("@/features/provider/quotes/viewmodel/use-provider-quotes", () => ({
+  useQuoteToAnswerCount: () => 0,
+}));
 
 const { ConsoleShell } = await import("./console-shell");
 const { ConsoleActionBar } = await import("./console-action-bar");
@@ -87,7 +90,7 @@ describe("the tab bar", () => {
     await screen.findByText("Services page");
     const tabs = within(bar());
     expect(tabs.getByRole("link", { name: /messages/i })).toHaveAttribute("href", "/provider/bela-vista/messages");
-    expect(tabs.getByRole("link", { name: /calendar/i })).toBeInTheDocument();
+    expect(tabs.getByRole("link", { name: /quotes/i })).toBeInTheDocument();
     expect(tabs.getByRole("link", { name: /bookings/i })).toBeInTheDocument();
     expect(tabs.getByRole("button", { name: /menu/i })).toHaveAttribute("aria-expanded", "false");
     expect(tabs.getByRole("link", { name: /messages/i })).toHaveTextContent("2");
@@ -133,7 +136,7 @@ describe("the menu sheet", () => {
     // the sidebar does, so a link's text is "Messages" plus its count.
     const links = within(sheet).getAllByRole("link").map((a) => a.querySelector("span")?.textContent?.trim());
     expect(within(sheet).getByRole("link", { name: /messages/i })).toHaveTextContent("2");
-    expect(links).toEqual(["Overview", "Bookings", "Messages", "Availability", "Services", "Members", "Wallet", "Activity", "Settings"]);
+    expect(links).toEqual(["Overview", "Bookings", "Quotes", "Messages", "Availability", "Services", "Members", "Wallet", "Activity", "Settings"]);
     expect(document.activeElement).toBe(within(sheet).getByRole("link", { name: "Overview" }));
 
     fireEvent.keyDown(document, { key: "Escape" });

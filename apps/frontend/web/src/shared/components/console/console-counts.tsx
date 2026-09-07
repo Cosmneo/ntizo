@@ -2,6 +2,7 @@ import { createContext, useContext, useMemo, type ReactNode } from "react";
 import { useProviderStatusCounts } from "@/features/admin/providers/viewmodel/use-admin-providers";
 import { useProviderThreads } from "@/features/messaging/viewmodel/use-provider-threads";
 import { useAwaitingCount } from "@/features/provider/bookings/viewmodel/use-provider-bookings";
+import { useQuoteToAnswerCount } from "@/features/provider/quotes/viewmodel/use-provider-quotes";
 import type { ConsoleCountSource, ConsoleZone } from "@/shared/lib/console-nav";
 
 /**
@@ -54,9 +55,12 @@ function WorkspaceCounts({ providerId, children }: { providerId: string; childre
   // Requests awaiting the provider's answer, from the same stats read the
   // Overview draws its cards from — so the badge and the dashboard agree.
   const bookingRequests = useAwaitingCount(providerId);
+  // Quotes still REQUESTED — the amber count owed an answer, from the same
+  // counts read the queue's own tabs use.
+  const quoteRequests = useQuoteToAnswerCount(providerId);
   const value = useMemo<ConsoleCounts>(
-    () => ({ unreadThreads, bookingRequests }),
-    [unreadThreads, bookingRequests],
+    () => ({ unreadThreads, bookingRequests, quoteRequests }),
+    [unreadThreads, bookingRequests, quoteRequests],
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

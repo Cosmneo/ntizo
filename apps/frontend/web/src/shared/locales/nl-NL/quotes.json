@@ -54,6 +54,8 @@
       "askedAgo": "aangevraagd {{ago}} geleden",
       "validUntil": "geldig tot {{when}}",
       "revisedOnce": "geldig tot {{when}} · één keer herzien",
+      "becameBooking": "boeking bevestigd",
+      "closedReason": "{{reason}}",
       "didNotRespond": "heeft niet gereageerd · {{when}}",
       "customerDidNotDecide": "de klant heeft niet beslist · {{when}}"
     }

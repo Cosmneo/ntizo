@@ -54,6 +54,8 @@
       "askedAgo": "asked {{ago}} ago",
       "validUntil": "valid until {{when}}",
       "revisedOnce": "valid until {{when}} · revised once",
+      "becameBooking": "booking confirmed",
+      "closedReason": "{{reason}}",
       "didNotRespond": "didn't respond · {{when}}",
       "customerDidNotDecide": "the customer didn't decide · {{when}}"
     }

@@ -17,6 +17,7 @@
     "notifications": "Benachrichtigungen",
     "services": "Leistungen",
     "bookings": "Buchungen",
+    "quotes": "Kostenvoranschläge",
     "messages": "Nachrichten",
     "availability": "Verfügbarkeit",
     "activity": "Aktivität",
@@ -731,6 +732,7 @@
     "messages": "Nachrichten",
     "availability": "Kalender",
     "services": "Leistungen",
-    "bookings": "Buchungen"
+    "bookings": "Buchungen",
+    "quotes": "Kostenvoranschläge"
   }
 }

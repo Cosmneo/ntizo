@@ -12,6 +12,9 @@ vi.mock("@/features/admin/providers/viewmodel/use-admin-providers", () => ({
 vi.mock("@/features/provider/bookings/viewmodel/use-provider-bookings", () => ({
   useAwaitingCount: () => 3,
 }));
+vi.mock("@/features/provider/quotes/viewmodel/use-provider-quotes", () => ({
+  useQuoteToAnswerCount: () => 5,
+}));
 
 const { ConsoleCountsProvider, useConsoleCounts } = await import("./console-counts");
 
@@ -23,7 +26,9 @@ describe("ConsoleCountsProvider", () => {
   it("counts the loaded threads with something unread, and the requests awaiting an answer, for the workspace", () => {
     threads.mockReturnValue({ threads: [{ unreadCount: 2 }, { unreadCount: 0 }, { unreadCount: 1 }] });
     render(<ConsoleCountsProvider zone="workspace" providerId="p1"><Probe /></ConsoleCountsProvider>);
-    expect(screen.getByTestId("counts")).toHaveTextContent('{"unreadThreads":2,"bookingRequests":3}');
+    expect(screen.getByTestId("counts")).toHaveTextContent(
+      '{"unreadThreads":2,"bookingRequests":3,"quoteRequests":5}',
+    );
     expect(threads).toHaveBeenCalledWith("p1");
   });
 

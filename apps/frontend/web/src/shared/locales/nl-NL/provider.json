@@ -17,6 +17,7 @@
     "notifications": "Meldingen",
     "services": "Diensten",
     "bookings": "Boekingen",
+    "quotes": "Offertes",
     "messages": "Berichten",
     "availability": "Beschikbaarheid",
     "activity": "Activiteit",
@@ -731,6 +732,7 @@
     "messages": "Berichten",
     "availability": "Agenda",
     "services": "Diensten",
-    "bookings": "Boekingen"
+    "bookings": "Boekingen",
+    "quotes": "Offertes"
   }
 }

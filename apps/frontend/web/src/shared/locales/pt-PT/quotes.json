@@ -54,6 +54,8 @@
       "askedAgo": "pedido há {{ago}}",
       "validUntil": "válida até {{when}}",
       "revisedOnce": "válida até {{when}} · revista uma vez",
+      "becameBooking": "reserva confirmada",
+      "closedReason": "{{reason}}",
       "didNotRespond": "não respondeu · {{when}}",
       "customerDidNotDecide": "o cliente não decidiu · {{when}}"
     }
