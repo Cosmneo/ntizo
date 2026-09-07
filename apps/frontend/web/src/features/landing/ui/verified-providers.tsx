@@ -120,7 +120,13 @@ export function VerifiedProviders() {
                             />
                           </span>
                         ) : (
-                          <span className="ml-auto shrink-0">{t("noReviewsYet")}</span>
+                          // The same word `ServiceTile` uses for the same
+                          // condition: a provider with no rating yet is "New"
+                          // in Popular services and should read the same way
+                          // here, ~600px away, rather than "No reviews yet".
+                          <span className="ml-auto shrink-0 text-[13px] text-[var(--color-muted-foreground)]">
+                            {td("ratingNew")}
+                          </span>
                         )}
                       </p>
                       {priced ? (

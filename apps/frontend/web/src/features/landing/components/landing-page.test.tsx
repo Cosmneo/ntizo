@@ -84,11 +84,11 @@ describe("LandingPage", () => {
     expect(screen.queryByText("Visa")).toBeNull();
   });
 
-  // The three data-fed sections each hide themselves rather than render a
+  // The four data-fed sections each hide themselves rather than render a
   // heading over nothing. With no data seeded, none of them should be here.
   //
   // "How it works" has no query behind it, so it is on screen from the very
-  // first render. The other three start out `isLoading` (also on screen,
+  // first render. The other four start out `isLoading` (also on screen,
   // with skeletons) and only unmount once their query settles to an error —
   // which for an unseeded query against no server happens fast, but still
   // after at least one macrotask, never within the same microtask turn that
@@ -98,17 +98,18 @@ describe("LandingPage", () => {
   it("shows no empty section headings when there is nothing to put in them", async () => {
     await renderPage();
     await screen.findByRole("heading", { name: "How it works" });
-    // Three assertions that something is absent all pass — vacuously — on a
+    // Four assertions that something is absent all pass — vacuously — on a
     // completely blank document, and this tree has no Error Boundary
     // anywhere: if any section threw while rendering, React would unmount
-    // the whole page, not just that section, and the three `toBeNull` checks
+    // the whole page, not just that section, and the four `toBeNull` checks
     // below would then pass against nothing on screen at all. So this block
     // also asserts the page is still actually there: "How it works" again,
     // plus the provider band's CTA (not data-driven, and further down the
-    // tree), alongside the three negatives.
+    // tree), alongside the four negatives.
     await waitFor(() => {
       expect(screen.getByRole("heading", { name: "How it works" })).toBeInTheDocument();
       expect(screen.getByRole("link", { name: "Create a provider account" })).toBeInTheDocument();
+      expect(screen.queryByRole("heading", { name: "Browse by category" })).toBeNull();
       expect(screen.queryByRole("heading", { name: "Popular services" })).toBeNull();
       expect(screen.queryByRole("heading", { name: "Verified providers" })).toBeNull();
       expect(screen.queryByRole("heading", { name: "What customers say" })).toBeNull();

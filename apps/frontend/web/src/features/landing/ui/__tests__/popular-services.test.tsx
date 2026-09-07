@@ -34,7 +34,7 @@ function service(over: Partial<ServiceDTO> = {}): ServiceDTO {
     name: "Corte de cabelo",
     description: null,
     locationType: "at_provider",
-    bookingMode: "instant",
+    bookingMode: "priced",
     imageUrls: [],
     isFallback: false,
     fromAmountMinor: null,

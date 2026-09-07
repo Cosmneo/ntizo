@@ -48,7 +48,7 @@ export function CategoryGrid() {
         blurb={t("home.categoriesBlurb")}
         more={{ label: t("home.categoriesAll"), to: "/services" }}
       />
-      <ul className="grid grid-cols-4 gap-x-4 gap-y-4 sm:gap-x-4 xl:grid-cols-8">
+      <ul className="grid grid-cols-4 gap-x-4 gap-y-4 xl:grid-cols-8">
         {isLoading
           ? Array.from({ length: LANDING_CATEGORIES }, (_, i) => (
               <li key={i}>

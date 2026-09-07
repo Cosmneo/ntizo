@@ -5,12 +5,12 @@ import { BrandTile } from "@/shared/components/browse/brand-tile";
 /**
  * The three moments, drawn rather than screenshotted.
  *
- * Sample content — the service names, the business, the address — is
- * deliberately Mozambican and deliberately untranslated: it stands in for one
- * provider's real listing, the way a quoted review stands in for one
- * customer's words. Only the interface chrome around it takes a translation
- * key, because an English reader looking at a Portuguese app is being shown
- * somebody else's product.
+ * Sample content — the service names and the business — is deliberately
+ * Mozambican and deliberately untranslated: it stands in for one provider's
+ * real listing, the way a quoted review stands in for one customer's words.
+ * Only the interface chrome around it takes a translation key, because an
+ * English reader looking at a Portuguese app is being shown somebody else's
+ * product.
  */
 
 /** One row of the results screen. */
@@ -133,7 +133,7 @@ export function BookScreen() {
         <b className="text-base font-bold text-[var(--color-headline)]">800 MZN</b>
       </div>
       <span className="rounded-full bg-[var(--color-navy-surface)] py-3 text-center text-[13px] font-bold text-[var(--color-navy-on)]">
-        {t("home.flowPay")}
+        {t("home.flowRequest")}
       </span>
       <p className="text-center text-[11px] text-[var(--color-muted-foreground)]">
         {t("home.flowInstant")}

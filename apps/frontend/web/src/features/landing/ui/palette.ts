@@ -15,9 +15,10 @@ export const MUTED = "#71727a"; // Grey Text
 export const BORDER = "#e5e5e5"; // Border
 
 /**
- * Tint Blue BG, used for the page ground and as the fill the hero's wave
- * rises into. One value rather than the three-stop gradient the page used to
- * carry — the system has a single soft background, not a ramp.
+ * Tint Blue BG, used as the page ground for the footer and for the
+ * become-provider and company pages. One value rather than the three-stop
+ * gradient the page used to carry — the system has a single soft background,
+ * not a ramp.
  */
 export const PAGE_TOP = "#f2f8fe";
 

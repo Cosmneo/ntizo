@@ -35,14 +35,23 @@ export function ProviderBand() {
             {t("home.bandBody")}
           </p>
           <div className="mt-7 flex flex-wrap items-center gap-6">
-            {/* White, not the brand blue: the page spends its one blue on the
-                header's search button. */}
+            {/* Light, not the brand blue: the page spends its one blue on the
+                header's search button. `--color-navy-on`/`--color-navy-surface`
+                rather than literal white and `--color-headline`: those two are
+                already the dark-aware pair the rest of the page uses to put a
+                light control on this same navy surface, and `--color-headline`
+                goes near-white in dark mode — text that colour on a literal
+                white button disappears. */}
             <Link
               to="/become-provider"
-              className="font-rounded rounded-full bg-white px-6 py-3.5 text-[15px] font-bold text-[var(--color-headline)]"
+              className="font-rounded rounded-full bg-[var(--color-navy-on)] px-6 py-3.5 text-[15px] font-bold text-[var(--color-navy-surface)]"
             >
               {t("home.bandCta")}
             </Link>
+            {/* No colour class of its own: it inherits `--color-navy-on` from
+                this section's own `text-[…]`, which is already the
+                dark-aware light text this band needs — the same reason it
+                reads fine in both themes without repeating the fix above. */}
             <Link
               to="/become-provider"
               className="text-[14.5px] font-semibold underline decoration-[var(--color-navy-on)]/40 underline-offset-4"

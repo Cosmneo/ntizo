@@ -84,10 +84,12 @@ describe("VerifiedProviders", () => {
   });
 
   // Null, not zero. A 0,0 beside a business nobody has rated tells every
-  // visitor it is the worst on the platform.
+  // visitor it is the worst on the platform. "New" rather than "No reviews
+  // yet": the same word `ServiceTile` prints for the same condition in
+  // Popular services, further up this same page.
   it("says so rather than printing a zero when nobody has rated a business", async () => {
     await renderProviders([provider({ ratingAverage: null, reviewCount: 0 })]);
-    expect(await screen.findByText("No reviews yet")).toBeInTheDocument();
+    expect(await screen.findByText("New")).toBeInTheDocument();
     expect(screen.queryByText("0.0")).toBeNull();
   });
 
