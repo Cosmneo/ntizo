@@ -10,8 +10,8 @@ export interface TitleParts {
  *
  * **The term outranks the category.** A reader who typed "corte de cabelo"
  * should see those words at the top of their results; the category they are in
- * is already stated, underlined, by the strip above. Ranking the category first
- * meant the heading answered a question nobody had asked.
+ * is already stated by the chip lit in the strip above. Ranking the category
+ * first meant the heading answered a question nobody had asked.
  *
  * Same reasoning as `browseTitle` in the services domain — whole translated
  * sentences rather than fragments joined at runtime, the category interpolated

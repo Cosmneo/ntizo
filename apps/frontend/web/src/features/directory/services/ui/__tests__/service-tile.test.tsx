@@ -173,10 +173,10 @@ describe("ServiceTile", () => {
     expect(screen.getAllByRole("link")).toHaveLength(1);
   });
 
-  it("falls back to the brand tile when the service has no photograph", async () => {
+  it("falls back to the site's placeholder when the service has no photograph", async () => {
     renderTile(service({ imageUrls: [] }));
     await screen.findByRole("listitem");
-    expect(screen.getByTestId("brand-tile")).toBeInTheDocument();
+    expect(screen.getByTestId("media-fallback")).toBeInTheDocument();
   });
 
   /**
@@ -194,6 +194,17 @@ describe("ServiceTile", () => {
     expect(title.className).toContain("sm:truncate");
     expect(screen.getByText("45 min").className).toContain("whitespace-nowrap");
     expect(screen.getByText("At their place").className).toContain("whitespace-nowrap");
+  });
+
+  it("wraps the price line rather than clipping its last item", async () => {
+    // Measured at 390px: the phone row's text column is 212px, and the price,
+    // the duration and the place do not fit across it. Without `flex-wrap`
+    // the line ran off the column and the last item was cut in half; with it
+    // the line breaks between items, each of which stays whole on its own.
+    renderTile(service());
+    await screen.findByRole("listitem");
+    const priceLine = screen.getByText("45 min").parentElement!;
+    expect(priceLine.className).toContain("flex-wrap");
   });
 
 });

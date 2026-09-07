@@ -99,9 +99,11 @@ export function BrandImage({
   loading?: "lazy" | "eager";
   /**
    * What stands in when there is no photo, or the photo fails to load.
-   * Defaults to the grey brand mark every existing caller gets today; the
-   * browse tiles pass the navy `BrandTile` so a missing photograph reads as
-   * designed rather than as a gap.
+   * Defaults to `MediaFallback`, which is what every caller in the product
+   * wants and what all of them take: one treatment for a missing picture
+   * everywhere. The prop stays for the caller who one day needs something
+   * else in that box — pass it only with a reason a reader would agree with,
+   * since a second placeholder is a second thing to learn.
    */
   fallback?: ReactNode;
 }) {
