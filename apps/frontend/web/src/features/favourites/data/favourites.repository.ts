@@ -66,13 +66,18 @@ import type { FavouriteList, FavouriteTargetType } from "../domain/types";
  * in this file selects those fields yet — this is written down for Tasks
  * 10-12, which will.
  *
- * The four fields this task does not use yet — `favouriteListsFor`,
- * `favouriteListById`, `favouriteListRename`, `favouriteListRemove` — belong
- * to the dialog and the `/favourites` page, and land with them (Tasks 10-12).
+ * The three fields still unused — `favouriteListById`, `favouriteListRename`,
+ * `favouriteListRemove` — belong to the `/favourites` page and land with it
+ * (Task 12). `favouriteListsFor` landed with the dialog, in Task 11.
  */
 const MARKED = `
   query FavouriteMarked($input: FavouriteMarkedInput!) {
     favouriteMarked(input: $input)
+  }`;
+
+const LISTS_FOR = `
+  query FavouriteListsFor($input: FavouriteListsForInput!) {
+    favouriteListsFor(input: $input)
   }`;
 
 const MY_LISTS = `
@@ -123,6 +128,27 @@ export function fetchFavouriteMarks(
   return sessionGraphql<{ favouriteMarked: string[] }>(MARKED, {
     input: { targetType, targetIds },
   }).then((d) => d.favouriteMarked);
+}
+
+/**
+ * Which of the caller's lists hold **one** listing — the dialog's tick marks.
+ *
+ * A separate field from `favouriteMarked` above, asked at a completely
+ * different rate: the marks once per page of twenty-four cards, this once per
+ * dialog open, and only when the press that opened it did not already answer.
+ * A quick save returns the membership itself (see `quickSaveFavourite`), so
+ * this is the *filled*-heart path — the press that saved nothing and
+ * therefore knows nothing.
+ *
+ * A leaf on the wire like `favouriteMarked`: `[String!]!`, no selection set.
+ */
+export function fetchFavouriteListsFor(
+  targetType: FavouriteTargetType,
+  targetId: string,
+): Promise<string[]> {
+  return sessionGraphql<{ favouriteListsFor: string[] }>(LISTS_FOR, {
+    input: { targetType, targetId },
+  }).then((d) => d.favouriteListsFor);
 }
 
 /**
@@ -231,6 +257,21 @@ export const favouriteQueries = {
         [...targetIds].sort(),
       ] as const,
       queryFn: () => fetchFavouriteMarks(targetType, targetIds),
+    }),
+
+  /**
+   * The tick marks for one listing, under the `["favourites"]` prefix like
+   * everything else — so a save's whole-prefix invalidation reaches it and a
+   * dialog reopened after a tick does not show the membership it had before.
+   *
+   * Keyed on the target rather than on the ids it answers with: the question
+   * is "which lists hold this listing", and the same listing asked about
+   * twice is one cache entry however its answer changed in between.
+   */
+  listsFor: (targetType: FavouriteTargetType, targetId: string) =>
+    queryOptions({
+      queryKey: [FAVOURITES_QUERY_KEY, "listsFor", targetType, targetId] as const,
+      queryFn: () => fetchFavouriteListsFor(targetType, targetId),
     }),
 
   /** The caller's own lists. No arguments — the server resolves them from the session. */

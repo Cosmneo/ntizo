@@ -3,6 +3,7 @@ import {
   FAVOURITE_MARKS_KEY_IDS_INDEX,
   createFavouriteList,
   favouriteQueries,
+  fetchFavouriteListsFor,
   fetchFavouriteMarks,
   fetchMyLists,
   quickSaveFavourite,
@@ -64,6 +65,37 @@ describe("fetchFavouriteMarks", () => {
 
     const [, variables] = spy.mock.calls[0]!;
     expect(variables).toEqual({ input: { targetType: "provider", targetIds: ["p9"] } });
+  });
+});
+
+describe("fetchFavouriteListsFor", () => {
+  it("calls the flattened field `favouriteListsFor`, never nested `favourite { listsFor }`", async () => {
+    const spy = vi
+      .spyOn(client, "sessionGraphql")
+      .mockResolvedValue({ favouriteListsFor: ["l-casa"] } as never);
+
+    const held = await fetchFavouriteListsFor("service", "s1");
+
+    const [query, variables] = spy.mock.calls[0]!;
+    expect(query as string).toContain("favouriteListsFor");
+    expect(query as string).not.toMatch(/favourite\s*\{\s*listsFor/);
+    expect(query as string).toContain("$input: FavouriteListsForInput!");
+    expect(variables).toEqual({ input: { targetType: "service", targetId: "s1" } });
+    expect(held).toEqual(["l-casa"]);
+  });
+
+  it("asks for no selection set — the field answers a list of ids, not objects", async () => {
+    // `listsForTarget`'s output is `z.array(z.string())`, so the field is a
+    // leaf on the wire. A `{ id }` under it is not a silent no-op: the server
+    // refuses the whole document as invalid.
+    const spy = vi
+      .spyOn(client, "sessionGraphql")
+      .mockResolvedValue({ favouriteListsFor: [] } as never);
+
+    await fetchFavouriteListsFor("provider", "p1");
+
+    const [query] = spy.mock.calls[0]!;
+    expect(query as string).not.toMatch(/favouriteListsFor\(input: \$input\)\s*\{/);
   });
 });
 

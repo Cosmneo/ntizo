@@ -15,6 +15,7 @@ import { cn } from "@ntizo/frontend-ui";
  */
 export function ResultRow({
   media,
+  favourite,
   title,
   kind,
   description,
@@ -23,6 +24,17 @@ export function ResultRow({
   first = false,
 }: {
   media: ReactNode;
+  /**
+   * The heart, or nothing — drawn over the photograph, never in the words.
+   *
+   * A slot of the row's rather than something the caller buries in its own
+   * `media` node, so both result shapes place the one control on a result by
+   * one rule: `TileMedia` holds a tile's, this holds a row's, and a third
+   * shape cannot drift. A node rather than a `saved` flag because the marks
+   * for a whole page come from one query in the page — see
+   * `useFavouriteMarks`.
+   */
+  favourite?: ReactNode;
   /** An `h3` holding the route-typed title link and, when earned, the seal. */
   title: ReactNode;
   kind: ReactNode;
@@ -53,7 +65,21 @@ export function ResultRow({
         first && "border-t-0 pt-1",
       )}
     >
-      {media}
+      {/* The media cell: the photograph, and the heart standing on it.
+          `relative` is the positioning context the heart resolves against —
+          without it the heart would find the `<article>` and land at the top
+          right of the whole row.
+
+          `grid` restores what the photograph had when it was the grid item
+          itself: a single stretched child, so a media node with an aspect
+          ratio still fills the row's height exactly as it did before this
+          wrapper existed. A plain block here would have let the picture keep
+          its ratio and leave a band of ground under it on any row whose text
+          runs taller. */}
+      <div className="relative grid">
+        {media}
+        {favourite}
+      </div>
       <div className="grid min-w-0 content-start gap-1.5 pt-0.5">
         {title}
         {kind}
