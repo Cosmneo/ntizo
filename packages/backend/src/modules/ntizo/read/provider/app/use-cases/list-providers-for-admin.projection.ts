@@ -1,4 +1,5 @@
-import type { ProviderAdminDTO } from "@ntizo/shared/read-models";
+import { ProviderStatus } from "@ntizo/shared";
+import type { ProviderAdminDTO, ProviderStatusCountsDTO } from "@ntizo/shared/read-models";
 import type {
   CountProvidersByStatusPort,
   ListProvidersForAdminInput,
@@ -25,10 +26,22 @@ export class ListProvidersForAdminProjection implements ListProvidersForAdminPor
   }
 }
 
+/**
+ * One count per status. The repository answers only the statuses that have
+ * rows — a status with no providers is absent from a `GROUP BY`, not zero —
+ * and the tile has to render either way, so the gaps are filled here.
+ */
 export class CountProvidersByStatusProjection implements CountProvidersByStatusPort {
   constructor(private readonly repo: ProviderAdminRepositoryPort) {}
 
-  execute(): Promise<Record<string, number>> {
-    return this.repo.countByStatus();
+  async execute(): Promise<ProviderStatusCountsDTO> {
+    const counts = await this.repo.countByStatus();
+    return {
+      pending: counts[ProviderStatus.Pending] ?? 0,
+      active: counts[ProviderStatus.Active] ?? 0,
+      rejected: counts[ProviderStatus.Rejected] ?? 0,
+      suspended: counts[ProviderStatus.Suspended] ?? 0,
+      archived: counts[ProviderStatus.Archived] ?? 0,
+    };
   }
 }

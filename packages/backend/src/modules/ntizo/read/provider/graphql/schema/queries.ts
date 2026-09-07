@@ -6,6 +6,7 @@ import {
   providerAdminReadModel,
   providerDetailReadModel,
   providerListItemReadModel,
+  providerStatusCountsReadModel,
 } from "@ntizo/shared/read-models";
 import { ntizoGraphqlContextSchema } from "../../../../graphql/context";
 
@@ -74,6 +75,19 @@ export const getProviderDetailForAdmin = defineQuery({
   docs: { summary: "One provider, for administration", tags: ["Admin"] },
 });
 
+/**
+ * One count per status, platform-wide. Takes nothing — it spans every
+ * workspace by design, so there is nothing to scope it by — and is refused
+ * to everybody but an admin in the handler, exactly as `allForAdmin` is.
+ * The dashboard's "providers awaiting review" and the sidebar's badge read
+ * this one number, instead of the length of a page of twenty-five.
+ */
+export const countProvidersByStatusForAdmin = defineQuery({
+  input: zodSchema(z.object({})),
+  output: zodSchema(providerStatusCountsReadModel),
+  docs: { summary: "How many providers stand in each status", tags: ["Admin"] },
+});
+
 export const providerReadSchema = defineGraphQLSchema(
   {
     provider: {
@@ -81,6 +95,7 @@ export const providerReadSchema = defineGraphQLSchema(
       byId: getProviderDetail,
       allForAdmin: listProvidersForAdmin,
       detailForAdmin: getProviderDetailForAdmin,
+      countByStatusForAdmin: countProvidersByStatusForAdmin,
     },
   },
   { defaults: { context: ntizoGraphqlContextSchema } },

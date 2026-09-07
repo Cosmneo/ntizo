@@ -2,6 +2,7 @@ import type {
   ProviderAdminDTO,
   ProviderDetailDTO,
   ProviderListItemDTO,
+  ProviderStatusCountsDTO,
 } from "@ntizo/shared/read-models";
 
 export interface ListMyProvidersProjectionInput {
@@ -32,6 +33,6 @@ export interface ListProvidersForAdminPort {
 }
 
 export interface CountProvidersByStatusPort {
-  /** One count per status, for the badges on the queue's tabs. */
-  execute(): Promise<Record<string, number>>;
+  /** One count per status, all five, for the queue's badge and the dashboard. */
+  execute(): Promise<ProviderStatusCountsDTO>;
 }
