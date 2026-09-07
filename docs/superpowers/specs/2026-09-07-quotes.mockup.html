@@ -1,0 +1,1120 @@
+<title>Ntizo Orçamentos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* ============ presentation chrome, follows the viewer's theme ============ */
+:root{
+  --dc-bg:#eef0f4; --dc-fg:#141a24; --dc-muted:#5b6474; --dc-line:#d9dee7; --dc-card:#ffffff;
+  --dc-accent:#006ffd; --dc-bar:#0d1626; --dc-bar-fg:#f4f6fa; --dc-bar-muted:#9aa5ba; --dc-chip:#1b2740;
+  --dc-frame-shadow:0 30px 70px -40px rgba(9,20,45,.45);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --dc-bg:#0e1219; --dc-fg:#e8ecf3; --dc-muted:#9aa4b6; --dc-line:#262d3a; --dc-card:#151b25;
+    --dc-accent:#3d9bff; --dc-bar:#05080e; --dc-bar-fg:#f4f6fa; --dc-bar-muted:#8b96ab; --dc-chip:#1a2233;
+    --dc-frame-shadow:0 30px 70px -40px rgba(0,0,0,.9);
+  }
+}
+:root[data-theme="dark"]{
+  --dc-bg:#0e1219; --dc-fg:#e8ecf3; --dc-muted:#9aa4b6; --dc-line:#262d3a; --dc-card:#151b25;
+  --dc-accent:#3d9bff; --dc-bar:#05080e; --dc-bar-fg:#f4f6fa; --dc-bar-muted:#8b96ab; --dc-chip:#1a2233;
+  --dc-frame-shadow:0 30px 70px -40px rgba(0,0,0,.9);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{background:var(--dc-bg);color:var(--dc-fg);font-family:Figtree,"Segoe UI",Roboto,system-ui,sans-serif;font-size:15px;line-height:1.55;padding-bottom:80px}
+img{max-width:100%;display:block}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+a{color:inherit;text-decoration:none}
+ul,ol{list-style:none}
+h1,h2,h3{text-wrap:balance}
+:focus-visible{outline:2px solid var(--dc-accent);outline-offset:2px;border-radius:4px}
+@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
+
+.doc-bar{position:sticky;top:0;z-index:100;background:var(--dc-bar);color:var(--dc-bar-fg);padding:12px 24px;display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+.doc-bar strong{font-weight:700;font-size:14px}
+.doc-bar span{font-size:12px;color:var(--dc-bar-muted)}
+.doc-bar nav{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}
+.doc-bar nav a{font-size:12px;font-weight:600;padding:6px 12px;border-radius:999px;background:var(--dc-chip);color:#cfd7e6}
+.doc-bar nav a:hover{color:#fff}
+.doc-h{max-width:1100px;margin:56px auto 20px;padding:0 24px}
+.doc-h h2{font-weight:700;font-size:28px;letter-spacing:-.02em;line-height:1.15}
+.doc-h p{color:var(--dc-muted);font-size:15px;margin-top:8px;max-width:66ch}
+.doc-h .kick{font-size:13px;font-weight:600;color:var(--dc-accent);margin-bottom:8px}
+.frame{max-width:1480px;margin:0 auto 6px;padding:0 24px}
+.frame-inner{position:relative;overflow:hidden;border-radius:18px;box-shadow:var(--dc-frame-shadow);border:1px solid var(--dc-line);background:#fff}
+.viewport{position:absolute;top:0;left:0;width:1440px;transform-origin:0 0}
+.frame-tools{max-width:1480px;margin:0 auto;padding:0 24px 4px;display:flex;justify-content:flex-end;gap:6px}
+.frame-tools button{font-size:12px;font-weight:600;color:var(--dc-muted);padding:4px 10px;border-radius:999px;border:1px solid var(--dc-line)}
+.frame-tools button.on{color:var(--dc-fg);border-color:var(--dc-fg)}
+.note{max-width:1100px;margin:18px auto 0;padding:0 24px;display:grid;gap:10px}
+.note p{font-size:14px;color:var(--dc-muted);padding-left:20px;position:relative;max-width:78ch}
+.note p::before{content:"";position:absolute;left:4px;top:9px;width:6px;height:6px;border-radius:50%;background:var(--dc-accent)}
+.note b{color:var(--dc-fg);font-weight:600}
+.intro{max-width:1100px;margin:0 auto;padding:0 24px;display:grid;gap:28px}
+.decisions{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.decisions li{background:var(--dc-card);border:1px solid var(--dc-line);border-radius:14px;padding:18px 18px 16px}
+.decisions h3{font-size:15px;font-weight:700;margin-bottom:6px}
+.decisions p{font-size:13.5px;color:var(--dc-muted);line-height:1.5}
+.flow{background:var(--dc-card);border:1px solid var(--dc-line);border-radius:14px;padding:22px 24px;overflow-x:auto}
+.flow pre{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;line-height:1.6;color:var(--dc-fg);white-space:pre}
+.states-wrap{max-width:1480px;margin:0 auto;padding:0 24px}
+.states-inner{border-radius:18px;border:1px solid var(--dc-line);background:#fff;padding:28px;box-shadow:var(--dc-frame-shadow);display:grid;grid-template-columns:repeat(3,1fr);gap:28px}
+.states-inner > div{min-width:0}
+.state-label{font-size:12px;font-weight:600;color:#66708a;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid #e7eaf0}
+.phones{max-width:1240px;margin:0 auto;padding:0 24px;display:flex;gap:34px;flex-wrap:wrap;justify-content:center;align-items:flex-start}
+.phone{width:390px;flex:none}
+.phone-label{font-size:13px;color:var(--dc-muted);text-align:center;margin-bottom:12px;font-weight:600}
+.phone-shell{border-radius:44px;border:10px solid #0d1626;background:#fff;overflow:hidden;box-shadow:var(--dc-frame-shadow);position:relative}
+.phone-scroll{height:860px;overflow:hidden;position:relative;background:#fff}
+.files{max-width:1100px;margin:0 auto;padding:0 24px}
+.files table{width:100%;border-collapse:collapse;font-size:13.5px}
+.files th,.files td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--dc-line);vertical-align:top}
+.files th{font-size:12.5px;font-weight:600;color:var(--dc-muted)}
+.files td:first-child{font-weight:600;white-space:nowrap}
+.files td code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;background:var(--dc-chip);color:#d6deec;padding:2px 6px;border-radius:5px}
+.files .tbl{overflow-x:auto}
+@media (max-width:900px){
+  .decisions,.states-inner{grid-template-columns:1fr}
+  .doc-h,.note,.phones,.intro,.states-wrap,.files{padding-inline:16px}
+  .frame,.frame-tools{padding-inline:12px}
+}
+
+/* ============ the product, painted light on purpose (this is the app) ============ */
+.app{
+  --blue:#006ffd; --navy:#00244c; --ink:#1a2333; --muted:#66708a; --line:#e7eaf0; --line2:#d5dae3;
+  --chip:#f3f5f9; --hover:#f7f8fb; --amber:#b86e00; --amber-dot:#f5a524; --ok:#1f9d61; --bad:#d64545; --white:#fff;
+  background:#fff;color:var(--ink);font-family:Figtree,"Segoe UI",Roboto,system-ui,sans-serif;font-size:14px;line-height:1.5
+}
+.app svg{display:inline-block;vertical-align:middle}
+.app .ic{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.shell{width:min(1320px,100% - 3rem);margin-inline:auto}
+.num{font-variant-numeric:tabular-nums}
+.seal{width:15px;height:15px;flex:none}
+
+/* customer header: wordmark, pill nav, language, bell, avatar (as on /account today) */
+.hd{border-bottom:1px solid var(--line);background:#fff}
+.hd-row{height:84px;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:24px}
+.wordmark{font-weight:800;font-size:26px;color:var(--blue);letter-spacing:-.04em;line-height:1}
+.wordmark i{font-style:normal;color:#39b3ff}
+.pillnav{display:inline-flex;gap:2px;background:var(--chip);border-radius:999px;padding:4px}
+.pillnav a{display:inline-flex;align-items:center;gap:7px;padding:9px 16px;border-radius:999px;font-size:14px;font-weight:500;color:var(--muted)}
+.pillnav a.on{background:var(--blue);color:#fff;font-weight:600}
+.pillnav .ic{width:15px;height:15px}
+.hd-acts{justify-self:end;display:flex;align-items:center;gap:20px}
+.lang{display:inline-flex;align-items:center;gap:6px;font-size:14px;font-weight:500;color:var(--muted)}
+.bell{position:relative;display:inline-flex;color:var(--ink)}
+.bell .ic{width:20px;height:20px}
+.bell i{position:absolute;top:-7px;right:-8px;min-width:17px;height:17px;padding:0 4px;border-radius:999px;background:var(--blue);color:#fff;font-style:normal;font-size:10px;font-weight:700;display:grid;place-items:center;border:2px solid #fff}
+.avatar{width:38px;height:38px;border-radius:50%;background:#101828;color:#fff;font-size:11px;font-weight:800;display:grid;place-items:center;letter-spacing:.02em}
+
+/* page head */
+.ph{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;padding:40px 0 22px}
+.ph h1{font-size:26px;font-weight:700;color:var(--navy);letter-spacing:-.02em;line-height:1.2}
+.ph p{margin-top:4px;font-size:14.5px;color:var(--muted)}
+.ph p b{color:var(--ink);font-weight:600}
+.back{display:inline-flex;align-items:center;gap:6px;font-size:13.5px;font-weight:500;color:var(--muted);margin-top:26px}
+.back .ic{width:14px;height:14px}
+.back + .ph{padding-top:12px}
+
+/* tabs as underlined text */
+.tabs{display:flex;gap:26px;border-bottom:1px solid var(--line)}
+.tab{padding:0 0 11px;font-size:14px;font-weight:500;color:var(--muted);position:relative;white-space:nowrap}
+.tab span{margin-left:6px;color:var(--muted);font-weight:500}
+.tab.on{color:var(--navy);font-weight:700}
+.tab.on span{color:var(--navy)}
+.tab.on::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:2px;background:var(--navy)}
+
+/* hairline rows */
+.rows{display:grid}
+.row{position:relative;display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr) 150px 26px;gap:22px;align-items:center;padding:18px 0;border-top:1px solid var(--line);cursor:pointer}
+.row:first-child{border-top:0}
+.row::before{content:"";position:absolute;inset:0 -14px;border-radius:12px;z-index:0}
+.row:hover::before{background:var(--hover)}
+.row > *{position:relative;z-index:1;min-width:0}
+.row h3{font-size:15px;font-weight:600;color:var(--ink);line-height:1.35}
+.row .sub{font-size:13.5px;color:var(--muted);margin-top:2px;display:flex;align-items:center;gap:6px}
+.row .sub .seal{width:13px;height:13px}
+.st{display:inline-flex;align-items:center;gap:8px;font-size:13.5px;font-weight:500;color:var(--ink)}
+.st::before{content:"";width:7px;height:7px;border-radius:50%;background:#b8c0cf;flex:none}
+.st.wait::before{background:var(--amber-dot)}
+.st.you::before{background:var(--navy)}
+.st.ok::before{background:var(--ok)}
+.st.bad::before{background:var(--bad)}
+.clock{display:block;font-size:12.5px;color:var(--amber);font-weight:500;margin-top:3px;padding-left:15px}
+.clock.cool{color:var(--muted)}
+.amt{text-align:right}
+.amt b{font-size:16px;font-weight:700;color:var(--navy)}
+.amt span{display:block;font-size:12.5px;color:var(--muted);margin-top:2px}
+.chev{width:26px;height:26px;color:var(--muted);display:grid;place-items:center}
+.more{margin-top:22px;padding-top:18px;border-top:1px solid var(--line);display:flex;align-items:center;justify-content:center;gap:14px}
+.more span{font-size:13px;color:var(--muted)}
+.more a{font-size:14px;font-weight:600;color:var(--navy);border-bottom:1px solid var(--navy);padding-bottom:1px}
+
+/* buttons: one blue per page, the rest is text */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:46px;padding:0 22px;border-radius:12px;font-size:15px;font-weight:700;white-space:nowrap;background:var(--blue);color:#fff}
+.btn.sm{height:40px;padding:0 18px;font-size:14px;border-radius:10px}
+.btn.wide{width:100%}
+.btn.navy{background:var(--navy)}
+.tx{display:inline-flex;align-items:center;gap:7px;font-size:14.5px;font-weight:600;color:var(--navy);padding:6px 0;border-bottom:1px solid transparent}
+.tx:hover{border-bottom-color:var(--navy)}
+.tx.bad{color:var(--bad)}
+.tx.mut{color:var(--muted)}
+.tx .ic{width:15px;height:15px}
+.acts{display:flex;align-items:center;gap:26px;flex-wrap:wrap}
+
+/* detail layout: body + rail, no boxes */
+.cols{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:64px;align-items:start;padding-bottom:60px}
+.sec{padding:24px 0;border-top:1px solid var(--line)}
+.sec:first-child{border-top:0;padding-top:0}
+.sec h2{font-size:15px;font-weight:700;color:var(--navy);margin-bottom:12px}
+.sec h2 small{font-weight:500;color:var(--muted);margin-left:8px;font-size:13px}
+.prose{font-size:15px;line-height:1.6;max-width:62ch;color:var(--ink)}
+.kv{display:grid;grid-template-columns:150px minmax(0,1fr);gap:9px 20px;font-size:14.5px}
+.kv dt{color:var(--muted)}
+.kv dd{color:var(--ink)}
+.kv dd i{font-style:normal;color:var(--muted);font-size:13px;display:block;margin-top:2px}
+.lock{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);font-style:italic}
+.lock .ic{width:13px;height:13px}
+.thumbs{display:flex;gap:10px;flex-wrap:wrap}
+.thumb{width:132px;aspect-ratio:4/3;border-radius:10px;overflow:hidden;position:relative;background:linear-gradient(160deg,#d8e2ee 0%,#b9c8da 55%,#9db0c7 100%)}
+.thumb::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(135deg,rgba(255,255,255,.18) 0 6px,transparent 6px 14px)}
+.thumb.b{background:linear-gradient(160deg,#e6e0d3 0%,#cdbfa8 60%,#b6a68b 100%)}
+.thumb.c{background:linear-gradient(160deg,#dfe7de 0%,#b9c8b6 60%,#9bb098 100%)}
+.thumb .ic{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:22px;height:22px;color:rgba(0,36,76,.55);z-index:1}
+.thumb.pdf{background:#fff;border:1px solid var(--line2);display:grid;place-items:center;padding:10px;text-align:center}
+.thumb.pdf::after{display:none}
+.thumb.pdf .ic{position:static;transform:none;color:var(--navy);width:24px;height:24px;margin:0 auto 6px}
+.thumb.pdf span{font-size:12px;color:var(--ink);font-weight:500;line-height:1.3;display:block;word-break:break-word}
+.thumb.pdf small{display:block;font-size:11px;color:var(--muted)}
+
+/* the proposal, set as type */
+.prop{padding:6px 0 0}
+.prop .price{font-size:40px;font-weight:800;color:var(--navy);letter-spacing:-.03em;line-height:1;font-variant-numeric:tabular-nums}
+.prop .price small{font-size:18px;font-weight:600;letter-spacing:0;margin-left:6px;color:var(--navy)}
+.prop .when{font-size:17px;font-weight:600;color:var(--ink);margin-top:14px}
+.prop .who{font-size:14.5px;color:var(--muted);margin-top:3px}
+.prop .who b{color:var(--ink);font-weight:600}
+.prop blockquote{margin:18px 0 0;padding-left:16px;border-left:2px solid var(--line2);font-size:15px;line-height:1.6;color:var(--ink);max-width:56ch}
+.prop .valid{display:inline-flex;align-items:center;gap:8px;margin-top:20px;font-size:14px;font-weight:600;color:var(--amber)}
+.prop .valid .ic{width:15px;height:15px}
+.prop .acts{margin-top:26px}
+.hist{display:grid;gap:14px}
+.hist .h{display:grid;grid-template-columns:118px minmax(0,1fr);gap:16px;font-size:14px}
+.hist .h time{color:var(--muted);font-variant-numeric:tabular-nums}
+.hist .h b{font-weight:600;color:var(--ink)}
+.hist .h p{color:var(--muted);margin-top:2px}
+.hist .h s{color:var(--muted);text-decoration:line-through;font-variant-numeric:tabular-nums}
+
+/* rail */
+.rail{display:grid;gap:30px;padding-top:4px}
+.rail h4{font-size:13px;font-weight:700;color:var(--navy);margin-bottom:12px}
+.prov{display:flex;align-items:center;gap:12px}
+.prov .av{width:46px;height:46px;border-radius:12px;background:var(--navy);color:#fff;font-weight:700;font-size:14px;display:grid;place-items:center;flex:none}
+.prov .av.round{border-radius:50%}
+.prov b{display:block;font-size:15px;font-weight:600;color:var(--ink)}
+.prov span{display:block;font-size:13px;color:var(--muted);margin-top:1px}
+.tl{display:grid;gap:0}
+.tl li{position:relative;padding:0 0 16px 22px;font-size:14px}
+.tl li:last-child{padding-bottom:0}
+.tl li::before{content:"";position:absolute;left:0;top:5px;width:9px;height:9px;border-radius:50%;background:#fff;border:2px solid var(--navy)}
+.tl li::after{content:"";position:absolute;left:4px;top:16px;bottom:-4px;width:1px;background:var(--line)}
+.tl li:last-child::after{display:none}
+.tl li.done::before{background:var(--navy)}
+.tl li.now::before{border-color:var(--amber-dot);background:var(--amber-dot);box-shadow:0 0 0 4px #fff4e0}
+.tl li.todo::before{border-color:var(--line2)}
+.tl b{display:block;font-weight:600;color:var(--ink)}
+.tl span{display:block;font-size:12.5px;color:var(--muted);margin-top:1px}
+.tl li.todo b{color:var(--muted);font-weight:500}
+.steps{display:grid;gap:14px;counter-reset:s}
+.steps li{display:grid;grid-template-columns:24px minmax(0,1fr);gap:12px;font-size:14px;line-height:1.5;counter-increment:s}
+.steps li::before{content:counter(s);width:24px;height:24px;border-radius:50%;border:1px solid var(--line2);font-size:12px;font-weight:700;color:var(--navy);display:grid;place-items:center}
+.steps b{font-weight:600;color:var(--ink)}
+.steps span{color:var(--muted)}
+.quiet{font-size:13.5px;color:var(--muted);line-height:1.55}
+.quiet b{color:var(--ink);font-weight:600}
+
+/* forms */
+.form{display:grid;gap:22px;max-width:640px}
+.f{display:grid;gap:7px}
+.f label{font-size:14px;font-weight:600;color:var(--ink)}
+.f label small{font-weight:500;color:var(--muted);margin-left:6px}
+.f .in{min-height:48px;border:1px solid var(--line2);border-radius:10px;padding:12px 14px;font-size:15px;color:var(--ink);background:#fff;display:flex;align-items:center;gap:10px}
+.f .in.ph{color:#8a93a6}
+.f .in.area{min-height:120px;align-items:flex-start;line-height:1.55}
+.f .in.focus{border-color:var(--navy);box-shadow:0 0 0 3px rgba(0,36,76,.12)}
+.f .in .ic{margin-left:auto;color:var(--muted)}
+.f .in .pre{color:var(--muted);font-weight:500}
+.f .hint{font-size:13px;color:var(--muted);line-height:1.5}
+.f .hint b{color:var(--ink);font-weight:600}
+.duo{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.trio{display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:16px}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chips span{font-size:13.5px;font-weight:500;padding:9px 14px;border-radius:999px;border:1px solid var(--line2);color:var(--ink)}
+.chips span.on{background:var(--navy);border-color:var(--navy);color:#fff;font-weight:600}
+.addr{display:grid;gap:8px}
+.addr label{display:flex;align-items:center;gap:12px;padding:12px 0;border-top:1px solid var(--line);font-size:14.5px}
+.addr label:first-child{border-top:0}
+.addr .rad{width:18px;height:18px;border-radius:50%;border:1.5px solid var(--line2);flex:none;display:grid;place-items:center}
+.addr label.on .rad{border-color:var(--navy)}
+.addr label.on .rad::after{content:"";width:9px;height:9px;border-radius:50%;background:var(--navy)}
+.addr b{font-weight:600;color:var(--ink)}
+.addr span{color:var(--muted);font-size:13.5px}
+.addr .add{color:var(--navy);font-weight:600;padding:12px 0 0;border-top:1px solid var(--line)}
+.drop{border:1px dashed var(--line2);border-radius:12px;padding:18px;display:flex;align-items:center;gap:14px;color:var(--muted);font-size:14px}
+.drop .ic{width:22px;height:22px;color:var(--navy)}
+.drop b{color:var(--navy);font-weight:600}
+.drop .thumbs{margin-left:auto}
+.drop .thumb{width:72px}
+.split{display:grid;gap:8px;padding:14px 16px;background:var(--chip);border-radius:12px;font-size:14px;max-width:420px}
+.split .r{display:flex;justify-content:space-between;gap:16px}
+.split .r span{color:var(--muted)}
+.split .r b{font-variant-numeric:tabular-nums;font-weight:600;color:var(--ink)}
+.split .r.you{padding-top:8px;border-top:1px solid var(--line2)}
+.split .r.you span{color:var(--ink);font-weight:600}
+.split .r.you b{color:var(--navy);font-size:17px;font-weight:800}
+.summary{display:grid;gap:12px;font-size:15px}
+.summary .r{display:grid;grid-template-columns:130px minmax(0,1fr);gap:16px;padding:12px 0;border-top:1px solid var(--line)}
+.summary .r:first-child{border-top:0;padding-top:0}
+.summary .r span{color:var(--muted)}
+.summary .r b{font-weight:600;color:var(--ink)}
+.summary .r.total b{font-size:22px;font-weight:800;color:var(--navy);font-variant-numeric:tabular-nums}
+.phone-line{display:flex;align-items:center;gap:14px;font-size:15px}
+.phone-line b{font-weight:600;font-variant-numeric:tabular-nums}
+.phone-line a{color:var(--navy);font-weight:600;font-size:14px;border-bottom:1px solid var(--navy)}
+
+/* service page rail (the quote answer) */
+.srail{width:360px}
+.srail .q{font-size:22px;font-weight:800;color:var(--navy);letter-spacing:-.02em}
+.srail p{font-size:14.5px;color:var(--muted);line-height:1.55;margin-top:8px}
+.srail .btn{margin-top:20px}
+.srail .tx{margin-top:10px}
+.srail .meta{display:flex;gap:14px;font-size:13px;color:var(--muted);margin-top:18px;padding-top:14px;border-top:1px solid var(--line)}
+.srail .meta b{color:var(--ink);font-weight:600}
+.tile{width:300px}
+.tile .tp{aspect-ratio:4/3;border-radius:14px;background:linear-gradient(160deg,#00305f 0%,#00244c 100%);position:relative;overflow:hidden}
+.tile .tp i{position:absolute;inset:0;display:grid;place-items:center;color:#fff;font-size:30px;font-weight:700;font-style:normal;opacity:.9}
+.tile h3{font-size:15px;font-weight:600;margin-top:10px}
+.tile .r2{font-size:13.5px;color:var(--muted);margin-top:2px}
+.tile .r3{margin-top:6px;font-size:14px;font-weight:600;color:var(--navy)}
+.tile .r3 em{font-style:normal;font-weight:400;color:var(--muted);margin-left:8px;font-size:13px}
+.empty{display:grid;justify-items:center;text-align:center;gap:10px;padding:40px 20px}
+.empty .mk{width:64px;height:64px;border-radius:50%;background:var(--chip);display:grid;place-items:center;color:var(--navy)}
+.empty .mk .ic{width:26px;height:26px}
+.empty h3{font-size:18px;font-weight:600;color:var(--ink)}
+.empty p{font-size:14.5px;color:var(--muted);max-width:34ch}
+
+/* console shell (provider) — the approved blueprint's sidebar and header */
+.con{display:grid;grid-template-columns:232px minmax(0,1fr);min-height:900px}
+.sb{border-right:1px solid var(--line);padding:16px 12px;display:flex;flex-direction:column;background:#fff}
+.sb-mast{display:flex;align-items:center;gap:10px;padding:6px 10px 16px}
+.sb-mast .lg{width:30px;height:30px;border-radius:8px;background:var(--navy);color:#fff;font-weight:800;font-size:15px;display:grid;place-items:center}
+.sb-mast b{display:block;font-size:14.5px;font-weight:700;color:var(--ink);line-height:1.15}
+.sb-mast span{display:block;font-size:11.5px;color:var(--muted)}
+.grp{font-size:12px;font-weight:600;color:var(--muted);padding:16px 12px 6px}
+.si{display:flex;align-items:center;gap:11px;padding:9px 12px;border-radius:9px;font-size:14px;font-weight:500;color:var(--ink);margin-bottom:1px}
+.si .ic{color:var(--muted);width:17px;height:17px}
+.si.on{background:var(--chip);color:var(--navy);font-weight:700}
+.si.on .ic{color:var(--navy)}
+.si .bd{margin-left:auto;min-width:20px;height:20px;padding:0 6px;border-radius:999px;background:var(--navy);color:#fff;font-size:11.5px;font-weight:700;display:grid;place-items:center;font-variant-numeric:tabular-nums}
+.si .bd.warm{background:var(--amber-dot);color:#1a2333}
+.sb-foot{margin-top:auto;display:flex;align-items:center;gap:10px;padding:10px 12px;border-top:1px solid var(--line)}
+.sb-foot .av{width:30px;height:30px;border-radius:50%;background:var(--chip);color:var(--navy);font-weight:700;font-size:11px;display:grid;place-items:center}
+.sb-foot b{display:block;font-size:13px;font-weight:600}
+.sb-foot span{display:block;font-size:11.5px;color:var(--muted)}
+.pane{min-width:0;display:flex;flex-direction:column}
+.pane-hd{height:64px;display:flex;align-items:center;gap:14px;padding:0 32px;border-bottom:1px solid var(--line)}
+.pane-hd b{font-size:15px;font-weight:700;color:var(--ink)}
+.pane-hd span{font-size:13px;color:var(--muted)}
+.pane-hd .sp{margin-left:auto;display:flex;align-items:center;gap:16px}
+.pane-hd .bell .ic{width:19px;height:19px}
+.pane-body{padding:28px 32px 48px}
+.pane-body .ph{padding-top:0}
+.pane-body .cols{grid-template-columns:minmax(0,1fr) 420px;gap:56px}
+.prow{grid-template-columns:minmax(0,1.1fr) minmax(0,1.3fr) minmax(0,1.3fr) 120px 26px}
+.cust{display:flex;align-items:center;gap:11px}
+.cust .av{width:34px;height:34px;border-radius:50%;background:var(--chip);color:var(--navy);font-weight:700;font-size:12px;display:grid;place-items:center;flex:none}
+.cust b{display:block;font-size:14.5px;font-weight:600;color:var(--ink)}
+.cust span{display:block;font-size:13px;color:var(--muted)}
+.snip{font-size:13.5px;color:var(--muted);line-height:1.45;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.snip b{color:var(--ink);font-weight:600}
+
+/* dialog */
+.scrim{position:absolute;inset:0;background:rgba(0,36,76,.38);display:grid;place-items:center;z-index:9}
+.dlg{width:520px;background:#fff;border-radius:18px;padding:28px 28px 24px;box-shadow:0 30px 70px -30px rgba(0,36,76,.5)}
+.dlg h3{font-size:20px;font-weight:700;color:var(--navy);letter-spacing:-.015em}
+.dlg > p{font-size:14.5px;color:var(--muted);margin-top:6px;line-height:1.55}
+.dlg .form{margin-top:20px;gap:16px}
+.dlg .foot{display:flex;justify-content:flex-end;align-items:center;gap:22px;margin-top:24px}
+
+/* states plate */
+.stlist{display:grid;gap:12px}
+.stlist .r{display:grid;grid-template-columns:120px 1fr 1fr;gap:14px;align-items:center;font-size:13.5px;padding:8px 0;border-top:1px solid var(--line)}
+.stlist .r:first-child{border-top:0}
+.stlist code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;color:var(--muted)}
+.stlist .h{font-size:12px;font-weight:600;color:var(--muted)}
+
+/* ============ phones ============ */
+.m-hd{height:72px;display:flex;align-items:center;justify-content:space-between;padding:0 20px;border-bottom:1px solid var(--line)}
+.m-hd .wordmark{font-size:24px}
+.m-hd .acts{display:flex;align-items:center;gap:18px}
+.m-body{padding:18px 20px 120px}
+.m-back{font-size:13.5px;color:var(--muted);font-weight:500;display:inline-flex;gap:6px;align-items:center}
+.m-body h1{font-size:22px;font-weight:700;color:var(--navy);letter-spacing:-.02em;line-height:1.2;margin-top:10px}
+.m-body .sub{font-size:13.5px;color:var(--muted);margin-top:4px}
+.m-body .prop{margin-top:22px;padding-top:20px;border-top:1px solid var(--line)}
+.m-body .prop .price{font-size:34px}
+.m-body .prop .when{font-size:15.5px}
+.m-body .prop blockquote{font-size:14px}
+.m-body .sec h2{font-size:14px}
+.m-bar{position:absolute;left:0;right:0;bottom:0;z-index:5;background:#fff;border-top:1px solid var(--line);padding:12px 20px 26px;display:grid;gap:10px}
+.m-bar .btn{width:100%}
+.m-bar .two{display:flex;justify-content:center;gap:28px}
+.m-tabs{position:absolute;left:0;right:0;bottom:0;z-index:5;background:#fff;border-top:1px solid var(--line);display:flex;padding:8px 6px 22px}
+.m-tabs a{flex:1;display:grid;justify-items:center;gap:4px;font-size:11px;font-weight:600;color:var(--muted);position:relative}
+.m-tabs a .ic{width:22px;height:22px}
+.m-tabs a.on{color:var(--navy)}
+.m-tabs a i{position:absolute;top:-4px;left:50%;margin-left:6px;min-width:17px;height:17px;padding:0 4px;border-radius:999px;background:var(--amber-dot);color:#1a2333;font-style:normal;font-size:10px;font-weight:700;display:grid;place-items:center}
+.m-con-hd{height:60px;display:flex;align-items:center;gap:12px;padding:0 20px;border-bottom:1px solid var(--line)}
+.m-con-hd .lg{width:28px;height:28px;border-radius:7px;background:var(--navy);color:#fff;font-weight:800;font-size:13px;display:grid;place-items:center}
+.m-con-hd b{font-size:15px;font-weight:700}
+.m-con-hd .bell{margin-left:auto}
+.m-tabs-strip{display:flex;gap:22px;padding:0 20px;border-bottom:1px solid var(--line);overflow:hidden}
+.m-tabs-strip .tab{font-size:14px;padding:14px 0 12px}
+.m-rows{padding:0 20px}
+.m-row{display:grid;gap:8px;padding:16px 0;border-top:1px solid var(--line)}
+.m-row:first-child{border-top:0}
+.m-row .top{display:flex;justify-content:space-between;gap:12px;align-items:baseline}
+.m-row .top b{font-size:15px;font-weight:600;color:var(--ink)}
+.m-row .top time{font-size:12.5px;color:var(--muted);white-space:nowrap}
+.m-row .snip{-webkit-line-clamp:2}
+.m-row .foot{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:2px}
+.m-row .foot .st{font-size:13px}
+.m-row .foot .clock{margin:0;padding:0;font-size:12.5px}
+</style>
+
+<svg style="display:none" aria-hidden="true">
+  <symbol id="i-chev" viewBox="0 0 24 24"><path d="M9.5 5l7 7-7 7"/></symbol>
+  <symbol id="i-left" viewBox="0 0 24 24"><path d="M14.5 5l-7 7 7 7"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5.2l3.2 2"/></symbol>
+  <symbol id="i-clip" viewBox="0 0 24 24"><path d="M20.5 11.5l-8.2 8.2a5 5 0 0 1-7-7l9-9a3.3 3.3 0 0 1 4.7 4.7l-9 9a1.6 1.6 0 0 1-2.3-2.3l8.2-8.2"/></symbol>
+  <symbol id="i-cam" viewBox="0 0 24 24"><path d="M4 8.5h3l1.6-2.5h6.8L17 8.5h3v10H4z"/><circle cx="12" cy="13.3" r="3"/></symbol>
+  <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21s7-5.6 7-11a7 7 0 1 0-14 0c0 5.4 7 11 7 11z"/><circle cx="12" cy="10" r="2.6"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="10" rx="2"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/></symbol>
+  <symbol id="i-msg" viewBox="0 0 24 24"><path d="M21 14.5a2.5 2.5 0 0 1-2.5 2.5H8l-4 4V5.5A2.5 2.5 0 0 1 6.5 3h12A2.5 2.5 0 0 1 21 5.5z"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M18.2 9a6.2 6.2 0 1 0-12.4 0c0 5-2 6.2-2 6.2h16.4s-2-1.2-2-6.2"/><path d="M10.3 19.4a2 2 0 0 0 3.4 0"/></symbol>
+  <symbol id="i-cal" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2.5"/><path d="M8 3v4M16 3v4M3 10h18"/></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></symbol>
+  <symbol id="i-quote" viewBox="0 0 24 24"><path d="M4 5.5h16v10H9l-4 4z"/><path d="M8 9h8M8 12.5h5"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2.5"/><path d="M8 3v4M16 3v4M3 10h18M9 15.5l2 2 4-4"/></symbol>
+  <symbol id="i-case" viewBox="0 0 24 24"><rect x="2.5" y="7" width="19" height="13.5" rx="2.5"/><path d="M8 7V5.2A2.2 2.2 0 0 1 10.2 3h3.6A2.2 2.2 0 0 1 16 5.2V7M2.5 12.5h19"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9.5" cy="8" r="3.4"/><path d="M3 20a6.5 6.5 0 0 1 13 0M16.5 5.2a3.4 3.4 0 0 1 0 6.6M18 13.6a6.5 6.5 0 0 1 3 5.2"/></symbol>
+  <symbol id="i-wallet" viewBox="0 0 24 24"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H17"/><rect x="3" y="7.5" width="18" height="12.5" rx="2.5"/><circle cx="16.6" cy="13.7" r="1.25"/></symbol>
+  <symbol id="i-act" viewBox="0 0 24 24"><path d="M3 12h3.6l2.7-7.5 4.4 15 2.7-7.5H21"/></symbol>
+  <symbol id="i-cog" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v2.8M12 18.7v2.8M2.5 12h2.8M18.7 12h2.8M5.2 5.2l2 2M16.8 16.8l2 2M18.8 5.2l-2 2M7.2 16.8l-2 2"/></symbol>
+  <symbol id="i-dash" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.6l4.6 4.6L19 7.2"/></symbol>
+  <symbol id="i-seal" viewBox="0 0 24 24"><path fill="#00244c" stroke="none" d="M12 2l2.4 2 3.1-.3 1 3 2.7 1.5-.6 3.1 1.8 2.6-1.8 2.6.6 3.1-2.7 1.5-1 3-3.1-.3L12 22l-2.4-2-3.1.3-1-3-2.7-1.5.6-3.1L1.6 12l1.8-2.6-.6-3.1 2.7-1.5 1-3 3.1.3z"/><path d="M8.3 12.4l2.5 2.5 5-5.2" stroke="#fff" fill="none" stroke-width="2.2"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24"><path d="M6 9.5l6 6 6-6"/></symbol>
+  <symbol id="i-glob" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></symbol>
+</svg>
+
+<div class="doc-bar">
+  <strong>Ntizo · Orçamentos</strong>
+  <span>mockups 2026-09-07 · pt-MZ copy, MZN prices, mock data · light theme only, the product has both</span>
+  <nav>
+    <a href="#why">Why</a><a href="#entry">Entry</a><a href="#request">Request</a><a href="#list">List</a><a href="#detail">Detail</a><a href="#accept">Accept</a><a href="#provider">Provider</a><a href="#propose">Propose</a><a href="#states">States</a><a href="#mobile">Mobile</a>
+  </nav>
+</div>
+
+<!-- ============================ WHY ============================ -->
+<section id="why">
+<div class="doc-h">
+  <div class="kick">What this is</div>
+  <h2>A price agreed, not listed</h2>
+  <p>A provider marks a service "por orçamento" and today the customer can only send a message. These screens close the loop: the customer asks, the provider answers with a price, a date and a duration, the customer accepts, and a booking is born already waiting for M-Pesa. Same visual direction as the listings and inbox refresh: white page, Figtree, navy for what matters, one blue button per page, hairlines instead of boxes.</p>
+</div>
+<div class="intro">
+  <div class="flow"><pre>REQUESTED ── provider proposes ──▶ PROPOSED ── customer accepts ──▶ ACCEPTED ──▶ booking, PENDING_PAYMENT ──▶ M-Pesa ──▶ CONFIRMED
+   ├ provider declines ▶ DECLINED         ├ provider revises ▶ PROPOSED (previous one superseded)
+   ├ customer withdraws ▶ WITHDRAWN       ├ provider withdraws ▶ DECLINED      ├ customer declines ▶ REJECTED
+   └ 48 h pass ▶ EXPIRED                  └ 72 h pass ▶ EXPIRED</pre></div>
+  <ul class="decisions">
+    <li><h3>The proposal is the hero</h3><p>On the customer's detail page the price is set at 40px in navy with the date and duration under it, like a tile price grown up. Nothing else on the page competes with it.</p></li>
+    <li><h3>Every step can carry a note and files</h3><p>The request, each proposal and every refusal take free text and up to five attachments. One attachment table, one upload flow, the contact detector on all three texts.</p></li>
+    <li><h3>The provider sees enough to price, not enough to leave</h3><p>Description, photos, deadline, bairro and city, first name. The exact street, the phone and the email arrive on the booking once it is confirmed, by the rule the bookings already keep.</p></li>
+  </ul>
+</div>
+</section>
+
+<!-- ============================ ENTRY ============================ -->
+<section id="entry">
+<div class="doc-h">
+  <div class="kick">1 · Where it starts</div>
+  <h2>The button lives on every service that is "por orçamento"</h2>
+  <p>Keyed off the service's <code>bookingMode</code>, which the provider sets in the wizard. The listing tile says "Sob orçamento" where a price would be; the service page's right rail replaces the price panel with one question and one button. Nothing changes for priced services.</p>
+</div>
+<div class="states-wrap"><div class="states-inner app">
+  <div>
+    <div class="state-label">Listing tile, price line</div>
+    <div class="tile">
+      <div class="tp"><i>FC</i></div>
+      <h3>Instalação de ar condicionado</h3>
+      <div class="r2">Frio &amp; Clima Maputo · Sommerschield</div>
+      <div class="r3">Sob orçamento <em>responde em 48 h</em></div>
+    </div>
+  </div>
+  <div>
+    <div class="state-label">Service page, right rail (replaces the price panel)</div>
+    <div class="srail">
+      <div class="q">Sob orçamento</div>
+      <p>O preço depende do trabalho. Conte o que precisa e Frio &amp; Clima Maputo responde com um valor, uma data e a duração, sem compromisso da sua parte.</p>
+      <span class="btn wide">Pedir orçamento</span>
+      <div style="text-align:center"><span class="tx mut"><svg class="ic"><use href="#i-msg"/></svg>Enviar mensagem</span></div>
+      <div class="meta"><span>Responde em <b>48 h</b></span><span><b>96</b> trabalhos</span><span><b>4,8</b> ★</span></div>
+    </div>
+  </div>
+  <div>
+    <div class="state-label">Customer's "Orçamentos", nothing yet</div>
+    <div class="empty">
+      <div class="mk"><svg class="ic"><use href="#i-quote"/></svg></div>
+      <h3>Ainda não pediu orçamentos</h3>
+      <p>Nos serviços marcados "sob orçamento", conte o que precisa e o prestador responde com um preço e uma data.</p>
+      <span class="tx">Ver serviços sob orçamento</span>
+    </div>
+  </div>
+</div></div>
+<div class="note">
+  <p><b>"Responde em 48 h"</b> is the provider's own promise from <code>service_quote_form.response_hours</code>, shown before the customer commits to typing. A promise nobody sees is not one.</p>
+  <p><b>"Enviar mensagem" stays</b>, as text under the button. Some people want to ask a question before describing a job.</p>
+</div>
+</section>
+
+<!-- ============================ REQUEST ============================ -->
+<section id="request">
+<div class="doc-h">
+  <div class="kick">2 · /quote/$serviceId</div>
+  <h2>The request, one page</h2>
+  <p>The form is what the provider configured: description always; "até quando", photos and address only when asked (address also whenever the job happens at the customer's). The rail says who answers, by when, and what happens next, so the customer is not sending into a void.</p>
+</div>
+<div class="frame-tools"><button class="on" data-fit="fit">Fit</button><button data-fit="100">100%</button></div>
+<div class="frame"><div class="frame-inner"><div class="viewport">
+<div class="app">
+  <header class="hd"><div class="shell hd-row">
+    <a class="wordmark" href="#">ntizo</a>
+    <nav class="pillnav"><a href="#">Explorar</a><a href="#">Reservas</a><a class="on" href="#">Orçamentos</a><a href="#">Mensagens</a></nav>
+    <div class="hd-acts"><span class="lang"><svg class="ic"><use href="#i-glob"/></svg>PT</span><span class="bell"><svg class="ic"><use href="#i-bell"/></svg><i>2</i></span><span class="avatar">SF</span></div>
+  </div></header>
+  <main class="shell">
+    <a class="back" href="#"><svg class="ic"><use href="#i-left"/></svg>Instalação de ar condicionado</a>
+    <div class="ph"><div><h1>Pedir orçamento</h1><p>Quanto mais contar, mais certo vem o preço. Frio &amp; Clima Maputo lê isto e responde com um valor, uma data e a duração.</p></div></div>
+    <div class="cols" style="padding-top:8px">
+      <div class="form">
+        <p class="quiet" style="font-size:14.5px;color:var(--ink);padding:14px 16px;background:var(--chip);border-radius:12px"><b>Frio &amp; Clima Maputo:</b> Diga-nos quantos aparelhos, o andar, se há elevador, e onde fica a parede exterior. Fotos da parede ajudam muito.</p>
+        <div class="f">
+          <label>O que precisa</label>
+          <div class="in area focus">Dois aparelhos split de 12 000 BTU para instalar num T2 no 3.º andar, sem elevador. Os aparelhos já cá estão, falta tubagem e suportes. A parede exterior dá para a varanda.</div>
+          <div class="hint">Sem números de telefone nem emails: a conversa fica na Ntizo até a reserva estar paga.</div>
+        </div>
+        <div class="f">
+          <label>Até quando precisa <small>opcional</small></label>
+          <div class="in" style="max-width:280px">27 de Setembro de 2026<svg class="ic"><use href="#i-cal"/></svg></div>
+        </div>
+        <div class="f">
+          <label>Fotos <small>até 5 · JPEG, PNG, WebP ou PDF · 10 MB cada</small></label>
+          <div class="drop"><svg class="ic"><use href="#i-cam"/></svg><div><b>Juntar fotos</b><br>ou arraste para aqui</div>
+            <div class="thumbs"><div class="thumb"><svg class="ic"><use href="#i-cam"/></svg></div><div class="thumb b"><svg class="ic"><use href="#i-cam"/></svg></div><div class="thumb c"><svg class="ic"><use href="#i-cam"/></svg></div></div>
+          </div>
+        </div>
+        <div class="f">
+          <label>Onde é o trabalho</label>
+          <div class="addr">
+            <label class="on"><span class="rad"></span><div><b>Casa</b> <span>· Av. Julius Nyerere 1234, Bairro Central, Maputo</span></div></label>
+            <label><span class="rad"></span><div><b>Escritório</b> <span>· Rua da Kongwa 88, Sommerschield, Maputo</span></div></label>
+            <div class="add">+ Adicionar outra morada</div>
+          </div>
+          <div class="hint">O prestador vê o bairro e a cidade. A rua exacta só aparece quando a reserva estiver confirmada.</div>
+        </div>
+        <div class="acts" style="padding-top:6px"><span class="btn">Enviar pedido</span><span class="tx mut">Cancelar</span></div>
+      </div>
+      <aside class="rail">
+        <div>
+          <h4>Quem responde</h4>
+          <div class="prov"><div class="av">FC</div><div><b>Frio &amp; Clima Maputo</b><span>4,8 ★ · 96 trabalhos · <svg class="seal" style="width:13px;height:13px"><use href="#i-seal"/></svg> Verificado</span></div></div>
+          <p class="quiet" style="margin-top:12px">Comprometem-se a responder em <b>48 horas</b>. Se não responderem, o pedido expira e avisamos.</p>
+        </div>
+        <div>
+          <h4>O que acontece a seguir</h4>
+          <ol class="steps">
+            <li><div><b>Recebe uma proposta</b><br><span>Preço, data, hora e duração, com uma nota do prestador.</span></div></li>
+            <li><div><b>Aceita ou recusa</b><br><span>Sem compromisso. Pode conversar antes de decidir.</span></div></li>
+            <li><div><b>Paga por M-Pesa</b><br><span>Só ao aceitar. A reserva fica confirmada quando o pagamento entrar.</span></div></li>
+          </ol>
+        </div>
+        <p class="quiet">A Ntizo não acrescenta nada por cima: o valor da proposta é o que paga.</p>
+      </aside>
+    </div>
+  </main>
+</div>
+</div></div></div>
+<div class="note">
+  <p><b>The provider's intro sits above the form in a quiet tint</b>, as the one thing on the page written in the provider's voice. It comes from <code>service_quote_form.intro</code>, which nothing reads today.</p>
+  <p><b>Signed-in only.</b> An anonymous visitor is sent to sign in and returned here, the way <code>/book/$serviceId</code> already does it.</p>
+  <p>The three numbered steps are a real sequence, which is why they are numbered.</p>
+</div>
+</section>
+
+<!-- ============================ LIST ============================ -->
+<section id="list">
+<div class="doc-h">
+  <div class="kick">3 · /quotes</div>
+  <h2>Os meus orçamentos</h2>
+  <p>"Orçamentos" joins the customer nav beside "Reservas". Two tabs: what is still open, and what ended. Rows read left to right as the question the customer has: what, from whom, where is it, how much, what is the clock.</p>
+</div>
+<div class="frame-tools"><button class="on" data-fit="fit">Fit</button><button data-fit="100">100%</button></div>
+<div class="frame"><div class="frame-inner"><div class="viewport">
+<div class="app">
+  <header class="hd"><div class="shell hd-row">
+    <a class="wordmark" href="#">ntizo</a>
+    <nav class="pillnav"><a href="#">Explorar</a><a href="#">Reservas</a><a class="on" href="#">Orçamentos</a><a href="#">Mensagens</a></nav>
+    <div class="hd-acts"><span class="lang"><svg class="ic"><use href="#i-glob"/></svg>PT</span><span class="bell"><svg class="ic"><use href="#i-bell"/></svg><i>2</i></span><span class="avatar">SF</span></div>
+  </div></header>
+  <main class="shell" style="padding-bottom:60px">
+    <div class="ph"><div><h1>Os meus orçamentos</h1><p>O que pediu, o que já tem resposta, e o que ainda está a contar.</p></div></div>
+    <div class="tabs"><span class="tab on">Em aberto<span>2</span></span><span class="tab">Histórico<span>4</span></span></div>
+    <div class="rows" style="margin-top:6px">
+      <div class="row">
+        <div><h3>Instalação de ar condicionado</h3><div class="sub">Frio &amp; Clima Maputo <svg class="seal"><use href="#i-seal"/></svg></div></div>
+        <div><span class="st you">Proposta recebida</span><span class="clock">a sua decisão · válida até dom, 7 Set, 16:40</span></div>
+        <div class="amt"><b class="num">9 800 MZN</b><span>sáb, 20 Set · 4 h</span></div>
+        <div class="chev"><svg class="ic"><use href="#i-chev"/></svg></div>
+      </div>
+      <div class="row">
+        <div><h3>Pintura de apartamento T2</h3><div class="sub">Nelson Machava</div></div>
+        <div><span class="st wait">À espera de proposta</span><span class="clock">responde até amanhã, 09:00</span></div>
+        <div class="amt"><span style="margin-top:0">sem preço ainda</span></div>
+        <div class="chev"><svg class="ic"><use href="#i-chev"/></svg></div>
+      </div>
+    </div>
+
+    <div class="tabs" style="margin-top:44px"><span class="tab">Em aberto<span>2</span></span><span class="tab on">Histórico<span>4</span></span></div>
+    <div class="rows" style="margin-top:6px">
+      <div class="row">
+        <div><h3>Montagem de cozinha</h3><div class="sub">Marcenaria Xipamanine <svg class="seal"><use href="#i-seal"/></svg></div></div>
+        <div><span class="st ok">Aceite</span><span class="clock cool">passou a reserva · confirmada</span></div>
+        <div class="amt"><b class="num">24 500 MZN</b><span>qui, 28 Ago</span></div>
+        <div class="chev"><svg class="ic"><use href="#i-chev"/></svg></div>
+      </div>
+      <div class="row">
+        <div><h3>Reparação de telhado</h3><div class="sub">Obras Matola, Lda</div></div>
+        <div><span class="st bad">Recusado pelo prestador</span><span class="clock cool">"Fora da nossa zona" · 26 Ago</span></div>
+        <div class="amt"><span style="margin-top:0">sem proposta</span></div>
+        <div class="chev"><svg class="ic"><use href="#i-chev"/></svg></div>
+      </div>
+      <div class="row">
+        <div><h3>Limpeza pós-obra</h3><div class="sub">Clara Nhantumbo</div></div>
+        <div><span class="st">Recusou a proposta</span><span class="clock cool">22 Ago</span></div>
+        <div class="amt"><b class="num" style="color:var(--muted);font-weight:600">6 400 MZN</b><span>não aceite</span></div>
+        <div class="chev"><svg class="ic"><use href="#i-chev"/></svg></div>
+      </div>
+      <div class="row">
+        <div><h3>Jardinagem · limpeza de quintal</h3><div class="sub">Verdes de Maputo, Lda</div></div>
+        <div><span class="st">Expirado</span><span class="clock cool">o prestador não respondeu · 18 Ago</span></div>
+        <div class="amt"><span style="margin-top:0">sem proposta</span></div>
+        <div class="chev"><svg class="ic"><use href="#i-chev"/></svg></div>
+      </div>
+    </div>
+  </main>
+</div>
+</div></div></div>
+<div class="note">
+  <p><b>Status is a dot and words, not a pill.</b> Amber when the other side owes an answer, navy when it is this person's turn, green for accepted, red for a refusal, grey for the rest. The clock line under it says what the dot means in time.</p>
+  <p><b>An accepted quote points at its booking</b> ("passou a reserva · confirmada"): after acceptance the booking is the source of truth and the row says so instead of repeating it.</p>
+  <p>Below <code>md</code> each row stacks: title, then status and clock, then the price on its own line; the mobile plate shows it.</p>
+</div>
+</section>
+
+<!-- ============================ DETAIL ============================ -->
+<section id="detail">
+<div class="doc-h">
+  <div class="kick">4 · /quotes/$quoteId</div>
+  <h2>The proposal, on the customer's side</h2>
+  <p>The page answers "what did they propose and what do I do". The price is the first thing on it. The request the customer wrote, the photos and the earlier proposal sit below as the story; the rail says who, and how far along this is.</p>
+</div>
+<div class="frame-tools"><button class="on" data-fit="fit">Fit</button><button data-fit="100">100%</button></div>
+<div class="frame"><div class="frame-inner"><div class="viewport">
+<div class="app">
+  <header class="hd"><div class="shell hd-row">
+    <a class="wordmark" href="#">ntizo</a>
+    <nav class="pillnav"><a href="#">Explorar</a><a href="#">Reservas</a><a class="on" href="#">Orçamentos</a><a href="#">Mensagens</a></nav>
+    <div class="hd-acts"><span class="lang"><svg class="ic"><use href="#i-glob"/></svg>PT</span><span class="bell"><svg class="ic"><use href="#i-bell"/></svg><i>2</i></span><span class="avatar">SF</span></div>
+  </div></header>
+  <main class="shell">
+    <a class="back" href="#"><svg class="ic"><use href="#i-left"/></svg>Os meus orçamentos</a>
+    <div class="ph"><div><h1>Instalação de ar condicionado</h1><p>Frio &amp; Clima Maputo · <span class="st you" style="font-size:14.5px">Proposta recebida</span></p></div></div>
+    <div class="cols">
+      <div>
+        <div class="sec">
+          <div class="prop">
+            <div class="price">9 800<small>MZN</small></div>
+            <div class="when">Sábado, 20 de Setembro · 08:30 às 12:30</div>
+            <div class="who">4 horas · <b>Carlos Muianga</b> faz o trabalho</div>
+            <blockquote>Inclui tubagem até 3 m por aparelho, suportes e teste. Se precisar de mais tubo, são 450 MZN por metro, combinado no local.</blockquote>
+            <div class="thumbs" style="margin-top:16px"><div class="thumb pdf"><svg class="ic"><use href="#i-file"/></svg><span>orcamento-frio-clima.pdf</span><small>84 KB</small></div></div>
+            <div class="valid"><svg class="ic"><use href="#i-clock"/></svg>Válida até domingo, 7 de Setembro, 16:40</div>
+            <div class="acts">
+              <span class="btn">Aceitar e pagar 9 800 MZN</span>
+              <span class="tx bad">Recusar</span>
+              <span class="tx"><svg class="ic"><use href="#i-msg"/></svg>Conversar</span>
+            </div>
+          </div>
+        </div>
+        <div class="sec">
+          <h2>O seu pedido <small>3 Set, 10:12</small></h2>
+          <p class="prose">Dois aparelhos split de 12 000 BTU para instalar num T2 no 3.º andar, sem elevador. Os aparelhos já cá estão, falta tubagem e suportes. A parede exterior dá para a varanda.</p>
+          <dl class="kv" style="margin-top:16px">
+            <dt>Até quando</dt><dd>27 de Setembro</dd>
+            <dt>Onde</dt><dd>Casa · Av. Julius Nyerere 1234, Bairro Central, Maputo</dd>
+            <dt>Fotos</dt><dd><div class="thumbs"><div class="thumb"><svg class="ic"><use href="#i-cam"/></svg></div><div class="thumb b"><svg class="ic"><use href="#i-cam"/></svg></div><div class="thumb c"><svg class="ic"><use href="#i-cam"/></svg></div></div></dd>
+          </dl>
+        </div>
+        <div class="sec">
+          <h2>Antes desta proposta</h2>
+          <div class="hist">
+            <div class="h"><time>4 Set, 11:05</time><div><b>Primeira proposta: <s>10 600 MZN</s>, sáb 20 Set, 4 h</b><p>Substituída pelo prestador a 4 Set, 16:40. "Revi o tubo, afinal chega com menos."</p></div></div>
+            <div class="h"><time>3 Set, 10:12</time><div><b>Pedido enviado</b><p>Frio &amp; Clima Maputo tinha até sex, 5 Set, 10:12 para responder.</p></div></div>
+          </div>
+        </div>
+      </div>
+      <aside class="rail">
+        <div>
+          <h4>Quem propõe</h4>
+          <div class="prov"><div class="av">FC</div><div><b>Frio &amp; Clima Maputo</b><span>4,8 ★ · 96 trabalhos · Verificado</span></div></div>
+        </div>
+        <div>
+          <h4>Como vai isto</h4>
+          <ul class="tl">
+            <li class="done"><b>Pedido enviado</b><span>3 Set, 10:12</span></li>
+            <li class="done"><b>Proposta recebida</b><span>4 Set, 16:40 · revista uma vez</span></li>
+            <li class="now"><b>A sua decisão</b><span>válida até dom, 7 Set, 16:40</span></li>
+            <li class="todo"><b>Pagamento por M-Pesa</b><span>ao aceitar, recebe o pedido no telemóvel</span></li>
+            <li class="todo"><b>Reserva confirmada</b><span>a vaga de sábado fica sua</span></li>
+          </ul>
+        </div>
+        <p class="quiet">Aceitar cria a reserva e envia o pedido M-Pesa. Tem <b>15 minutos</b> para confirmar no telemóvel; se não confirmar, a vaga é libertada e o prestador é avisado.</p>
+        <span class="tx mut" style="justify-self:start">Retirar o pedido</span>
+      </aside>
+    </div>
+  </main>
+</div>
+</div></div></div>
+<div class="note">
+  <p><b>One blue on the page</b>, and it says the amount: "Aceitar e pagar 9 800 MZN". Recusar and Conversar are text.</p>
+  <p><b>The superseded proposal is history, not noise.</b> Struck-through price, when it was replaced, and the provider's own words for why. A customer who saw 10 600 yesterday should find it, not wonder.</p>
+  <p><b>"Retirar o pedido" hides at the bottom of the rail.</b> It exists; it is not an invitation.</p>
+</div>
+</section>
+
+<!-- ============================ ACCEPT ============================ -->
+<section id="accept">
+<div class="doc-h">
+  <div class="kick">5 · /quotes/$quoteId/accept</div>
+  <h2>Accepting is paying</h2>
+  <p>Mirrors checkout's third page: what is being agreed, where the M-Pesa prompt goes, and one button. The phone is prefilled from the profile and saved before the acceptance, in that order, the way checkout already does it.</p>
+</div>
+<div class="frame-tools"><button class="on" data-fit="fit">Fit</button><button data-fit="100">100%</button></div>
+<div class="frame"><div class="frame-inner"><div class="viewport">
+<div class="app">
+  <header class="hd"><div class="shell hd-row">
+    <a class="wordmark" href="#">ntizo</a>
+    <nav class="pillnav"><a href="#">Explorar</a><a href="#">Reservas</a><a class="on" href="#">Orçamentos</a><a href="#">Mensagens</a></nav>
+    <div class="hd-acts"><span class="lang"><svg class="ic"><use href="#i-glob"/></svg>PT</span><span class="bell"><svg class="ic"><use href="#i-bell"/></svg><i>2</i></span><span class="avatar">SF</span></div>
+  </div></header>
+  <main class="shell" style="padding-bottom:70px">
+    <a class="back" href="#"><svg class="ic"><use href="#i-left"/></svg>Proposta de Frio &amp; Clima Maputo</a>
+    <div class="ph"><div><h1>Aceitar a proposta</h1><p>Nada é cobrado sem o seu PIN. Ao aceitar, recebe um pedido M-Pesa no telemóvel e tem 15 minutos para o confirmar.</p></div></div>
+    <div class="cols" style="grid-template-columns:600px minmax(0,1fr);gap:80px">
+      <div>
+        <div class="summary">
+          <div class="r"><span>Serviço</span><b>Instalação de ar condicionado</b></div>
+          <div class="r"><span>Prestador</span><b>Frio &amp; Clima Maputo · Carlos Muianga</b></div>
+          <div class="r"><span>Quando</span><b>Sábado, 20 de Setembro, 08:30 às 12:30 (4 h)</b></div>
+          <div class="r"><span>Onde</span><b>Casa · Av. Julius Nyerere 1234, Bairro Central, Maputo</b></div>
+          <div class="r"><span>Inclui</span><b style="font-weight:500">Tubagem até 3 m por aparelho, suportes e teste. Tubo extra a 450 MZN/m, combinado no local.</b></div>
+          <div class="r total"><span>Total a pagar</span><b class="num">9 800 MZN</b></div>
+        </div>
+        <div class="sec" style="margin-top:8px">
+          <h2>Recebe o pedido de pagamento em</h2>
+          <div class="phone-line"><b class="num">+258 84 ••• 4021</b><a href="#">Alterar</a></div>
+          <p class="quiet" style="margin-top:8px">Tem de ser um número M-Pesa activo, com saldo para 9 800 MZN.</p>
+        </div>
+        <div class="acts" style="margin-top:10px"><span class="btn">Aceitar e pagar 9 800 MZN</span><span class="tx mut">Voltar</span></div>
+      </div>
+      <aside class="rail">
+        <div>
+          <h4>O que acontece a seguir</h4>
+          <ol class="steps">
+            <li><div><b>A reserva é criada</b><br><span>A vaga de sábado fica reservada para si desde já.</span></div></li>
+            <li><div><b>Chega o pedido M-Pesa</b><br><span>No minuto seguinte, no 84 ••• 4021. Introduz o PIN.</span></div></li>
+            <li><div><b>Confirmada</b><br><span>O prestador é avisado e vê a sua morada completa.</span></div></li>
+          </ol>
+        </div>
+        <p class="quiet">Se o pedido não chegar, pode voltar a pedi-lo a partir da reserva com "Pagar agora". Passados 15 minutos sem pagamento a vaga é libertada e o prestador é avisado.</p>
+      </aside>
+    </div>
+  </main>
+</div>
+</div></div></div>
+<div class="note">
+  <p><b>If the address was not asked at request time</b> (a remote or at-provider service with <code>askLocation</code> off), the address picker from the request page appears here above the phone. Bookings past <code>DRAFT</code> must carry one.</p>
+  <p><b>If the slot was taken meanwhile</b>, this page says so instead of a button: "Essa hora deixou de estar livre. Pedimos a Frio &amp; Clima Maputo uma nova proposta." The quote goes back to waiting on the provider.</p>
+</div>
+</section>
+
+<!-- ============================ PROVIDER LIST ============================ -->
+<section id="provider">
+<div class="doc-h">
+  <div class="kick">6 · /provider/$slug/quotes</div>
+  <h2>The provider's queue</h2>
+  <p>"Orçamentos" enters the sidebar between Reservas and Mensagens with an amber count of what is owed an answer. Three tabs: what needs a proposal, what waits on the customer, what ended. The console shell is the approved blueprint; the page body follows the borderless direction of the listings and inbox work.</p>
+</div>
+<div class="frame-tools"><button class="on" data-fit="fit">Fit</button><button data-fit="100">100%</button></div>
+<div class="frame"><div class="frame-inner"><div class="viewport">
+<div class="app con">
+  <aside class="sb">
+    <div class="sb-mast"><div class="lg">F</div><div><b>Frio &amp; Clima Maputo</b><span>Espaço do prestador</span></div></div>
+    <a class="si" href="#"><svg class="ic"><use href="#i-dash"/></svg>Visão geral</a>
+    <div class="grp">Trabalho</div>
+    <a class="si" href="#"><svg class="ic"><use href="#i-book"/></svg>Reservas<span class="bd">1</span></a>
+    <a class="si on" href="#"><svg class="ic"><use href="#i-quote"/></svg>Orçamentos<span class="bd warm">3</span></a>
+    <a class="si" href="#"><svg class="ic"><use href="#i-msg"/></svg>Mensagens<span class="bd">2</span></a>
+    <a class="si" href="#"><svg class="ic"><use href="#i-cal"/></svg>Disponibilidade</a>
+    <a class="si" href="#"><svg class="ic"><use href="#i-case"/></svg>Serviços</a>
+    <div class="grp">Gerir</div>
+    <a class="si" href="#"><svg class="ic"><use href="#i-users"/></svg>Equipa</a>
+    <a class="si" href="#"><svg class="ic"><use href="#i-wallet"/></svg>Carteira</a>
+    <a class="si" href="#"><svg class="ic"><use href="#i-act"/></svg>Actividade</a>
+    <a class="si" href="#"><svg class="ic"><use href="#i-cog"/></svg>Definições</a>
+    <div class="sb-foot"><div class="av">CM</div><div><b>Carlos Muianga</b><span>carlos@frioeclima.co.mz</span></div></div>
+  </aside>
+  <div class="pane">
+    <div class="pane-hd"><b>Orçamentos</b><span>3 por responder · o mais antigo há 22 h</span><div class="sp"><span class="bell"><svg class="ic"><use href="#i-bell"/></svg><i>4</i></span></div></div>
+    <div class="pane-body">
+      <div class="tabs"><span class="tab on">Por responder<span>3</span></span><span class="tab">À espera do cliente<span>2</span></span><span class="tab">Histórico<span>11</span></span></div>
+      <div class="rows" style="margin-top:6px">
+        <div class="row prow">
+          <div class="cust"><div class="av">S</div><div><b>Salif F.</b><span>Instalação de ar condicionado</span></div></div>
+          <div class="snip"><b>Bairro Central, Maputo</b> · até 27 Set · 3 fotos<br>Dois aparelhos split de 12 000 BTU para instalar num T2 no 3.º andar, sem elevador…</div>
+          <div><span class="st you">Por responder</span><span class="clock">até sex, 5 Set, 10:12 · faltam 22 h</span></div>
+          <div class="amt"><span style="margin-top:0">pedido há 26 h</span></div>
+          <div class="chev"><svg class="ic"><use href="#i-chev"/></svg></div>
+        </div>
+        <div class="row prow">
+          <div class="cust"><div class="av">A</div><div><b>Amélia S.</b><span>Manutenção de ar condicionado</span></div></div>
+          <div class="snip"><b>Polana Cimento, Maputo</b> · sem prazo · 1 foto<br>Três aparelhos com limpeza atrasada há dois anos, um deles a pingar…</div>
+          <div><span class="st you">Por responder</span><span class="clock">até sáb, 6 Set, 14:30 · faltam 2 dias</span></div>
+          <div class="amt"><span style="margin-top:0">pedido há 4 h</span></div>
+          <div class="chev"><svg class="ic"><use href="#i-chev"/></svg></div>
+        </div>
+        <div class="row prow">
+          <div class="cust"><div class="av">R</div><div><b>Rui T.</b><span>Instalação de ar condicionado</span></div></div>
+          <div class="snip"><b>Matola, Matola</b> · até 15 Set · sem fotos<br>Um aparelho de 18 000 BTU numa loja com pé-direito alto, cerca de 4 m…</div>
+          <div><span class="st you">Por responder</span><span class="clock">até sáb, 6 Set, 18:05 · faltam 2 dias</span></div>
+          <div class="amt"><span style="margin-top:0">pedido há 1 h</span></div>
+          <div class="chev"><svg class="ic"><use href="#i-chev"/></svg></div>
+        </div>
+      </div>
+
+      <div class="tabs" style="margin-top:44px"><span class="tab">Por responder<span>3</span></span><span class="tab on">À espera do cliente<span>2</span></span><span class="tab">Histórico<span>11</span></span></div>
+      <div class="rows" style="margin-top:6px">
+        <div class="row prow">
+          <div class="cust"><div class="av">J</div><div><b>Joana M.</b><span>Instalação de ar condicionado</span></div></div>
+          <div class="snip"><b>Sommerschield, Maputo</b> · até 20 Set · 2 fotos<br>Um split de 9 000 BTU num quarto, parede para o pátio interior…</div>
+          <div><span class="st wait">Proposta enviada</span><span class="clock">válida até seg, 8 Set, 09:15</span></div>
+          <div class="amt"><b class="num">5 400 MZN</b><span>recebe 4 860</span></div>
+          <div class="chev"><svg class="ic"><use href="#i-chev"/></svg></div>
+        </div>
+        <div class="row prow">
+          <div class="cust"><div class="av">P</div><div><b>Paulo N.</b><span>Manutenção de ar condicionado</span></div></div>
+          <div class="snip"><b>Malhangalene, Maputo</b> · sem prazo · sem fotos<br>Dois aparelhos, um deles não arrefece…</div>
+          <div><span class="st wait">Proposta enviada</span><span class="clock">válida até ter, 9 Set, 11:40 · revista uma vez</span></div>
+          <div class="amt"><b class="num">2 900 MZN</b><span>recebe 2 610</span></div>
+          <div class="chev"><svg class="ic"><use href="#i-chev"/></svg></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</div></div></div>
+<div class="note">
+  <p><b>The amber badge counts what is owed</b> (REQUESTED), the same rule the booking badge follows. Proposals waiting on the customer are not owed by the provider and do not count.</p>
+  <p><b>"Recebe 4 860"</b> under the price is the provider's share after commission, the number the provider actually cares about, computed with their own <code>commission_bps</code> as the bookings list already does.</p>
+  <p>Location shows bairro and city only. Photos are counted here and shown on the detail.</p>
+</div>
+</section>
+
+<!-- ============================ PROPOSE ============================ -->
+<section id="propose">
+<div class="doc-h">
+  <div class="kick">7 · /provider/$slug/quotes/$quoteId</div>
+  <h2>Reading the job and writing the proposal</h2>
+  <p>Left: everything the customer sent, at full size. Right: the proposal form, with the split under the price so the provider types the customer's price and reads their own. Sending is the page's one blue button; declining is text and opens the dialog below.</p>
+</div>
+<div class="frame-tools"><button class="on" data-fit="fit">Fit</button><button data-fit="100">100%</button></div>
+<div class="frame"><div class="frame-inner"><div class="viewport">
+<div class="app con">
+  <aside class="sb">
+    <div class="sb-mast"><div class="lg">F</div><div><b>Frio &amp; Clima Maputo</b><span>Espaço do prestador</span></div></div>
+    <a class="si" href="#"><svg class="ic"><use href="#i-dash"/></svg>Visão geral</a>
+    <div class="grp">Trabalho</div>
+    <a class="si" href="#"><svg class="ic"><use href="#i-book"/></svg>Reservas<span class="bd">1</span></a>
+    <a class="si on" href="#"><svg class="ic"><use href="#i-quote"/></svg>Orçamentos<span class="bd warm">3</span></a>
+    <a class="si" href="#"><svg class="ic"><use href="#i-msg"/></svg>Mensagens<span class="bd">2</span></a>
+    <a class="si" href="#"><svg class="ic"><use href="#i-cal"/></svg>Disponibilidade</a>
+    <a class="si" href="#"><svg class="ic"><use href="#i-case"/></svg>Serviços</a>
+    <div class="grp">Gerir</div>
+    <a class="si" href="#"><svg class="ic"><use href="#i-users"/></svg>Equipa</a>
+    <a class="si" href="#"><svg class="ic"><use href="#i-wallet"/></svg>Carteira</a>
+    <a class="si" href="#"><svg class="ic"><use href="#i-act"/></svg>Actividade</a>
+    <a class="si" href="#"><svg class="ic"><use href="#i-cog"/></svg>Definições</a>
+    <div class="sb-foot"><div class="av">CM</div><div><b>Carlos Muianga</b><span>carlos@frioeclima.co.mz</span></div></div>
+  </aside>
+  <div class="pane">
+    <div class="pane-hd"><a class="back" style="margin:0" href="#"><svg class="ic"><use href="#i-left"/></svg>Orçamentos</a><b style="margin-left:6px">Salif F. · Instalação de ar condicionado</b><div class="sp"><span class="bell"><svg class="ic"><use href="#i-bell"/></svg><i>4</i></span></div></div>
+    <div class="pane-body">
+      <div class="ph"><div><h1>Instalação de ar condicionado</h1><p><span class="st you" style="font-size:14.5px">Por responder</span> <span class="clock" style="display:inline;padding-left:12px;margin:0">responde até sexta, 5 Set, 10:12 · faltam 22 h</span></p></div><span class="tx"><svg class="ic"><use href="#i-msg"/></svg>Conversar com Salif</span></div>
+      <div class="cols">
+        <div>
+          <div class="sec">
+            <h2>O pedido <small>3 Set, 10:12</small></h2>
+            <p class="prose">Dois aparelhos split de 12 000 BTU para instalar num T2 no 3.º andar, sem elevador. Os aparelhos já cá estão, falta tubagem e suportes. A parede exterior dá para a varanda.</p>
+            <div class="thumbs" style="margin-top:16px"><div class="thumb" style="width:180px"><svg class="ic"><use href="#i-cam"/></svg></div><div class="thumb b" style="width:180px"><svg class="ic"><use href="#i-cam"/></svg></div><div class="thumb c" style="width:180px"><svg class="ic"><use href="#i-cam"/></svg></div></div>
+            <dl class="kv" style="margin-top:20px">
+              <dt>Até quando</dt><dd>27 de Setembro</dd>
+              <dt>Onde</dt><dd>Bairro Central, Maputo<i><span class="lock"><svg class="ic"><use href="#i-lock"/></svg>A rua exacta aparece quando a reserva estiver confirmada</span></i></dd>
+              <dt>Quem pede</dt><dd>Salif F. · 3 reservas concluídas na Ntizo</dd>
+            </dl>
+          </div>
+          <div class="sec">
+            <h2>Historial</h2>
+            <div class="hist">
+              <div class="h"><time>3 Set, 10:12</time><div><b>Pedido recebido</b><p>Prazo de resposta de 48 h, definido no serviço.</p></div></div>
+            </div>
+          </div>
+        </div>
+        <aside>
+          <div class="sec" style="padding-top:0">
+            <h2>A sua proposta</h2>
+            <div class="form" style="gap:18px">
+              <div class="f">
+                <label>Preço para o cliente</label>
+                <div class="in focus"><span class="pre">MZN</span>9 800</div>
+                <div class="split">
+                  <div class="r"><span>O cliente paga</span><b>9 800 MZN</b></div>
+                  <div class="r"><span>Comissão Ntizo (10%)</span><b>− 980 MZN</b></div>
+                  <div class="r you"><span>Recebe</span><b>8 820 MZN</b></div>
+                </div>
+              </div>
+              <div class="trio">
+                <div class="f"><label>Data</label><div class="in">Sáb, 20 Set<svg class="ic"><use href="#i-cal"/></svg></div></div>
+                <div class="f"><label>Hora</label><div class="in">08:30<svg class="ic"><use href="#i-down"/></svg></div></div>
+                <div class="f"><label>Duração</label><div class="in">4 h<svg class="ic"><use href="#i-down"/></svg></div></div>
+              </div>
+              <div class="f">
+                <label>Quem faz o trabalho</label>
+                <div class="in">Carlos Muianga (eu)<svg class="ic"><use href="#i-down"/></svg></div>
+                <div class="hint">Sábado, 20 Set das 08:30 às 12:30 está livre na sua agenda.</div>
+              </div>
+              <div class="f">
+                <label>Nota para o cliente <small>opcional</small></label>
+                <div class="in area">Inclui tubagem até 3 m por aparelho, suportes e teste. Se precisar de mais tubo, são 450 MZN por metro, combinado no local.</div>
+              </div>
+              <div class="f">
+                <label>Anexos <small>até 5</small></label>
+                <div class="drop"><svg class="ic"><use href="#i-clip"/></svg><div><b>Juntar ficheiro</b><br>orçamento em PDF, fotos de trabalhos parecidos</div><div class="thumbs"><div class="thumb pdf" style="width:100px"><svg class="ic"><use href="#i-file"/></svg><span>orcamento.pdf</span></div></div></div>
+              </div>
+              <p class="quiet">A proposta fica válida <b>72 horas</b>, até domingo, 7 Set, 16:40. Pode revê-la enquanto o cliente não decidir; a anterior fica no historial.</p>
+              <div class="acts"><span class="btn">Enviar proposta</span><span class="tx bad">Recusar pedido</span></div>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </div>
+</div>
+</div></div></div>
+<div class="doc-h" style="margin-top:34px">
+  <div class="kick">7b · Declining, either side</div>
+  <h2>A reason, a note, a file</h2>
+  <p>The same dialog serves the provider's "Recusar pedido" and the customer's "Recusar". The reason is a token the other side reads in their own language; the note and the files are optional and free.</p>
+</div>
+<div class="frame"><div class="frame-inner"><div class="viewport" style="height:640px;background:var(--dc-bg)">
+<div class="app" style="position:absolute;inset:0;background:#f3f5f9">
+  <div class="scrim">
+    <div class="dlg">
+      <h3>Recusar este pedido?</h3>
+      <p>Salif fica a saber já, com o motivo. Pode juntar uma nota ou um ficheiro se ajudar a explicar.</p>
+      <div class="form">
+        <div class="f"><label>Motivo</label><div class="chips"><span>Não tenho disponibilidade</span><span>Não faço este trabalho</span><span class="on">Fora da minha zona</span><span>Outro</span></div></div>
+        <div class="f"><label>Nota <small>opcional</small></label><div class="in area" style="min-height:84px">Neste momento só fazemos instalações em Maputo cidade. Na Matola trabalha a Clima Sul, que recomendamos.</div></div>
+        <div class="f"><span class="tx mut"><svg class="ic"><use href="#i-clip"/></svg>Juntar ficheiro</span></div>
+      </div>
+      <div class="foot"><span class="tx mut">Manter</span><span class="btn sm" style="background:var(--bad)">Recusar pedido</span></div>
+    </div>
+  </div>
+</div>
+</div></div></div>
+<div class="note">
+  <p><b>The split updates as the provider types.</b> "Recebe 8 820 MZN" is the largest number in the form on purpose: it is the one the provider is deciding on.</p>
+  <p><b>"Está livre na sua agenda"</b> is a real check against the member's bookings before sending; a clash is refused here, not discovered by the customer at acceptance.</p>
+  <p><b>The decline dialog</b> is the same shape for the customer's "Recusar": a short list of reasons, an optional note, optional files. The reason is a token so the other side reads it in their language; the note is free text and passes the contact detector.</p>
+  <p>After sending, this page shows the proposal as the customer sees it (the type block from plate 4), "válida até", and "Rever proposta" as text. The form stays one click away until the customer decides.</p>
+</div>
+</section>
+
+<!-- ============================ STATES ============================ -->
+<section id="states">
+<div class="doc-h">
+  <div class="kick">8 · Seven states, two readers</div>
+  <h2>What each state says on each side</h2>
+  <p>Same status, different sentence, because the two people are asking different questions. The dot colour follows whose turn it is, not the state's name.</p>
+</div>
+<div class="states-wrap"><div class="states-inner app" style="grid-template-columns:1fr">
+  <div class="stlist">
+    <div class="r"><span class="h">Status</span><span class="h">The customer reads</span><span class="h">The provider reads</span></div>
+    <div class="r"><code>REQUESTED</code><span class="st wait">À espera de proposta</span><span class="st you">Por responder</span></div>
+    <div class="r"><code>PROPOSED</code><span class="st you">Proposta recebida</span><span class="st wait">Proposta enviada</span></div>
+    <div class="r"><code>ACCEPTED</code><span class="st ok">Aceite · ver reserva</span><span class="st ok">Aceite · ver reserva</span></div>
+    <div class="r"><code>DECLINED</code><span class="st bad">Recusado pelo prestador</span><span class="st bad">Recusou</span></div>
+    <div class="r"><code>REJECTED</code><span class="st">Recusou a proposta</span><span class="st bad">Cliente recusou</span></div>
+    <div class="r"><code>WITHDRAWN</code><span class="st">Retirou o pedido</span><span class="st">Cliente retirou</span></div>
+    <div class="r"><code>EXPIRED</code><span class="st">Expirado · o prestador não respondeu / a proposta caducou</span><span class="st">Expirado · não respondeu / o cliente não decidiu</span></div>
+  </div>
+</div></div>
+<div class="note">
+  <p><b>Amber is "the other side owes you"; navy is "your move".</b> A customer looking at REQUESTED is waiting (amber); a provider looking at the same row is owed (navy). Green, red and grey are terminal and read the same way everywhere.</p>
+  <p><b>EXPIRED carries its cause</b> in the clock line, so "expirado" never leaves someone guessing who dropped it.</p>
+</div>
+</section>
+
+<!-- ============================ MOBILE ============================ -->
+<section id="mobile">
+<div class="doc-h">
+  <div class="kick">9 · Mobile</div>
+  <h2>The decision under the thumb</h2>
+  <p>Customer detail with the proposal first and the two actions fixed at the bottom; provider queue with "Orçamentos" as a tab, its amber count, and rows that stack the snippet under the name.</p>
+</div>
+<div class="phones app">
+  <div class="phone">
+    <div class="phone-label">Customer · /quotes/$quoteId</div>
+    <div class="phone-shell"><div class="phone-scroll">
+      <div class="m-hd"><span class="wordmark">ntizo</span><div class="acts"><span class="bell"><svg class="ic"><use href="#i-bell"/></svg><i>2</i></span><span class="avatar" style="width:34px;height:34px">SF</span></div></div>
+      <div class="m-body">
+        <a class="m-back" href="#"><svg class="ic" style="width:14px;height:14px"><use href="#i-left"/></svg>Os meus orçamentos</a>
+        <h1>Instalação de ar condicionado</h1>
+        <div class="sub">Frio &amp; Clima Maputo · <span class="st you" style="font-size:13.5px">Proposta recebida</span></div>
+        <div class="prop">
+          <div class="price">9 800<small>MZN</small></div>
+          <div class="when">Sábado, 20 de Setembro<br>08:30 às 12:30 · 4 horas</div>
+          <div class="who"><b>Carlos Muianga</b> faz o trabalho</div>
+          <blockquote>Inclui tubagem até 3 m por aparelho, suportes e teste. Se precisar de mais tubo, são 450 MZN por metro, combinado no local.</blockquote>
+          <div class="thumbs" style="margin-top:14px"><div class="thumb pdf" style="width:120px"><svg class="ic"><use href="#i-file"/></svg><span>orcamento-frio-clima.pdf</span></div></div>
+          <div class="valid"><svg class="ic"><use href="#i-clock"/></svg>Válida até dom, 7 Set, 16:40</div>
+        </div>
+        <div class="sec" style="margin-top:22px">
+          <h2>O seu pedido <small>3 Set</small></h2>
+          <p class="prose" style="font-size:14px">Dois aparelhos split de 12 000 BTU para instalar num T2 no 3.º andar, sem elevador. Os aparelhos já cá estão…</p>
+          <div class="thumbs" style="margin-top:12px"><div class="thumb" style="width:96px"><svg class="ic"><use href="#i-cam"/></svg></div><div class="thumb b" style="width:96px"><svg class="ic"><use href="#i-cam"/></svg></div><div class="thumb c" style="width:96px"><svg class="ic"><use href="#i-cam"/></svg></div></div>
+        </div>
+      </div>
+      <div class="m-bar"><span class="btn">Aceitar e pagar 9 800 MZN</span><div class="two"><span class="tx bad">Recusar</span><span class="tx"><svg class="ic"><use href="#i-msg"/></svg>Conversar</span></div></div>
+    </div></div>
+  </div>
+  <div class="phone">
+    <div class="phone-label">Provider · /provider/$slug/quotes</div>
+    <div class="phone-shell"><div class="phone-scroll">
+      <div class="m-con-hd"><div class="lg">F</div><b>Orçamentos</b><span class="bell"><svg class="ic"><use href="#i-bell"/></svg><i>4</i></span></div>
+      <div class="m-tabs-strip"><span class="tab on">Por responder<span>3</span></span><span class="tab">À espera<span>2</span></span><span class="tab">Histórico<span>11</span></span></div>
+      <div class="m-rows">
+        <div class="m-row">
+          <div class="top"><b>Salif F.</b><time>há 26 h</time></div>
+          <div class="sub" style="margin:0;font-size:13.5px;color:var(--muted)">Instalação de ar condicionado · Bairro Central</div>
+          <div class="snip">Dois aparelhos split de 12 000 BTU para instalar num T2 no 3.º andar, sem elevador. Os aparelhos já cá estão…</div>
+          <div class="foot"><span class="st you">Por responder</span><span class="clock">faltam 22 h</span></div>
+        </div>
+        <div class="m-row">
+          <div class="top"><b>Amélia S.</b><time>há 4 h</time></div>
+          <div class="sub" style="margin:0;font-size:13.5px;color:var(--muted)">Manutenção de ar condicionado · Polana Cimento</div>
+          <div class="snip">Três aparelhos com limpeza atrasada há dois anos, um deles a pingar…</div>
+          <div class="foot"><span class="st you">Por responder</span><span class="clock">faltam 2 dias</span></div>
+        </div>
+        <div class="m-row">
+          <div class="top"><b>Rui T.</b><time>há 1 h</time></div>
+          <div class="sub" style="margin:0;font-size:13.5px;color:var(--muted)">Instalação de ar condicionado · Matola</div>
+          <div class="snip">Um aparelho de 18 000 BTU numa loja com pé-direito alto, cerca de 4 m…</div>
+          <div class="foot"><span class="st you">Por responder</span><span class="clock">faltam 2 dias</span></div>
+        </div>
+      </div>
+      <div class="m-tabs">
+        <a href="#"><svg class="ic"><use href="#i-book"/></svg>Reservas<i style="background:var(--navy);color:#fff">1</i></a>
+        <a class="on" href="#"><svg class="ic"><use href="#i-quote"/></svg>Orçamentos<i>3</i></a>
+        <a href="#"><svg class="ic"><use href="#i-msg"/></svg>Mensagens<i style="background:var(--navy);color:#fff">2</i></a>
+        <a href="#"><svg class="ic"><use href="#i-menu"/></svg>Menu</a>
+      </div>
+    </div></div>
+  </div>
+</div>
+<div class="note">
+  <p><b>The proposal's two actions are fixed at the bottom</b> on the phone, blue and text, so the decision does not depend on scrolling past the request.</p>
+  <p><b>Orçamentos takes a tab</b> on the console's phone bar, in place of Disponibilidade, which moves to the menu: a request with a 48-hour clock is owed sooner than a week of availability is. Flagged as a change to the shipped nav.</p>
+</div>
+</section>
+
+<!-- ============================ API / FILES ============================ -->
+<section id="api">
+<div class="doc-h">
+  <div class="kick">What this needs</div>
+  <h2>Reads and writes behind the plates</h2>
+</div>
+<div class="files"><div class="tbl"><table>
+  <tr><th>Plate</th><th>Reads</th><th>Writes</th></tr>
+  <tr><td>Entry</td><td><code>serviceById</code> gains <code>quoteForm</code> (intro, askDeadline, askPhotos, askLocation, responseHours) for quote services</td><td></td></tr>
+  <tr><td>Request</td><td><code>userAddresses</code>, the service above</td><td><code>quoteRequest</code>, attachment upload (existing route, same bucket)</td></tr>
+  <tr><td>List</td><td><code>quoteMine(tab)</code> with counts</td><td></td></tr>
+  <tr><td>Detail</td><td><code>quoteById</code>: request, live proposal, superseded proposals, closing note, thread id, booking id</td><td><code>quoteReject</code>, <code>quoteWithdraw</code></td></tr>
+  <tr><td>Accept</td><td><code>userMe</code> for the phone</td><td>profile phone update, then <code>quoteAccept</code> → <code>{ bookingId, payBy }</code></td></tr>
+  <tr><td>Provider list</td><td><code>quoteForProvider(providerId, tab)</code>, <code>quoteCountsForProvider</code> for the badge</td><td></td></tr>
+  <tr><td>Propose</td><td><code>quoteByIdForProvider</code>, the provider's commission (already loaded by the shell), members who perform the service</td><td><code>quotePropose</code>, <code>quoteDecline</code></td></tr>
+</table></div></div>
+</section>
+
+<script>
+(function(){
+  var frames = document.querySelectorAll('.frame-inner');
+  function fitOne(f){
+    var v = f.querySelector('.viewport'); if(!v) return;
+    var mode = f.getAttribute('data-mode') || 'fit';
+    var s = mode === '100' ? 1 : Math.min(1, f.clientWidth / 1440);
+    v.style.transform = 'scale(' + s + ')';
+    f.style.height = Math.ceil(v.offsetHeight * s) + 'px';
+    f.style.overflowX = mode === '100' ? 'auto' : 'hidden';
+  }
+  function fitAll(){ for (var j = 0; j < frames.length; j++) fitOne(frames[j]); }
+  window.addEventListener('resize', fitAll);
+  fitAll(); setTimeout(fitAll, 300); setTimeout(fitAll, 1200);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitAll);
+  var tools = document.querySelectorAll('.frame-tools');
+  for (var t = 0; t < tools.length; t++) (function(tool){
+    var frame = tool.nextElementSibling && tool.nextElementSibling.querySelector('.frame-inner');
+    var btns = tool.querySelectorAll('button');
+    for (var b = 0; b < btns.length; b++) btns[b].addEventListener('click', function(){
+      for (var c = 0; c < btns.length; c++) btns[c].classList.remove('on');
+      this.classList.add('on');
+      if (frame){ frame.setAttribute('data-mode', this.getAttribute('data-fit')); var vp = frame.querySelector('.viewport'); vp.style.position = this.getAttribute('data-fit') === '100' ? 'relative' : 'absolute'; fitOne(frame); }
+    });
+  })(tools[t]);
+})();
+</script>
