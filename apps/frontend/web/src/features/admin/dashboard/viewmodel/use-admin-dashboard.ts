@@ -21,7 +21,12 @@ export function useLatestApplications() {
  * bounded contexts, four queries — each one is the same cache entry its own
  * screen uses, so the card and the queue it opens cannot disagree.
  */
-export function useNeedsYou(): { items: NeedsYouItem[]; loading: boolean } {
+export function useNeedsYou(): {
+  items: NeedsYouItem[];
+  loading: boolean;
+  failed: boolean;
+  retry: () => void;
+} {
   const stats = useAdminStats();
   const providers = useProviderStatusCounts();
   const support = useSupportOpenCount();
@@ -35,5 +40,15 @@ export function useNeedsYou(): { items: NeedsYouItem[]; loading: boolean } {
   return {
     items,
     loading: stats.isLoading || providers.isLoading || support.isLoading || contact.isLoading,
+    // A count that could not be read is not a zero: the row must never say
+    // "all clear" over a failed read, so the page shows its error line for any
+    // of the four, and one retry asks all four again.
+    failed: stats.isError || providers.isError || support.isError || contact.isError,
+    retry: () => {
+      void stats.refetch();
+      void providers.refetch();
+      void support.refetch();
+      void contact.refetch();
+    },
   };
 }

@@ -38,15 +38,18 @@ export function StatCard({
   hint,
   action,
   loading,
+  className,
 }: {
   label: string;
   value: ReactNode;
   hint?: ReactNode;
   action?: ReactNode;
   loading?: boolean;
+  /** The grid cell's own placement — a tile that needs the full width on a phone says so here. */
+  className?: string;
 }) {
   return (
-    <Card>
+    <Card className={className}>
       <CardContent className="grid gap-1 p-4">
         <p className={CAPTION}>{label}</p>
         {loading ? (

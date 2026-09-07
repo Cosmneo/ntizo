@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, type ReactElement } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
 import { Badge } from "@ntizo/frontend-ui";
@@ -49,10 +49,10 @@ export function DashboardPage() {
 
   return (
     <ConsolePage>
-      {stats.isError && (
+      {needs.failed && (
         <p role="alert" className="type-body text-[var(--color-destructive)]">
           {t("overview.loadError")}{" "}
-          <button type="button" className="underline" onClick={() => void stats.refetch()}>
+          <button type="button" className="underline" onClick={needs.retry}>
             {t("overview.retry")}
           </button>
         </p>
@@ -71,8 +71,11 @@ export function DashboardPage() {
         </div>
       )}
 
-      {/* `xl:`, not `lg:` — the provider Overview says why: four-up at 1024px
-          with the sidebar showing is narrower than a phone. */}
+      {/* Two-up on a phone, four-up from `xl` — the provider Overview says why
+          not `lg`. The two money tiles take the whole width below `sm`: the
+          platform's gross is wider than any one workspace's revenue, and
+          `StatCard`'s 18px phone step was sized for a workspace's. So on a phone
+          the two counts pair up on one row and each sum gets a line of its own. */}
       <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
         <StatCard
           label={t("overview.bookingsTitle")}
@@ -81,21 +84,23 @@ export function DashboardPage() {
           hint={t("overview.bookingsHint", { count: s?.completedLast30 ?? 0 })}
         />
         <StatCard
+          label={t("overview.newProvidersTitle")}
+          value={s?.newProvidersLast30 ?? 0}
+          loading={stats.isLoading}
+        />
+        <StatCard
+          className="col-span-2 sm:col-span-1"
           label={t("overview.grossTitle")}
           value={money(s?.grossLast30Minor ?? 0)}
           loading={stats.isLoading}
           hint={s && s.completedLast30 === 0 ? t("overview.nothingCompleted") : t("overview.grossHint")}
         />
         <StatCard
+          className="col-span-2 sm:col-span-1"
           label={t("overview.commissionTitle")}
           value={money(s?.commissionLast30Minor ?? 0)}
           loading={stats.isLoading}
           hint={t("overview.commissionHint")}
-        />
-        <StatCard
-          label={t("overview.newProvidersTitle")}
-          value={s?.newProvidersLast30 ?? 0}
-          loading={stats.isLoading}
         />
       </div>
 
@@ -158,7 +163,7 @@ export function DashboardPage() {
 }
 
 /** Each owed thing opens its own queue, already narrowed to what is owed. */
-function NeedsYouLink({ item, label }: { item: NeedsYouItem; label: string }) {
+function NeedsYouLink({ item, label }: { item: NeedsYouItem; label: string }): ReactElement {
   switch (item.key) {
     case "disputed":
       return (

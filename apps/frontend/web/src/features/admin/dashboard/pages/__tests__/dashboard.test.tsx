@@ -80,6 +80,7 @@ function renderDashboard({
   statsFails = false,
   counts = COUNTS,
   supportOpen = 1,
+  supportFails = false,
   contactOpen = 3,
   applications = [application("p1", "Estúdio Mavalane"), application("p2", "Salão Beira", "active")],
 }: {
@@ -87,6 +88,7 @@ function renderDashboard({
   statsFails?: boolean;
   counts?: typeof COUNTS;
   supportOpen?: number;
+  supportFails?: boolean;
   contactOpen?: number;
   applications?: ReturnType<typeof application>[];
 } = {}) {
@@ -97,7 +99,10 @@ function renderDashboard({
       return { bookingStatsForAdmin: stats };
     }
     if (query.includes("ProviderCountByStatusForAdmin")) return { providerCountByStatusForAdmin: counts };
-    if (query.includes("SupportOpenCount")) return { supportOpenCount: { count: supportOpen } };
+    if (query.includes("SupportOpenCount")) {
+      if (supportFails) throw new Error("support is unreachable");
+      return { supportOpenCount: { count: supportOpen } };
+    }
     if (query.includes("ContactRequestAllForAdmin")) {
       return { contactRequestAllForAdmin: { items: [], total: contactOpen, openCount: contactOpen } };
     }
@@ -205,11 +210,11 @@ describe("DashboardPage", () => {
   it("lists the newest applications and links to all of them", async () => {
     renderDashboard();
     expect(await screen.findByText("Latest applications")).toBeInTheDocument();
-    // `findAllByRole`, not `findByRole`: `CollectionCard` draws every row
-    // twice — a desktop table and a mobile card, see its own docstring — so
-    // the row's name is present twice in the tree; the table's copy is first.
-    const [applicationLink] = await screen.findAllByRole("link", { name: "Estúdio Mavalane" });
-    expect(applicationLink).toHaveAttribute("href", "/admin/providers/p1");
+    // `CollectionCard` renders each row twice — the table and the phone's card —
+    // and jsdom applies no media query, so both copies are present: assert both.
+    for (const link of await screen.findAllByRole("link", { name: "Estúdio Mavalane" })) {
+      expect(link).toHaveAttribute("href", "/admin/providers/p1");
+    }
     expect(screen.getByRole("link", { name: "See all providers" })).toHaveAttribute("href", "/admin/providers");
     const call = fakes.session.mock.calls.find((c) => String(c[0]).includes("ProviderAllForAdmin"));
     expect(call?.[1]).toMatchObject({ input: { limit: 5 } });
@@ -222,5 +227,13 @@ describe("DashboardPage", () => {
     const before = asked();
     await userEvent.click(screen.getByRole("button", { name: "Try again" }));
     expect(asked()).toBeGreaterThan(before);
+  });
+
+  it("does not read a failed queue count as a quiet day", async () => {
+    renderDashboard({ supportFails: true });
+    expect(await screen.findByRole("alert")).toHaveTextContent(/could not load the numbers/i);
+    // The other three sources still answer, and their cards still show.
+    expect(await screen.findByText("Disputes to decide")).toBeInTheDocument();
+    expect(screen.queryByText("Open support requests")).toBeNull();
   });
 });
