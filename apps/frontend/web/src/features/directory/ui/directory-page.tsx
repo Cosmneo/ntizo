@@ -196,7 +196,11 @@ export function DirectoryPage() {
                 <SortDropdown
                   active={sort}
                   options={sortOptions}
-                  sortLabel={t("sortLabel")}
+                  // `sortTrigger`, not `sortLabel`: the trigger draws this
+                  // word now instead of hiding it behind an icon, and the
+                  // drawn form carries its own colon. The rest of this page's
+                  // shell is Task 15's.
+                  sortLabel={t("sortTrigger")}
                   onChoose={chooseSort}
                 />
               </ResultsBar>
