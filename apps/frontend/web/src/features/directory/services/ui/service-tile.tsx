@@ -24,7 +24,7 @@ import type { ServiceDTO } from "@/features/directory/services/domain/types";
  *
  * **No button.** The price is what the eye lands on and the tile is the link.
  * A blue button repeated twenty-four times down a page competes with every
- * price on it and with the one button that matters, in the header.
+ * price on it and with the one button that matters, in the search bar.
  *
  * **The rating lives on the provider line, not the title line.** The score is
  * the *provider's* average across everything they sell, never the service's
@@ -40,7 +40,7 @@ export function ServiceTile({ service, locale }: { service: ServiceDTO; locale: 
 
   return (
     <ResultTile
-      media={<TileMedia src={service.imageUrls[0] ?? null} name={service.providerName} />}
+      media={<TileMedia src={service.imageUrls[0] ?? null} />}
       title={
         /* Two lines on a phone, where the row gives the title the whole
            width beside a 116px photo and a clipped name is the one thing
@@ -95,7 +95,12 @@ export function ServiceTile({ service, locale }: { service: ServiceDTO; locale: 
         </p>
       }
       price={
-        <p className="mt-[3px] flex items-baseline gap-3 text-[13.5px] text-[var(--color-muted-foreground)]">
+        // `flex-wrap` because the phone row's text column is 212px and the
+        // price, the duration and the place do not fit across it: without it
+        // the line ran past the column and the last item was clipped
+        // (measured at 390px). Each item carries `whitespace-nowrap`, so the
+        // line breaks between phrases and never inside one.
+        <p className="mt-[3px] flex flex-wrap items-baseline gap-3 text-[13.5px] text-[var(--color-muted-foreground)]">
           <b className="text-[15.5px] font-bold text-[var(--color-headline)]">
             {line.amount.kind === "words" ? (
               <span className="text-[14px] font-semibold">{t(line.amount.key)}</span>

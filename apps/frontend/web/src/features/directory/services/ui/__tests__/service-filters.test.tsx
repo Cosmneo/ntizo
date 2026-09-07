@@ -59,8 +59,8 @@ describe("ServiceFilters", () => {
     expect(href).toContain("locationType=at_customer");
 
     // The clear-all is on because a facet is narrowing the list, and it
-    // keeps `q` — the typed term is the header search pill's to clear, not
-    // this bar's, so "Clear all" here must not also wipe it.
+    // keeps `q` — the typed term is the search bar's to clear, up under the
+    // header, not this bar's, so "Clear all" here must not also wipe it.
     const clearAll = screen.getByRole("link", { name: "Clear all" });
     expect(clearAll.getAttribute("href")).toContain("q=corte");
   });
@@ -97,9 +97,10 @@ describe("ServiceFilters", () => {
   });
 
   it("wears navy on the price form's OK, not the kit's default blue", async () => {
-    // `--color-primary` is spent on the header's search button and nothing
-    // else on this page; the kit's default `Button` variant is that blue, and
-    // this submit is drawn twice — in the pill's popover and in the sheet.
+    // `--color-primary` is the site's own blue — the header's nav pill and
+    // sign-in, and the search bar's button — and nothing in the results wears
+    // it; the kit's default `Button` variant is that blue, and this submit is
+    // drawn twice, in the price pill's popover and in the sheet.
     await renderFilters({});
     const ok = screen.getByRole("button", { name: "OK" });
     expect(ok.className).toContain("--color-navy-surface");
@@ -108,11 +109,11 @@ describe("ServiceFilters", () => {
 });
 
 describe("MobileServiceFilters", () => {
-  it("counts the filters it can take off, and not the term the pill owns", async () => {
+  it("counts the filters it can take off, and not the term the search bar owns", async () => {
     // The count sits on a control whose sheet has no box for the term: a
     // number that included `q` would put a "2" over a sheet offering one
     // thing the reader can act on, which is the bug the old badge had with
-    // `city`. See R18 — the term is the header search pill's to clear.
+    // `city`. See R18 — the term is the search bar's to clear.
     await renderMobile({ q: "corte", city: "Maputo" });
     expect(screen.getByRole("button", { name: /^Filters/ })).toHaveTextContent("Filters · 1");
   });

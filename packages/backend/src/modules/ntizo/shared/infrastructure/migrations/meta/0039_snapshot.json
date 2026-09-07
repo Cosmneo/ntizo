@@ -1,5 +1,5 @@
 {
-  "id": "1ce61a60-5648-4eca-a7f4-9cd346dd7bfd",
+  "id": "e609d883-bd43-42d0-b726-0fef168c23a0",
   "prevId": "1786ff0b-07c9-4fc9-b766-5f6311c458a8",
   "version": "7",
   "dialect": "postgresql",
@@ -2651,19 +2651,13 @@
           "name": "service_option_id",
           "type": "uuid",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
         "provider_member_id": {
           "name": "provider_member_id",
           "type": "uuid",
           "primaryKey": false,
           "notNull": true
-        },
-        "quote_id": {
-          "name": "quote_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
         },
         "starts_at": {
           "name": "starts_at",
@@ -2797,7 +2791,7 @@
           "name": "option_name",
           "type": "text",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
         "duration_minutes": {
           "name": "duration_minutes",
@@ -3033,20 +3027,6 @@
           ],
           "onDelete": "no action",
           "onUpdate": "no action"
-        },
-        "booking_quote_id_quote_id_fk": {
-          "name": "booking_quote_id_quote_id_fk",
-          "tableFrom": "booking",
-          "tableTo": "quote",
-          "schemaTo": "ntizo_quote",
-          "columnsFrom": [
-            "quote_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -3072,10 +3052,6 @@
         "booking_commission_minor_non_negative": {
           "name": "booking_commission_minor_non_negative",
           "value": "\"ntizo_booking\".\"booking\".\"commission_minor\" >= 0"
-        },
-        "booking_origin_exactly_one": {
-          "name": "booking_origin_exactly_one",
-          "value": "(\"ntizo_booking\".\"booking\".\"service_option_id\" IS NOT NULL) <> (\"ntizo_booking\".\"booking\".\"quote_id\" IS NOT NULL)"
         }
       },
       "isRLSEnabled": false
@@ -4626,9 +4602,9 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "ntizo_quote.quote": {
-      "name": "quote",
-      "schema": "ntizo_quote",
+    "ntizo_favourite.favourite_list": {
+      "name": "favourite_list",
+      "schema": "ntizo_favourite",
       "columns": {
         "id": {
           "name": "id",
@@ -4637,173 +4613,24 @@
           "notNull": true,
           "default": "gen_random_uuid()"
         },
-        "service_id": {
-          "name": "service_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "provider_id": {
-          "name": "provider_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "customer_id": {
-          "name": "customer_id",
+        "user_id": {
+          "name": "user_id",
           "type": "text",
           "primaryKey": false,
           "notNull": true
         },
-        "thread_id": {
-          "name": "thread_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "status": {
-          "name": "status",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "expires_at": {
-          "name": "expires_at",
-          "type": "timestamp with time zone",
+        "name": {
+          "name": "name",
+          "type": "varchar(60)",
           "primaryKey": false,
           "notNull": false
         },
-        "locale": {
-          "name": "locale",
-          "type": "text",
+        "is_default": {
+          "name": "is_default",
+          "type": "boolean",
           "primaryKey": false,
-          "notNull": true
-        },
-        "description": {
-          "name": "description",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "needed_by": {
-          "name": "needed_by",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "address_label": {
-          "name": "address_label",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "address_line": {
-          "name": "address_line",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "address_city": {
-          "name": "address_city",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "address_district": {
-          "name": "address_district",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "address_directions": {
-          "name": "address_directions",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "address_lat": {
-          "name": "address_lat",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "address_lng": {
-          "name": "address_lng",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "closed_reason": {
-          "name": "closed_reason",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "closed_note": {
-          "name": "closed_note",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "closed_by_user_id": {
-          "name": "closed_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "expired_cause": {
-          "name": "expired_cause",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "booking_id": {
-          "name": "booking_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "requested_at": {
-          "name": "requested_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "proposed_at": {
-          "name": "proposed_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "accepted_at": {
-          "name": "accepted_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "declined_at": {
-          "name": "declined_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "rejected_at": {
-          "name": "rejected_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "withdrawn_at": {
-          "name": "withdrawn_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "expired_at": {
-          "name": "expired_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
+          "notNull": true,
+          "default": false
         },
         "created_at": {
           "name": "created_at",
@@ -4811,433 +4638,51 @@
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
         }
       },
       "indexes": {
-        "quote_open_per_customer_service_uq": {
-          "name": "quote_open_per_customer_service_uq",
+        "favourite_list_user_name_uq": {
+          "name": "favourite_list_user_name_uq",
           "columns": [
             {
-              "expression": "customer_id",
+              "expression": "user_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
             },
             {
-              "expression": "service_id",
+              "expression": "lower(\"name\")",
+              "asc": true,
+              "isExpression": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "favourite_list_one_default_uq": {
+          "name": "favourite_list_one_default_uq",
+          "columns": [
+            {
+              "expression": "user_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
             }
           ],
           "isUnique": true,
-          "where": "\"ntizo_quote\".\"quote\".\"status\" in ('REQUESTED', 'PROPOSED')",
+          "where": "\"ntizo_favourite\".\"favourite_list\".\"is_default\"",
           "concurrently": false,
           "method": "btree",
           "with": {}
         },
-        "quote_customer_recent_idx": {
-          "name": "quote_customer_recent_idx",
+        "favourite_list_user_created_idx": {
+          "name": "favourite_list_user_created_idx",
           "columns": [
             {
-              "expression": "customer_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "created_at",
-              "isExpression": false,
-              "asc": false,
-              "nulls": "last"
-            },
-            {
-              "expression": "id",
-              "isExpression": false,
-              "asc": false,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "quote_provider_status_idx": {
-          "name": "quote_provider_status_idx",
-          "columns": [
-            {
-              "expression": "provider_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "status",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "expires_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "quote_sweep_idx": {
-          "name": "quote_sweep_idx",
-          "columns": [
-            {
-              "expression": "expires_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "where": "\"ntizo_quote\".\"quote\".\"status\" in ('REQUESTED', 'PROPOSED')",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "quote_service_id_service_id_fk": {
-          "name": "quote_service_id_service_id_fk",
-          "tableFrom": "quote",
-          "tableTo": "service",
-          "schemaTo": "ntizo_catalog",
-          "columnsFrom": [
-            "service_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "quote_provider_id_provider_id_fk": {
-          "name": "quote_provider_id_provider_id_fk",
-          "tableFrom": "quote",
-          "tableTo": "provider",
-          "schemaTo": "ntizo_provider",
-          "columnsFrom": [
-            "provider_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "quote_customer_id_user_id_fk": {
-          "name": "quote_customer_id_user_id_fk",
-          "tableFrom": "quote",
-          "tableTo": "user",
-          "schemaTo": "ntizo_user",
-          "columnsFrom": [
-            "customer_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "quote_thread_id_thread_id_fk": {
-          "name": "quote_thread_id_thread_id_fk",
-          "tableFrom": "quote",
-          "tableTo": "thread",
-          "schemaTo": "ntizo_communication",
-          "columnsFrom": [
-            "thread_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "quote_closed_by_user_id_user_id_fk": {
-          "name": "quote_closed_by_user_id_user_id_fk",
-          "tableFrom": "quote",
-          "tableTo": "user",
-          "schemaTo": "ntizo_user",
-          "columnsFrom": [
-            "closed_by_user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "quote_status_known": {
-          "name": "quote_status_known",
-          "value": "\"ntizo_quote\".\"quote\".\"status\" in ('REQUESTED', 'PROPOSED', 'ACCEPTED', 'DECLINED', 'REJECTED', 'WITHDRAWN', 'EXPIRED')"
-        },
-        "quote_expired_cause_known": {
-          "name": "quote_expired_cause_known",
-          "value": "\"ntizo_quote\".\"quote\".\"expired_cause\" IS NULL OR \"ntizo_quote\".\"quote\".\"expired_cause\" in ('provider_did_not_respond', 'proposal_lapsed')"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "ntizo_quote.quote_attachment": {
-      "name": "quote_attachment",
-      "schema": "ntizo_quote",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "quote_id": {
-          "name": "quote_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "proposal_id": {
-          "name": "proposal_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "step": {
-          "name": "step",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "storage_key": {
-          "name": "storage_key",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "file_name": {
-          "name": "file_name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "content_type": {
-          "name": "content_type",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "size_bytes": {
-          "name": "size_bytes",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "quote_attachment_quote_idx": {
-          "name": "quote_attachment_quote_idx",
-          "columns": [
-            {
-              "expression": "quote_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "quote_attachment_quote_id_quote_id_fk": {
-          "name": "quote_attachment_quote_id_quote_id_fk",
-          "tableFrom": "quote_attachment",
-          "tableTo": "quote",
-          "schemaTo": "ntizo_quote",
-          "columnsFrom": [
-            "quote_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "quote_attachment_proposal_id_quote_proposal_id_fk": {
-          "name": "quote_attachment_proposal_id_quote_proposal_id_fk",
-          "tableFrom": "quote_attachment",
-          "tableTo": "quote_proposal",
-          "schemaTo": "ntizo_quote",
-          "columnsFrom": [
-            "proposal_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "quote_attachment_step_known": {
-          "name": "quote_attachment_step_known",
-          "value": "\"ntizo_quote\".\"quote_attachment\".\"step\" in ('request', 'proposal', 'closing')"
-        },
-        "quote_attachment_proposal_step": {
-          "name": "quote_attachment_proposal_step",
-          "value": "(\"ntizo_quote\".\"quote_attachment\".\"step\" = 'proposal') = (\"ntizo_quote\".\"quote_attachment\".\"proposal_id\" IS NOT NULL)"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "ntizo_quote.quote_proposal": {
-      "name": "quote_proposal",
-      "schema": "ntizo_quote",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "quote_id": {
-          "name": "quote_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "price_minor": {
-          "name": "price_minor",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "currency": {
-          "name": "currency",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'MZN'"
-        },
-        "starts_at": {
-          "name": "starts_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "duration_minutes": {
-          "name": "duration_minutes",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "ends_at": {
-          "name": "ends_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "provider_member_id": {
-          "name": "provider_member_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "note": {
-          "name": "note",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "valid_until": {
-          "name": "valid_until",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_by_user_id": {
-          "name": "created_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "superseded_at": {
-          "name": "superseded_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "superseded_cause": {
-          "name": "superseded_cause",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "quote_proposal_live_uq": {
-          "name": "quote_proposal_live_uq",
-          "columns": [
-            {
-              "expression": "quote_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"ntizo_quote\".\"quote_proposal\".\"superseded_at\" IS NULL",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "quote_proposal_quote_recent_idx": {
-          "name": "quote_proposal_quote_recent_idx",
-          "columns": [
-            {
-              "expression": "quote_id",
+              "expression": "user_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -5255,67 +4700,147 @@
           "with": {}
         }
       },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "favourite_list_id_user_uq": {
+          "name": "favourite_list_id_user_uq",
+          "nullsNotDistinct": false,
+          "columns": [
+            "id",
+            "user_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "ntizo_favourite.favourite": {
+      "name": "favourite",
+      "schema": "ntizo_favourite",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "list_id": {
+          "name": "list_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "target_type": {
+          "name": "target_type",
+          "type": "varchar(16)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "target_id": {
+          "name": "target_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "favourite_list_created_idx": {
+          "name": "favourite_list_created_idx",
+          "columns": [
+            {
+              "expression": "list_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": false,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "favourite_user_target_idx": {
+          "name": "favourite_user_target_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "target_type",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "target_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
       "foreignKeys": {
-        "quote_proposal_quote_id_quote_id_fk": {
-          "name": "quote_proposal_quote_id_quote_id_fk",
-          "tableFrom": "quote_proposal",
-          "tableTo": "quote",
-          "schemaTo": "ntizo_quote",
+        "favourite_list_owner_fk": {
+          "name": "favourite_list_owner_fk",
+          "tableFrom": "favourite",
+          "tableTo": "favourite_list",
+          "schemaTo": "ntizo_favourite",
           "columnsFrom": [
-            "quote_id"
+            "list_id",
+            "user_id"
           ],
           "columnsTo": [
-            "id"
+            "id",
+            "user_id"
           ],
           "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "quote_proposal_provider_member_id_provider_member_id_fk": {
-          "name": "quote_proposal_provider_member_id_provider_member_id_fk",
-          "tableFrom": "quote_proposal",
-          "tableTo": "provider_member",
-          "schemaTo": "ntizo_provider",
-          "columnsFrom": [
-            "provider_member_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "quote_proposal_created_by_user_id_user_id_fk": {
-          "name": "quote_proposal_created_by_user_id_user_id_fk",
-          "tableFrom": "quote_proposal",
-          "tableTo": "user",
-          "schemaTo": "ntizo_user",
-          "columnsFrom": [
-            "created_by_user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
           "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "quote_proposal_price_positive": {
-          "name": "quote_proposal_price_positive",
-          "value": "\"ntizo_quote\".\"quote_proposal\".\"price_minor\" > 0"
-        },
-        "quote_proposal_duration_positive": {
-          "name": "quote_proposal_duration_positive",
-          "value": "\"ntizo_quote\".\"quote_proposal\".\"duration_minutes\" > 0"
-        },
-        "quote_proposal_superseded_cause_known": {
-          "name": "quote_proposal_superseded_cause_known",
-          "value": "\"ntizo_quote\".\"quote_proposal\".\"superseded_cause\" IS NULL OR \"ntizo_quote\".\"quote_proposal\".\"superseded_cause\" in ('revised', 'slot_taken')"
+      "uniqueConstraints": {
+        "favourite_list_target_uq": {
+          "name": "favourite_list_target_uq",
+          "nullsNotDistinct": false,
+          "columns": [
+            "list_id",
+            "target_type",
+            "target_id"
+          ]
         }
       },
+      "policies": {},
+      "checkConstraints": {},
       "isRLSEnabled": false
     },
     "ntizo_outbox.outbox_event": {
@@ -5550,13 +5075,6 @@
           "notNull": true,
           "default": 15
         },
-        "quote_proposal_validity_hours": {
-          "name": "quote_proposal_validity_hours",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 72
-        },
         "auto_approve_providers": {
           "name": "auto_approve_providers",
           "type": "boolean",
@@ -5645,10 +5163,6 @@
         "platform_settings_payment_window_minutes_positive": {
           "name": "platform_settings_payment_window_minutes_positive",
           "value": "\"ntizo_platform\".\"platform_settings\".\"payment_window_minutes\" >= 1"
-        },
-        "platform_settings_quote_proposal_validity_hours_positive": {
-          "name": "platform_settings_quote_proposal_validity_hours_positive",
-          "value": "\"ntizo_platform\".\"platform_settings\".\"quote_proposal_validity_hours\" >= 1"
         }
       },
       "isRLSEnabled": false
@@ -5735,7 +5249,7 @@
     "ntizo_contact": "ntizo_contact",
     "ntizo_notification": "ntizo_notification",
     "ntizo_activity": "ntizo_activity",
-    "ntizo_quote": "ntizo_quote",
+    "ntizo_favourite": "ntizo_favourite",
     "ntizo_outbox": "ntizo_outbox",
     "ntizo_reference": "ntizo_reference",
     "ntizo_platform": "ntizo_platform"

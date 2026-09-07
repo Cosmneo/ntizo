@@ -26,21 +26,21 @@ const STUB_PATHS = [
 
 /**
  * Renders `ui` at `/` inside a memory router, with the notification targets
- * registered as stub routes.
+ * registered as stub routes, plus any `routes` the subject links to.
  *
  * For component tests whose subject renders a `Link`. A page test that needs
  * its own route, search validation or a query client builds its router
  * itself — see `bookings-page.test.tsx` — because those are the things it is
  * testing; this helper is for the case where the router is only scaffolding.
  */
-export async function renderWithRouter(ui: ReactNode) {
+export async function renderWithRouter(ui: ReactNode, opts: { routes?: string[] } = {}) {
   const rootRoute = createRootRoute();
   const home = createRoute({
     getParentRoute: () => rootRoute,
     path: "/",
     component: () => <>{ui}</>,
   });
-  const stubs = STUB_PATHS.map((path) =>
+  const stubs = [...STUB_PATHS, ...(opts.routes ?? [])].map((path) =>
     createRoute({
       getParentRoute: () => rootRoute,
       path,

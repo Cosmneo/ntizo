@@ -21,6 +21,7 @@ export class ListPublicProvidersProjection implements ListPublicProvidersPort {
     const offset = Math.max(input.offset, 0);
 
     return this.repo.listActive({
+      ids: input.ids,
       limit,
       offset,
       locale: input.locale ?? DEFAULT_LOCALE,

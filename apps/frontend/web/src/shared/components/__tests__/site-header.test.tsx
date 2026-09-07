@@ -35,61 +35,14 @@ async function renderHeader(props: Parameters<typeof SiteHeader>[0] = {}) {
 }
 
 describe("SiteHeader", () => {
-  it("swaps the centre pill for the search and moves the destinations to text links", async () => {
-    await renderHeader({ search: <div role="search">search goes here</div> });
-
-    // The nav pill's own landmark link is gone, "Explore" included.
-    expect(screen.queryByRole("link", { name: /explore/i })).not.toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /^services$/i })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /^providers$/i })).toBeInTheDocument();
-    expect(screen.getByRole("search")).toHaveTextContent("search goes here");
-  });
-
   /**
-   * jsdom has no layout, so the phone header is asserted through the classes
-   * that produce it: the destinations only appear from `lg`, and the search
-   * takes the whole of a second grid row until `md`. Measured in a browser
-   * before this, the three-in-a-row header left the search column 0px wide.
+   * One header for every public page, the browse pages included. The centre
+   * column is the three-destination nav pill and nothing else: the search
+   * variant that once took its place is gone, and `/services` and
+   * `/providers` render the landing hero's own `ServiceSearch` under this
+   * header instead.
    */
-  it("gives the phone its own search row and hides the destinations until lg", async () => {
-    await renderHeader({ search: <div role="search">search goes here</div> });
-
-    for (const name of [/^services$/i, /^providers$/i]) {
-      const link = screen.getByRole("link", { name });
-      expect(link.className).toContain("hidden");
-      expect(link.className).toContain("lg:inline");
-    }
-
-    const slot = screen.getByRole("search").parentElement;
-    expect(slot?.className).toContain("col-span-3");
-    expect(slot?.className).toContain("row-start-2");
-    expect(slot?.className).toContain("md:col-span-1");
-  });
-
-  /**
-   * The active destination is the one case the search variant's right column
-   * never rendered in a test: `current` reaches those links too, and the
-   * responsive class has to survive the active branch as much as the resting
-   * one.
-   */
-  it("lights the active destination in the search variant and keeps it responsive", async () => {
-    await renderHeader({
-      current: "providers",
-      search: <div role="search">search goes here</div>,
-    });
-
-    const active = screen.getByRole("link", { name: /^providers$/i });
-    expect(active.className).toContain("font-bold");
-    expect(active.className).toContain("text-[var(--color-headline)]");
-    expect(active.className).toContain("hidden");
-    expect(active.className).toContain("lg:inline");
-
-    const resting = screen.getByRole("link", { name: /^services$/i });
-    expect(resting.className).not.toContain("font-bold");
-    expect(resting.className).toContain("text-[var(--color-muted-foreground)]");
-  });
-
-  it("keeps the three-destination nav pill when no search is given", async () => {
+  it("draws the three-destination nav pill in the centre column", async () => {
     await renderHeader();
 
     expect(screen.getByRole("link", { name: /explore/i })).toBeInTheDocument();
@@ -97,18 +50,44 @@ describe("SiteHeader", () => {
     expect(screen.getByRole("link", { name: /^providers$/i })).toBeInTheDocument();
   });
 
+  it("lights the current destination and leaves the other two resting", async () => {
+    await renderHeader({ current: "providers" });
+
+    const active = screen.getByRole("link", { name: /^providers$/i });
+    expect(active.className).toContain("bg-[var(--color-primary)]");
+    expect(active.className).toContain("text-white");
+
+    const resting = screen.getByRole("link", { name: /^services$/i });
+    expect(resting.className).not.toContain("bg-[var(--color-primary)]");
+    expect(resting.className).toContain("text-[var(--color-muted-foreground)]");
+  });
+
   /**
-   * "Sign in" keeps to one line only where the search variant squeezes it;
-   * the eight other callers render the class list they always did.
+   * `"none"` is the company pages' answer: `endsWith("none")` matches no nav
+   * key, so the header does not claim a page outside the three destinations
+   * is "Explore".
    */
-  it("keeps Sign in on one line in the search variant only", async () => {
-    await renderHeader({ search: <div role="search">search goes here</div> });
-    expect(screen.getByRole("link", { name: /sign in/i }).className).toContain("whitespace-nowrap");
+  it("lights nothing when the page is outside the three destinations", async () => {
+    await renderHeader({ current: "none" });
+
+    for (const name of [/explore/i, /^services$/i, /^providers$/i]) {
+      expect(screen.getByRole("link", { name }).className).not.toContain(
+        "bg-[var(--color-primary)]",
+      );
+    }
   });
 
-  it("leaves the plain header's Sign in class list as it was", async () => {
+  it("offers the provider a door when asked", async () => {
+    await renderHeader({ providerCta: true });
+    expect(
+      screen.getByRole("link", { name: "Become a Provider" }).getAttribute("href"),
+    ).toBe("/become-provider");
+  });
+
+  // Seven surfaces import this header and none of them asked for a new link.
+  // The prop is the whole point: absent, the header they render is unchanged.
+  it("grows no link for the callers that did not ask", async () => {
     await renderHeader();
-    expect(screen.getByRole("link", { name: /sign in/i }).className).not.toContain("whitespace-nowrap");
+    expect(screen.queryByRole("link", { name: "Become a Provider" })).toBeNull();
   });
-
 });

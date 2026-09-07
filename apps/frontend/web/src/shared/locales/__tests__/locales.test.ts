@@ -55,6 +55,14 @@ import itITAdmin from "../it-IT/admin.json";
 import nlNLAdmin from "../nl-NL/admin.json";
 import ptMZAdmin from "../pt-MZ/admin.json";
 import ptPTAdmin from "../pt-PT/admin.json";
+import deDEAccount from "../de-DE/account.json";
+import enUSAccount from "../en-US/account.json";
+import esESAccount from "../es-ES/account.json";
+import frFRAccount from "../fr-FR/account.json";
+import itITAccount from "../it-IT/account.json";
+import nlNLAccount from "../nl-NL/account.json";
+import ptMZAccount from "../pt-MZ/account.json";
+import ptPTAccount from "../pt-PT/account.json";
 
 /**
  * The namespaces this gate covers, each as its eight bundles keyed by locale.
@@ -93,6 +101,14 @@ const NAMESPACES: Record<string, Record<string, unknown>> = {
   admin: {
     "de-DE": deDEAdmin, "en-US": enUSAdmin, "es-ES": esESAdmin, "fr-FR": frFRAdmin,
     "it-IT": itITAdmin, "nl-NL": nlNLAdmin, "pt-MZ": ptMZAdmin, "pt-PT": ptPTAdmin,
+  },
+  // Joined on 2026-09-07, after eight `account.json` files were edited in one
+  // go — removing the notification-preference block — with nothing in CI
+  // comparing them. That edit happened to come out even; the next one has a
+  // gate.
+  account: {
+    "de-DE": deDEAccount, "en-US": enUSAccount, "es-ES": esESAccount, "fr-FR": frFRAccount,
+    "it-IT": itITAccount, "nl-NL": nlNLAccount, "pt-MZ": ptMZAccount, "pt-PT": ptPTAccount,
   },
 };
 

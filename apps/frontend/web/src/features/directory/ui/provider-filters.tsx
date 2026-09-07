@@ -41,10 +41,10 @@ import { DirectoryPriceFilter } from "@/features/directory/ui/directory-price-fi
  * **sort is kept**, because an order is not a narrowing and clearing filters
  * should not also reorder what is left.
  *
- * **The term is kept too.** It lives in the header's search pill now, which
- * has its own way off; a "Clear all" under a bar of empty pills that also
- * wiped what the reader typed would be taking something this control never
- * showed as on.
+ * **The term is kept too.** It lives in the search bar under the header,
+ * which shows it and has its own way of emptying it; a "Clear all" under a
+ * bar of empty pills that also wiped what the reader typed would be taking
+ * something this control never showed as on.
  *
  * `offset: undefined` because page 4 of a narrower result set is usually past
  * the end of it — a reader who cleared their filters would land on an empty
@@ -113,9 +113,9 @@ export function chooseProviderSort(
  * How many narrowings this bar is showing as on.
  *
  * `q` is not one of them, for the same reason `clearedDirectorySearch` keeps
- * it: the typed term belongs to the header's search pill, and a count that
- * included it would put a number on a control that offers no way to take it
- * off. See R18.
+ * it: the typed term belongs to the search bar under the header, and a count
+ * that included it would put a number on a control that offers no way to
+ * take it off. See R18.
  */
 function appliedCount(current: DirectorySearch): number {
   return directoryFilterChips(current).filter((c) => c.key !== "q").length;
@@ -148,8 +148,9 @@ function chipFor(chips: FilterChip[], key: string): FilterChip | undefined {
  * `directoryFilterChips` rather than counted again here, because that
  * function already enumerates exactly the set `clearedDirectorySearch` drops;
  * a second list is a second place for the two to disagree. Gated on the chips
- * other than `q`: the term is the header search pill's to clear, not this
- * bar's, so a search with only a typed term on gets no clear-all here.
+ * other than `q`: the term belongs to the search bar under the header, not
+ * to this pill bar, so a search with only a typed term on gets no clear-all
+ * here.
  *
  * One component, two placements: the end of the pill bar and the footer of
  * the phone's sheet. A second copy is how the two would come to offer

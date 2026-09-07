@@ -90,10 +90,11 @@ export function PriceRangeFilter({ current }: { current: BrowseSearch }) {
         inputMode="numeric"
         className="h-9 min-w-0 flex-1 px-2.5 text-center"
       />
-      {/* Navy, not the kit's default blue: `--color-primary` is spent on the
-          header's search button and nothing else on these two pages, and this
-          submit shows up twice — in the desktop pill's popover and in the
-          phone sheet, whose own footer button already wears the navy. `cn` is
+      {/* Navy, not the kit's default blue: `--color-primary` is the header's
+          and the search bar's button's, and nothing in the results wears it,
+          and this submit shows up twice — in the desktop pill's popover and
+          in the phone sheet, whose own footer button already wears the navy.
+          `cn` is
           `twMerge`, so these `bg-`/`text-` classes replace the variant's
           rather than racing them. The focus ring stays as it is: an
           affordance, not a surface. */}
