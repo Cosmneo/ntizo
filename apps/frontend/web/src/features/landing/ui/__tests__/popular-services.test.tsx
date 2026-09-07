@@ -12,6 +12,13 @@ import i18n from "i18next";
 import type { ServiceDTO } from "@ntizo/shared/read-models";
 import { PopularServices, LANDING_SERVICES } from "../popular-services";
 
+/**
+ * Annotated as `ServiceDTO`, not cast to it: a cast suppresses both the
+ * excess- and missing-property checks, so a fixture that drifts from the real
+ * schema keeps compiling under its own stale shape instead of TypeScript
+ * catching it. That is exactly how an invalid `providerType` reached this
+ * file unnoticed the first time this fixture was written.
+ */
 function service(over: Partial<ServiceDTO> = {}): ServiceDTO {
   return {
     id: "s-1",
@@ -41,7 +48,7 @@ function service(over: Partial<ServiceDTO> = {}): ServiceDTO {
       pricingMode: "fixed",
     },
     ...over,
-  } as ServiceDTO;
+  };
 }
 
 function popularKey() {
