@@ -17,23 +17,34 @@ describe("HowItWorks", () => {
   });
 
   // The section exists to show the promise being kept, so the three facts it
-  // draws are the price, the payment and the contact details the platform
-  // hands over. A screen that stops showing one of them is the section
-  // failing at its job.
-  it("shows a price, the M-Pesa payment and the revealed contact", () => {
+  // draws are the price, the payment and the verified business the platform
+  // confirms the booking with. A screen that stops showing one of them is
+  // the section failing at its job — and one that started promising a street
+  // address or a phone number would be promising a feature the platform does
+  // not have.
+  it("shows a price, the M-Pesa payment and the verified business — not an address or phone number", () => {
     render(<HowItWorks />);
     expect(screen.getByText("Pay with M-Pesa")).toBeInTheDocument();
     expect(screen.getByText("Booking confirmed")).toBeInTheDocument();
-    expect(screen.getByText("+258 84 123 4567")).toBeInTheDocument();
+    expect(screen.getByText("Verified")).toBeInTheDocument();
     expect(screen.getAllByText(/800/).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/Julius Nyerere/)).toBeNull();
+    expect(screen.queryByText("+258 84 123 4567")).toBeNull();
   });
 
   it("asks for a rating rather than showing one already given", () => {
     render(<HowItWorks />);
     expect(screen.getByText("How did it go?")).toBeInTheDocument();
-    // Five empty stars, not a five-star score. A filled row beside the words
-    // "how did it go?" answers its own question.
-    expect(screen.getByTestId("rating-ask").querySelectorAll("svg")).toHaveLength(5);
-    expect(screen.queryByTestId("rating-ask-filled")).toBeNull();
+    // Five stars in the muted border token, not the warning (gold) token a
+    // filled rating uses elsewhere on the page. Counting the stars alone
+    // would not catch them being accidentally filled in — the regression
+    // this section exists to guard against.
+    const stars = Array.from(screen.getByTestId("rating-ask").querySelectorAll("svg"));
+    expect(stars).toHaveLength(5);
+    for (const star of stars) {
+      const classes = star.getAttribute("class") ?? "";
+      expect(classes).toContain("fill-[var(--color-border)]");
+      expect(classes).not.toContain("color-warning");
+    }
   });
 });

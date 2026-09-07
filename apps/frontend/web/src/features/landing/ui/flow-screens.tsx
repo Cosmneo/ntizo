@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { Check, Phone, Search, Star } from "lucide-react";
+import { Check, Search, Star } from "lucide-react";
 import { BrandTile } from "@/shared/components/browse/brand-tile";
 
 /**
@@ -32,12 +32,12 @@ function Row({ name, provider, price, minutes }: {
           <Star className="h-2.5 w-2.5 fill-[var(--color-warning)] text-[var(--color-warning)]" aria-hidden="true" />
           4,7
         </span>
-        <em className="mt-0.5 block text-[12.5px] font-bold not-italic text-[var(--color-headline)]">
+        <span className="mt-0.5 block text-[12.5px] font-bold text-[var(--color-headline)]">
           {price}
-          <i className="ml-1.5 text-[11px] font-medium not-italic text-[var(--color-muted-foreground)]">
+          <span className="ml-1.5 text-[11px] font-medium text-[var(--color-muted-foreground)]">
             {minutes}
-          </i>
-        </em>
+          </span>
+        </span>
       </span>
     </div>
   );
@@ -166,16 +166,18 @@ export function DoneScreen() {
           </span>
         </span>
       </div>
-      {/* The reveal. Street address and phone number appear at exactly this
-          moment and never before it, which is the platform's own rule. */}
-      <div className="grid gap-1 border-t border-[var(--color-border)] pt-2.5 text-[11.5px] text-[var(--color-muted-foreground)]">
-        <b className="text-[12.5px] font-semibold text-[var(--color-foreground)]">
-          Estúdio Mavalane
-        </b>
-        <span>Av. Julius Nyerere 1234, Polana</span>
-        <span className="inline-flex items-center gap-1.5 font-semibold text-[var(--color-headline)]">
-          <Phone className="h-3 w-3" aria-hidden="true" />
-          +258 84 123 4567
+      {/* What a confirmed booking actually gives the customer: the business,
+          by name, carrying the seal an administrator checked its documents
+          for — and a way to reach it through the platform. Not a street
+          address and not a phone number: the address on a booking is the
+          customer's own, used when a provider travels to them, and contact
+          the other way runs through the message button below, not a reveal
+          of a private number. */}
+      <div className="flex items-center gap-1.5 border-t border-[var(--color-border)] pt-2.5 text-[12.5px] font-semibold text-[var(--color-foreground)]">
+        Estúdio Mavalane
+        <span className="inline-flex items-center gap-1 text-[11px] font-bold text-[var(--color-headline)]">
+          <Check className="h-3 w-3" aria-hidden="true" strokeWidth={3} />
+          {t("badgeVerified")}
         </span>
       </div>
       <div className="grid grid-cols-2 gap-2">
