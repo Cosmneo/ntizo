@@ -359,7 +359,7 @@ the count-by-status read the backend already has and never wired (`countByStatus
 the sidebar badge share one exact number instead of the length of a 25-row page. Documents to
 verify stays a follow-up until a read exists.
 
-The admin's **This month** is a real month, not a set of live totals: one platform-wide query,
+The admin's **This month** is the same rolling thirty days as the provider's, not a calendar month — one window, one chart — and every tile that names a period says "(30 days)": one platform-wide query,
 `bookingStatsForAdmin`, the same shape as `bookingStatsForProvider` without the provider filter,
 plus what the platform itself earned. Four tiles — bookings this month, gross booked, commission
 earned (with the same 30-day chart the provider has, drawn from the same `perDay` series), new

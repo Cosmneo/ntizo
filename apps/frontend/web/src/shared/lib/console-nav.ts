@@ -100,8 +100,8 @@ const PLATFORM: ConsoleNav = {
     // What arrives at the platform, in the order somebody is waiting on it:
     // applications to approve, bookings an administrator has to close, support
     // threads and contact requests owed a reply, reviews to moderate. The three
-    // tabs stay Providers, Reviews and Users until the bookings and support
-    // reads expose counts — follow-up #202.
+    // tabs stay Providers, Reviews and Users; the bookings and support reads
+    // expose counts now, and re-choosing the tabs is follow-up #203.
     { key: "providers", titleKey: "nav.providers", shortKey: "navShort.providers", url: "/admin/providers", icon: Store, primary: true, count: "pendingProviders" },
     { key: "bookings", titleKey: "nav.bookings", url: "/admin/bookings", icon: CalendarCheck },
     { key: "support", titleKey: "nav.support", url: "/admin/support", icon: LifeBuoy },

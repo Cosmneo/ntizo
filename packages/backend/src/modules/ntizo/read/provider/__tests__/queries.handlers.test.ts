@@ -51,7 +51,6 @@ describe("createProviderReadHandlers", () => {
   it("builds a handler for every read field", () => {
     const handlers = createProviderReadHandlers(makeModule());
     expect(Array.isArray(handlers)).toBe(true);
-    // Three: the two member-scoped reads plus the admin queue.
     // Five: my list, my detail, the admin list, the admin detail, and the admin counts.
     expect(handlers.length).toBe(5);
   });

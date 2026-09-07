@@ -4601,5 +4601,18 @@ is an item that carries a count; Users carries none, while bookings an administr
 support threads owed a reply plausibly do. No read exposes either count yet, so the choice cannot be
 made on evidence.
 
+Partly unblocked by the admin dashboard (2026-09-07): the reads exist now — see #203.
+
 **Trigger:** the first count source for admin bookings or support threads; then swap Users out for
 whichever of the two arrives, and give it `primary` and `count` in `console-nav.ts`.
+
+## #203 — The admin's phone tabs could carry the queue counts now
+
+`bookingStatsForAdmin.disputed` and `providerCountByStatusForAdmin.pending` exist, and
+`supportOpenCount` always did. The platform's `ConsoleCounts` still resolves only
+`pendingProviders`; wiring `disputed` and the support count into it, and re-choosing the three
+tabs by what carries a count (the rule in the console spec), is one small task. `flaggedReviews`
+stays unresolvable — there is no such concept in the review domain.
+
+**Trigger:** the next change to the platform zone's tab bar, or the first admin who asks why
+Bookings has no badge.
