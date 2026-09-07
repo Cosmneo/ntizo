@@ -1428,6 +1428,15 @@ supported width above 200px.
 
 ## 55. The provider and admin activity pages still render `[]`
 
+**Admin half resolved 2026-09-07 (branch `feat/admin-lists-consistency`):** `activityAll` is the
+admin-scoped read this entry said did not exist — `read/activity`'s `ListPlatformActivityProjection`
+over `DrizzleActivityRepository.listAll`, guarded by the field's own `requireAdmin`, with a `type`
+filter, a `search` over the payload's text and each row's actor resolved by name and email. The
+admin page reads it through `CollectionCard`, and `admin.json` carries `activityType.*` in all eight
+locales, rendered through `describeActivity`. **The provider half is still open**: the workspace
+feed still hands `ActivityList` an empty array, for the reasons below.
+
+
 **Corrected 2026-08-27 (final whole-branch review): this said both pages were
 "wired to the real `ActivityList` component and a real `renderDescription`".
 The `ActivityList` half still holds; the `renderDescription` half did not —
@@ -4643,3 +4652,29 @@ there), but the filter sheet keeps its own state afterwards and the address bar 
 say what the screen shows.
 
 **Trigger:** the next change to the providers list's filters.
+
+## #207 — The reviews header's subtitle flips from the description to the count when the read lands
+
+`/admin/reviews` puts "N of 4 reviews on the home page" in the page header's subtitle now that the
+sentence above the card is gone — but until the first page has loaded, the subtitle is the static
+description, so the line changes under the reader once. A skeleton in the header, or a subtitle
+that only ever holds the count, would settle it.
+
+**Trigger:** the next change to `usePageHeader`, or the first person to notice the flicker.
+
+## #208 — The activity search is an unindexed `ILIKE` over `payload::text`
+
+`DrizzleActivityRepository.listAll` folds and matches the whole jsonb payload as text. Correct,
+and cheap while `ntizo_activity.activity` is small; a sequential scan once it is not. A generated
+`search_text` column with a trigram index, or a search over the names alone, is the fix.
+
+**Trigger:** the activity table's first hundred thousand rows, or the first slow search.
+
+## #209 — Search terms are component state on lists whose place lives in the URL
+
+`/admin/bookings` keeps its queue and page in the URL and its search box in component state, the
+way every other admin list keeps its search. A reload on page two of a search lands on page two of
+the unsearched queue. #206 already asks for the providers sheet to write the URL; when that lands,
+decide whether searches go with it — on every list, not on one.
+
+**Trigger:** the first shared link to a searched queue, or #206.
