@@ -15,7 +15,8 @@ import { formatHeadlinePrice } from "@/features/directory/services/domain/servic
 /**
  * One business, as a directory row.
  *
- * The successor to `ProviderListingCard` — a row rather than a tile, because a
+ * The successor to the since-deleted `ProviderListingCard` — a row rather than
+ * a tile, because a
  * business needs more words than a service does: what it is, where it is,
  * what it sells and for how much. See `ResultRow` for why a row over a card.
  */

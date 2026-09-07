@@ -120,8 +120,12 @@ export function ServiceTile({ service, locale }: { service: ServiceDTO; locale: 
               </>
             )}
           </b>
-          {line.meta && <span>{t(line.meta.key, line.meta.values ?? {})}</span>}
-          {where && <span>{where}</span>}
+          {/* Whole phrases, never "45 / min": the phone row's text column is
+              212px wide and the line wraps between items, not inside them. */}
+          {line.meta && (
+            <span className="whitespace-nowrap">{t(line.meta.key, line.meta.values ?? {})}</span>
+          )}
+          {where && <span className="whitespace-nowrap">{where}</span>}
         </p>
       }
     />

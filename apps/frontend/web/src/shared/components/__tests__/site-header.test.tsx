@@ -96,4 +96,19 @@ describe("SiteHeader", () => {
     expect(screen.getByRole("link", { name: /^services$/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /^providers$/i })).toBeInTheDocument();
   });
+
+  /**
+   * "Sign in" keeps to one line only where the search variant squeezes it;
+   * the eight other callers render the class list they always did.
+   */
+  it("keeps Sign in on one line in the search variant only", async () => {
+    await renderHeader({ search: <div role="search">search goes here</div> });
+    expect(screen.getByRole("link", { name: /sign in/i }).className).toContain("whitespace-nowrap");
+  });
+
+  it("leaves the plain header's Sign in class list as it was", async () => {
+    await renderHeader();
+    expect(screen.getByRole("link", { name: /sign in/i }).className).not.toContain("whitespace-nowrap");
+  });
+
 });

@@ -178,4 +178,22 @@ describe("ServiceTile", () => {
     await screen.findByRole("listitem");
     expect(screen.getByTestId("brand-tile")).toBeInTheDocument();
   });
+
+  /**
+   * The phone row's title may take two lines; above `sm` the tile truncates it
+   * to one. `sm:line-clamp-none` has to travel with the truncate, because
+   * `truncate` alone leaves the clamp's `display:-webkit-box` in place. The
+   * meta beside the price wraps as whole phrases, never mid-phrase.
+   */
+  it("clamps the title on a phone, truncates it above sm, and keeps the meta whole", async () => {
+    renderTile(service());
+    await screen.findByRole("listitem");
+    const title = screen.getByRole("heading", { level: 3 });
+    expect(title.className).toContain("line-clamp-2");
+    expect(title.className).toContain("sm:line-clamp-none");
+    expect(title.className).toContain("sm:truncate");
+    expect(screen.getByText("45 min").className).toContain("whitespace-nowrap");
+    expect(screen.getByText("At their place").className).toContain("whitespace-nowrap");
+  });
+
 });
