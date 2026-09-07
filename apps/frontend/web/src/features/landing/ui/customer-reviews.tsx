@@ -64,7 +64,7 @@ export function CustomerReviews() {
                       className={
                         star < s.rating
                           ? "h-[15px] w-[15px] fill-[var(--color-warning)] text-[var(--color-warning)]"
-                          : "h-[15px] w-[15px] fill-[var(--color-border)] text-[var(--color-border)]"
+                          : "h-[15px] w-[15px] text-[color-mix(in_srgb,var(--color-muted-foreground)_40%,transparent)]"
                       }
                     />
                   ))}

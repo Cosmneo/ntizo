@@ -54,7 +54,29 @@ describe("CustomerReviews", () => {
 
   it("shows the score the reviewer gave, not five stars", async () => {
     await renderReviews([story({ rating: 3 })]);
-    expect(await screen.findByRole("img", { name: "3 out of 5" })).toBeInTheDocument();
+    const ratingEl = await screen.findByRole("img", { name: "3 out of 5" });
+    // Counting the stars alone would not catch all five being filled
+    // regardless of score — the label is computed independently of the fill
+    // loop. Exactly three carry the warning (gold) fill; the other two carry
+    // the same muted stroke-only treatment `rating-stars.tsx` uses, not the
+    // opaque fill that made an unfilled star invisible against a white ground.
+    const stars = Array.from(ratingEl.querySelectorAll("svg"));
+    expect(stars).toHaveLength(5);
+    const filled = stars.filter((star) =>
+      (star.getAttribute("class") ?? "").includes("fill-[var(--color-warning)]"),
+    );
+    const unfilled = stars.filter(
+      (star) => !(star.getAttribute("class") ?? "").includes("fill-[var(--color-warning)]"),
+    );
+    expect(filled).toHaveLength(3);
+    expect(unfilled).toHaveLength(2);
+    for (const star of unfilled) {
+      const classes = star.getAttribute("class") ?? "";
+      expect(classes).toContain(
+        "text-[color-mix(in_srgb,var(--color-muted-foreground)_40%,transparent)]",
+      );
+      expect(classes).not.toContain("fill-");
+    }
   });
 
   it("names an author who set no name rather than rendering an empty chip", async () => {
