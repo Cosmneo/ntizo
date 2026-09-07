@@ -34,6 +34,7 @@ export function SiteHeader({
   overlay = false,
   current = "explore",
   search,
+  providerCta = false,
 }: {
   overlay?: boolean;
   /**
@@ -48,6 +49,15 @@ export function SiteHeader({
    * one, and the landing page keeps its own hero search.
    */
   search?: ReactNode;
+  /**
+   * Renders "Become a Provider" in the right-hand cluster.
+   *
+   * Opt-in rather than always on. Seven other surfaces import this header and
+   * none of them asked for another link, and the `search` variant's right
+   * column is already tight enough to carry a `whitespace-nowrap` fix. The
+   * home page is the one page whose second reader is a provider.
+   */
+  providerCta?: boolean;
 }) {
   const { t } = useTranslation("landing");
 
@@ -149,6 +159,15 @@ export function SiteHeader({
                 </Link>
               );
             })}
+
+          {providerCta && (
+            <Link
+              to="/become-provider"
+              className="hidden text-sm font-medium text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)] lg:inline"
+            >
+              {t("footer.becomeProvider")}
+            </Link>
+          )}
 
           <HeaderActions
             onDark={overlay}

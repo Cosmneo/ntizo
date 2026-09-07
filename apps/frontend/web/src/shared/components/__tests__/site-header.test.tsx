@@ -111,4 +111,18 @@ describe("SiteHeader", () => {
     expect(screen.getByRole("link", { name: /sign in/i }).className).not.toContain("whitespace-nowrap");
   });
 
+  it("offers the provider a door when asked", async () => {
+    await renderHeader({ providerCta: true });
+    expect(
+      screen.getByRole("link", { name: "Become a Provider" }).getAttribute("href"),
+    ).toBe("/become-provider");
+  });
+
+  // Seven surfaces import this header and none of them asked for a new link.
+  // The prop is the whole point: absent, the header they render is unchanged.
+  it("grows no link for the callers that did not ask", async () => {
+    await renderHeader();
+    expect(screen.queryByRole("link", { name: "Become a Provider" })).toBeNull();
+  });
+
 });
