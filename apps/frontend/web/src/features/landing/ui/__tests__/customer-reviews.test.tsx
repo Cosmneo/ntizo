@@ -84,6 +84,24 @@ describe("CustomerReviews", () => {
     expect(await screen.findByText("Anonymous")).toBeInTheDocument();
   });
 
+  /**
+   * The section used to be the only one on the home page without a card: the
+   * services and the businesses above it are bordered tiles, and the reviews
+   * were bare items under a rule. Asserted on the declared classes, like the
+   * footer test below and for the same reason — jsdom does no layout, so the
+   * class that produces the box is the only evidence there is one.
+   */
+  it("draws each review as the site's bordered card", async () => {
+    await renderReviews([story()]);
+    const card = (await screen.findByText("Chegou à hora combinada e deixou tudo limpo.")).closest(
+      "article",
+    );
+    expect(card).not.toBeNull();
+    expect(card!.className).toContain("border-[var(--color-border)]");
+    expect(card!.className).toContain("rounded-[var(--radius-card)]");
+    expect(card!.className).toContain("bg-[var(--color-card)]");
+  });
+
   it("leads to the business the review is about", async () => {
     await renderReviews([story()]);
     expect(
