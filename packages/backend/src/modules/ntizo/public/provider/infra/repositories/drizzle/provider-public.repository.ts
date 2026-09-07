@@ -460,6 +460,11 @@ export class DrizzleProviderPublicRepository implements ProviderPublicRepository
   private static wheres(filters: ListActiveFilters, agg: Aggregates): SQL[] {
     const wheres: SQL[] = [eq(provider.status, "active")];
 
+    // `inArray` emits `false` for an empty array, so "these zero businesses"
+    // matches nothing rather than silently becoming "every business" — see the
+    // filter's own doc comment.
+    if (filters.ids) wheres.push(inArray(provider.id, filters.ids));
+
     if (filters.search) {
       const pattern = likePattern(filters.search);
       // Only across fields the public DTO already exposes. Searching a column

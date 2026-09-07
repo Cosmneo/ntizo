@@ -53,6 +53,10 @@ export function conditionsFor(
   filter: Omit<ListPublishedServicesFilter, "limit" | "offset" | "sort">,
 ) {
   const conditions = [eq(service.status, "published"), eq(provider.status, "active")];
+  // `inArray` emits `false` for an empty array, so "these zero services"
+  // matches nothing rather than silently becoming "every service" — see the
+  // filter's own doc comment.
+  if (filter.ids) conditions.push(inArray(service.id, filter.ids));
   if (filter.categoryCode) conditions.push(eq(category.code, filter.categoryCode));
   if (filter.providerId) conditions.push(eq(service.providerId, filter.providerId));
   if (filter.locationType) conditions.push(eq(service.locationType, filter.locationType));
