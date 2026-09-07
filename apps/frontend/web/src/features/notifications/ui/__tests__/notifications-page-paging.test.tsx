@@ -29,6 +29,9 @@ vi.mock("@/features/notifications/viewmodel/use-inbox", () => ({
     loadMore: fakes.loadMore,
   }),
 }));
+vi.mock("@/features/notifications/viewmodel/use-unread-count", () => ({
+  useUnreadCount: () => 20,
+}));
 vi.mock("@/features/notifications/viewmodel/use-mark-read", () => ({
   useMarkRead: () => ({ markOne: vi.fn(), markAll: vi.fn(), isMarkingAll: false }),
 }));
@@ -80,12 +83,12 @@ afterEach(() => {
 
 describe("NotificationsPage (more rows than the page shows)", () => {
   it("says how many of how many", () => {
-    render(<NotificationsPage scope={{ kind: "mine" }} />);
+    render(<NotificationsPage scope={{ kind: "mine" }} zone={{ kind: "customer" }} />);
     expect(screen.getByText("Showing 20 of 25.")).toBeInTheDocument();
   });
 
   it("fetches the next page when the end of the list scrolls into view", () => {
-    render(<NotificationsPage scope={{ kind: "mine" }} />);
+    render(<NotificationsPage scope={{ kind: "mine" }} zone={{ kind: "customer" }} />);
 
     // The observer exists and is watching something — without this line a
     // component that registered nothing would still pass the assertion below
@@ -105,7 +108,7 @@ describe("NotificationsPage (more rows than the page shows)", () => {
     // all. The button is the same element the observer watches, so this is not
     // a second mechanism — it is the one that works when the first cannot.
     const user = userEvent.setup();
-    render(<NotificationsPage scope={{ kind: "mine" }} />);
+    render(<NotificationsPage scope={{ kind: "mine" }} zone={{ kind: "customer" }} />);
 
     await user.click(screen.getByRole("button", { name: /load more/i }));
 

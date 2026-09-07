@@ -12,6 +12,12 @@
   "loadError": "Je meldingen konden niet worden geladen.",
   "showingCount": "{{shown}} van {{total}} getoond.",
   "loadMore": "Meer laden",
+  "markRead": "Markeren als gelezen",
+  "openConversation": "Gesprek openen",
+  "unreadOfTotal": "{{count}} ongelezen van {{total}}",
+  "unreadOfTotal_other": "{{count}} ongelezen van {{total}}",
+  "loading": "Meldingen laden",
+  "markError": "Kon niet als gelezen markeren. Probeer het opnieuw.",
   "type": {
     "welcome": "Welkom bij Ntizo",
     "providerWorkspaceWelcome": "Je werkruimte is klaar",

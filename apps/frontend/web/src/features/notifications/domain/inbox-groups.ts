@@ -67,3 +67,34 @@ function dayNumber(iso: string): number {
   const d = new Date(iso);
   return Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 86_400_000;
 }
+
+/**
+ * The time a row shows, which depends on the heading it sits under.
+ *
+ * Under "Today" and "Yesterday" the heading has already said the day, so the
+ * row says the clock. "Earlier" spans weeks, and a clock there tells the
+ * reader nothing about *which* day — so the row says the day instead, and
+ * adds the year only when it is not the current one, because "3 Aug" in
+ * August means this year to anyone reading it.
+ *
+ * `todayIso` is a parameter for the same reason `groupByDay` takes one: the
+ * year comparison is a calendar decision, and a function that reads the clock
+ * itself cannot be pinned by a test.
+ */
+export function formatWhen(
+  iso: string,
+  group: InboxGroupKey,
+  locale: string,
+  todayIso: string,
+): string {
+  const date = new Date(iso);
+  if (group !== "earlier") {
+    return new Intl.DateTimeFormat(locale, { hour: "2-digit", minute: "2-digit" }).format(date);
+  }
+  const sameYear = date.getFullYear() === new Date(todayIso).getFullYear();
+  return new Intl.DateTimeFormat(locale, {
+    day: "numeric",
+    month: "short",
+    ...(sameYear ? {} : { year: "numeric" }),
+  }).format(date);
+}

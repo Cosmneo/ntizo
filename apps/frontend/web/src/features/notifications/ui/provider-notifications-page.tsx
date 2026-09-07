@@ -24,7 +24,13 @@ export function ProviderNotificationsPage() {
 
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-4">
-      <NotificationsPage scope={{ kind: "provider", providerId: activeProvider.id }} />
+      <NotificationsPage
+        scope={{ kind: "provider", providerId: activeProvider.id }}
+        // The zone is the workspace's routes, which need its slug; the scope
+        // is its query, which needs its id. Two props because they are two
+        // different facts about the same workspace.
+        zone={{ kind: "provider", slug: activeProvider.slug }}
+      />
     </div>
   );
 }

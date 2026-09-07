@@ -23,6 +23,9 @@ vi.mock("@/features/notifications/viewmodel/use-inbox", () => ({
     loadMore: vi.fn(),
   }),
 }));
+vi.mock("@/features/notifications/viewmodel/use-unread-count", () => ({
+  useUnreadCount: () => 1,
+}));
 vi.mock("@/features/notifications/viewmodel/use-mark-read", () => ({
   useMarkRead: () => ({ markOne: vi.fn(), markAll: vi.fn(), isMarkingAll: false }),
 }));
@@ -35,19 +38,19 @@ vi.mock("@/features/notifications/viewmodel/use-mark-read", () => ({
 
 describe("NotificationsPage", () => {
   it("draws the sentence for a known type", () => {
-    render(<NotificationsPage scope={{ kind: "mine" }} />);
+    render(<NotificationsPage scope={{ kind: "mine" }} zone={{ kind: "customer" }} />);
     expect(screen.getByText(/verified/i)).toBeInTheDocument();
   });
 
   it("groups under a day heading", () => {
-    render(<NotificationsPage scope={{ kind: "mine" }} />);
+    render(<NotificationsPage scope={{ kind: "mine" }} zone={{ kind: "customer" }} />);
     expect(screen.getByRole("heading", { name: /today/i })).toBeInTheDocument();
   });
 
   it("says nothing about how many are shown when every item already is", () => {
     // total (1) equals items.length (1) here — a caption in that case would
     // be a sentence with nothing to say.
-    render(<NotificationsPage scope={{ kind: "mine" }} />);
+    render(<NotificationsPage scope={{ kind: "mine" }} zone={{ kind: "customer" }} />);
     expect(screen.queryByText(/showing/i)).not.toBeInTheDocument();
   });
 
@@ -57,7 +60,7 @@ describe("NotificationsPage", () => {
     // on the copy the column rendered (`account:activityListTitle`, "Recent
     // activity") rather than on a class name or a child count, so this stays
     // red for any re-introduction, however it is laid out.
-    render(<NotificationsPage scope={{ kind: "mine" }} />);
+    render(<NotificationsPage scope={{ kind: "mine" }} zone={{ kind: "customer" }} />);
     expect(screen.queryByText(/recent activity/i)).not.toBeInTheDocument();
   });
 });

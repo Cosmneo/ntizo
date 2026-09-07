@@ -78,3 +78,16 @@ if (typeof window !== "undefined" && !window.matchMedia) {
       dispatchEvent: () => false,
     }) as unknown as MediaQueryList;
 }
+
+/**
+ * jsdom does ship a `window.scrollTo`, but as a stub that logs "Not
+ * implemented: window.scrollTo" to the console rather than doing nothing —
+ * and the router calls it on every navigation, so every suite that clicks a
+ * `Link` used to print the same non-error once per click. Replaced with a
+ * real no-op here, beside the other layout stubs, rather than inside one
+ * render helper: the noise belonged to every router-mounting test, not only
+ * to the ones that happened to use that helper.
+ */
+if (typeof window !== "undefined") {
+  window.scrollTo = () => {};
+}
