@@ -228,7 +228,7 @@ export function ServicesBrowsePage() {
                 // with, rather than a bare number the reader has to guess a
                 // currency for.
                 label={t("quickChipMaxPrice", {
-                  amount: formatHeadlinePrice(QUICK_MAX_PRICE * 100, "MZN", locale),
+                  amount: formatHeadlinePrice(QUICK_MAX_PRICE * 100, DEFAULT_CURRENCY, locale),
                 })}
               />
             </QuickChips>
@@ -332,6 +332,17 @@ export function ServicesBrowsePage() {
     </>
   );
 }
+
+/**
+ * The currency the phone's price chip is written in.
+ *
+ * The one price on this page that does not come from data: every amount on a
+ * tile carries its own service's currency, and this chip is a threshold the
+ * page invents, so it has no row to take one from. Mozambique is a
+ * single-currency market and `MZN` is right today; the day a second one is
+ * listed, this constant is where the page has to start asking somebody.
+ */
+const DEFAULT_CURRENCY = "MZN";
 
 /**
  * The ceiling the phone's price chip offers, in whole meticais.
