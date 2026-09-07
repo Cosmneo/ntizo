@@ -6,7 +6,8 @@ import { useTranslation } from "react-i18next";
  *
  * The page's only dark surface, and full width rather than a rounded box
  * floating in the page — a navy card with two blurred circles on it was the
- * last piece of the template. The brand's tie pattern is the only ornament.
+ * last piece of the template. It carries no ornament of its own; the navy
+ * ground is the whole of it.
  *
  * The copy is deliberately not a headline percentage: the commission is
  * per-provider, so a number printed here would be wrong for everybody not on
@@ -22,10 +23,6 @@ export function ProviderBand() {
 
   return (
     <section className="relative mt-16 overflow-hidden bg-[var(--color-navy-surface)] text-[var(--color-navy-on)]">
-      <span
-        aria-hidden="true"
-        className="pointer-events-none absolute -right-16 -top-20 h-[520px] w-[620px] -rotate-[8deg] bg-[url('/brand/tie-pattern.svg')] bg-[length:144px_244px] opacity-[0.14]"
-      />
       <div className="page-shell relative z-[1] grid items-center gap-14 py-16 lg:grid-cols-[minmax(0,1fr)_380px]">
         <div>
           <h2 className="font-display max-w-[18ch] text-[clamp(1.75rem,3.4vw,2.25rem)] font-extrabold leading-[1.08] tracking-[-0.03em]">

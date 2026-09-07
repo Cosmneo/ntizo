@@ -121,24 +121,24 @@ describe("VerifiedProviders", () => {
       const images = document.querySelectorAll("img");
       const srcs = Array.from(images).map((img) => img.getAttribute("src"));
       expect(srcs).toEqual(["https://cdn.test/photo.jpg", "https://cdn.test/logo.png"]);
-      expect(screen.queryByTestId("brand-tile")).toBeNull();
+      expect(screen.queryByTestId("media-fallback")).toBeNull();
     });
 
-    it("draws the brand tile as the background and the logo as a badge over it when there is a logo but no photo", async () => {
+    it("draws the media fallback as the background and the logo as a badge over it when there is a logo but no photo", async () => {
       await renderProviders([
         provider({ photoUrls: [], logoUrl: "https://cdn.test/logo.png" }),
       ]);
       await screen.findByText("Oficina do Zeca");
-      expect(screen.getByTestId("brand-tile")).toBeInTheDocument();
+      expect(screen.getByTestId("media-fallback")).toBeInTheDocument();
       const images = document.querySelectorAll("img");
       expect(images).toHaveLength(1);
       expect(images[0]?.getAttribute("src")).toBe("https://cdn.test/logo.png");
     });
 
-    it("draws the brand tile with no badge at all when there is neither", async () => {
+    it("draws the media fallback with no badge at all when there is neither", async () => {
       await renderProviders([provider({ photoUrls: [], logoUrl: null })]);
       await screen.findByText("Oficina do Zeca");
-      expect(screen.getByTestId("brand-tile")).toBeInTheDocument();
+      expect(screen.getByTestId("media-fallback")).toBeInTheDocument();
       expect(document.querySelectorAll("img")).toHaveLength(0);
     });
   });

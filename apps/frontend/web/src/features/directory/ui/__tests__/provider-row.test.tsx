@@ -95,9 +95,9 @@ describe("ProviderRow", () => {
     );
     await screen.findByRole("link", { name: /Estúdio Mavalane/ });
     expect(screen.getByText("3 more")).toBeInTheDocument();
-    // Headline navy, not `--color-primary`: blue is spent once per page, on
-    // the header's search button, and twenty rows of "+3 more" is twenty
-    // blues.
+    // Headline navy, not `--color-primary`: blue belongs to the header and
+    // the search bar's button, never to the results, and twenty rows of
+    // "+3 more" is twenty blues.
     expect(screen.getByText("3 more").className).not.toContain("--color-primary");
     expect(screen.getByText("3 more").className).toContain("--color-headline");
   });
@@ -172,13 +172,25 @@ describe("ProviderRow", () => {
     expect(screen.getByTestId("row-kind").textContent).not.toMatch(/\bin\b/);
   });
 
-  it("centres the logo on the brand tile when there is no cover photo", async () => {
+  it("centres the logo on the site's placeholder when there is no cover photo", async () => {
     const { container } = renderRow(
       provider({ photoUrls: [], logoUrl: "https://cdn/logo.png" }),
     );
     await screen.findByRole("link", { name: /Estúdio Mavalane/ });
-    expect(screen.getByTestId("brand-tile")).toBeInTheDocument();
+    expect(screen.getByTestId("media-fallback")).toBeInTheDocument();
     expect(container.querySelector("img")).toHaveAttribute("src", "https://cdn/logo.png");
+  });
+
+  it("stands the photograph on the site's own muted ground, not on navy", async () => {
+    // The container's colour is what shows while a photograph is still in
+    // flight and behind the placeholder's own pale blue, so navy was a dark
+    // box flashing in front of a pale mark on every slow or 404ing photo.
+    // `--color-muted` is the ground every other `BrandImage` on the site
+    // paints behind a picture.
+    const { container } = renderRow(provider({ photoUrls: [] }));
+    await screen.findByRole("link", { name: /Estúdio Mavalane/ });
+    const media = container.querySelector("div.relative.overflow-hidden")!;
+    expect(media.className).toContain("bg-[var(--color-muted)]");
   });
 
   it("is exactly one link, and the chevron is not a second one", async () => {

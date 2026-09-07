@@ -72,8 +72,6 @@
     "other": "Altro",
     "undisclosed": "Preferisco non dirlo"
   },
-  "statBookings": "Prenotazioni completate",
-  "statRating": "Valutazione media data",
   "statMemberSince": "Cliente dal",
   "becomeProviderTitle": "Diventa fornitore su Ntizo",
   "becomeProviderBody": "Offri i tuoi servizi e inizia a guadagnare sulla piattaforma.",
@@ -88,25 +86,10 @@
   "passwordTitle": "Password",
   "passwordBlurb": "We email you a link to set a new one.",
   "changePassword": "Change password",
-  "verifyPhone": "Verify",
+  "verifyPhone": "Verifica",
+  "addPhone": "Aggiungi numero",
   "preferencesBlurb": "How the platform speaks to you.",
   "languageBlurb": "Used for the interface and for the emails we send you.",
-  "notificationsBlurb": "Choose what reaches you, and how.",
-  "notifyWhat": "What",
-  "channel": {
-    "EMAIL": "E-mail",
-    "SMS": "SMS",
-    "PUSH": "Push"
-  },
-  "channelCosts": "may cost you",
-  "channelUnavailable": "non ancora disponibile",
-  "bucket": {
-    "REMINDERS": "Promemoria prenotazioni",
-    "REVIEWS": "Richieste di recensione",
-    "PROMOTIONAL": "Offerte e promozioni",
-    "NEWSLETTER": "Newsletter"
-  },
-  "notificationsPending": "These switches are not saved yet — nothing sends notifications so far. Confirmations, refunds and sign-in alerts are never switchable: they are a record of something that happened to your money or your account.",
   "legalBlurb": "The documents that govern your use of Ntizo.",
   "legal": {
     "terms": "Terms of Service",
@@ -153,10 +136,8 @@
   "datePickerMonth": "Mese",
   "datePickerYear": "Anno",
   "datePickerYearSearch": "Cerca anno",
-  "navLanguage": "Lingua",
   "appearance": "Aspetto",
   "appearanceBlurb": "Modalità colore usata mentre navighi su Ntizo.",
-  "appearanceLabel": "Tema",
   "theme": {
     "light": "Chiaro",
     "dark": "Scuro",

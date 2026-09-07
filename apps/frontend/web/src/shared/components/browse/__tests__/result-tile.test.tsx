@@ -13,7 +13,8 @@ describe("TILE_TITLE_LINK_CLASS", () => {
     // because its `<article>` lit a border on `focus-within`. The borderless
     // tile has no border to light, so the ring is drawn on the `::after` that
     // already covers the whole tile — and in headline navy, since the ring
-    // token is the blue this page spends on the header's search button.
+    // token is the site's blue, which the header and the search bar's button
+    // wear and nothing in the results does.
     expect(TILE_TITLE_LINK_CLASS).toContain("focus-visible:after:ring-2");
     expect(TILE_TITLE_LINK_CLASS).toContain(
       "focus-visible:after:ring-[var(--color-headline)]",
@@ -23,17 +24,38 @@ describe("TILE_TITLE_LINK_CLASS", () => {
 
 describe("TileMedia", () => {
   it("shows the photograph when there is one", () => {
-    render(<TileMedia src="https://cdn/photo.jpg" name="Estúdio Mavalane" />);
+    render(<TileMedia src="https://cdn/photo.jpg" />);
     expect(screen.getByRole("presentation")).toHaveAttribute("src", "https://cdn/photo.jpg");
   });
 
-  it("falls back to the brand tile, not to an empty box", () => {
-    render(<TileMedia src={null} name="Estúdio Mavalane" />);
-    expect(screen.getByTestId("brand-tile")).toBeInTheDocument();
+  it("falls back to the site's placeholder, not to an empty box", () => {
+    // The same pale-blue mark the landing cards show, not a listing-only
+    // navy tile: a reader who meets a missing photo on the home page and on
+    // this list should meet the same thing twice.
+    render(<TileMedia src={null} />);
+    expect(screen.getByTestId("media-fallback")).toBeInTheDocument();
+  });
+
+  it("gives the placeholder the box the photograph would have filled", () => {
+    // `MediaFallback` sets no size of its own by design, so it has to wear
+    // the `<img>`'s own sizing class or it collapses to the mark's height.
+    render(<TileMedia src={null} />);
+    expect(screen.getByTestId("media-fallback").className).toContain("h-full");
+    expect(screen.getByTestId("media-fallback").className).toContain("w-full");
+  });
+
+  it("stands the picture on the site's own muted ground, not on navy", () => {
+    // The container's colour is what shows while a photograph is still in
+    // flight and behind the placeholder's own pale blue, so navy was a dark
+    // box flashing in front of a pale mark on every slow or 404ing photo.
+    // `--color-muted` is the ground every other `BrandImage` on the site
+    // paints behind a picture.
+    const { container } = render(<TileMedia src={null} />);
+    expect(container.firstElementChild!.className).toContain("bg-[var(--color-muted)]");
   });
 
   it("is square on a phone and four-by-three from sm, because the tile changes shape", () => {
-    const { container } = render(<TileMedia src={null} name="Estúdio Mavalane" />);
+    const { container } = render(<TileMedia src={null} />);
     const box = container.firstElementChild!;
     expect(box.className).toContain("aspect-square");
     expect(box.className).toContain("sm:aspect-[4/3]");

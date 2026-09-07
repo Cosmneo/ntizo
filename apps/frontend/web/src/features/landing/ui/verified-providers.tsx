@@ -3,7 +3,6 @@ import { useTranslation } from "react-i18next";
 import { Check } from "lucide-react";
 import { Skeleton } from "@ntizo/frontend-ui";
 import { BrandImage } from "@/shared/components/brand-image";
-import { BrandTile } from "@/shared/components/browse/brand-tile";
 import { RatingMark, TILE_TITLE_LINK_CLASS } from "@/shared/components/browse/result-tile";
 import { formatRating } from "@/shared/domain/rating";
 import { formatHeadlinePrice } from "@/features/directory/services/domain/service-card";
@@ -67,11 +66,10 @@ export function VerifiedProviders() {
                         src={photo}
                         alt=""
                         className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.035]"
-                        fallback={<BrandTile name={p.name} />}
                       />
                       {/* The badge draws whenever there is a logo, independent
-                          of whether a photograph sits behind it. With no
-                          photo the background is the brand tile's initials,
+                          of whether a photograph sits behind it. With no photo
+                          the background is `BrandImage`'s own `MediaFallback`,
                           not the logo, so the two can never repeat the same
                           picture — unlike the background itself, this has
                           nothing to fall back to when it is absent. */}

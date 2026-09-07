@@ -58,10 +58,11 @@ describe("Hero", () => {
   });
 
   // The collage stands in for photographs nobody has uploaded. A grey box
-  // reads as a page that failed to load; the brand tile reads as a designed
-  // state, and it is what every other empty surface on the platform draws.
+  // reads as a page that failed to load; the media fallback reads as a
+  // designed state, and it is what every other empty surface on the
+  // platform draws.
   it("draws the brand rather than a grey box while there are no photographs", async () => {
     await renderHero();
-    expect(screen.getAllByTestId("brand-tile")).toHaveLength(3);
+    expect(screen.getAllByTestId("media-fallback")).toHaveLength(3);
   });
 });

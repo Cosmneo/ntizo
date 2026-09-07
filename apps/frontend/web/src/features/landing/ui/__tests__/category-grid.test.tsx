@@ -74,7 +74,7 @@ describe("CategoryGrid", () => {
     ]);
     expect(await screen.findByTestId("category-icon-Wrench")).toBeInTheDocument();
     expect(screen.getByTestId("category-icon-Scissors")).toBeInTheDocument();
-    expect(screen.queryByTestId("brand-tile")).toBeNull();
+    expect(screen.queryByTestId("media-fallback")).toBeNull();
   });
 
   it("falls back to one shape for a category whose icon nobody set", async () => {

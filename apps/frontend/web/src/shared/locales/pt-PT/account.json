@@ -72,8 +72,6 @@
     "other": "Outro",
     "undisclosed": "Prefiro não dizer"
   },
-  "statBookings": "Reservas concluídas",
-  "statRating": "Avaliação média dada",
   "statMemberSince": "Cliente desde",
   "becomeProviderTitle": "Torne-se prestador na Ntizo",
   "becomeProviderBody": "Ofereça os seus serviços e comece a ganhar dinheiro na plataforma.",
@@ -89,24 +87,9 @@
   "passwordBlurb": "Enviamos-lhe um link por e-mail para definir uma nova.",
   "changePassword": "Mudar palavra-passe",
   "verifyPhone": "Verificar",
+  "addPhone": "Acrescentar número",
   "preferencesBlurb": "Como a plataforma fala consigo.",
   "languageBlurb": "Usado na interface e nos e-mails que lhe enviamos.",
-  "notificationsBlurb": "Escolha o que lhe chega, e por onde.",
-  "notifyWhat": "O quê",
-  "channel": {
-    "EMAIL": "E-mail",
-    "SMS": "SMS",
-    "PUSH": "Push"
-  },
-  "channelCosts": "pode ter custo",
-  "channelUnavailable": "ainda não disponível",
-  "bucket": {
-    "REMINDERS": "Lembretes de reservas",
-    "REVIEWS": "Pedidos de avaliação",
-    "PROMOTIONAL": "Ofertas e promoções",
-    "NEWSLETTER": "Newsletter"
-  },
-  "notificationsPending": "Estes interruptores ainda não são guardados — nada envia notificações por agora. Confirmações, reembolsos e avisos de início de sessão nunca são desligáveis: são o registo do que aconteceu ao seu dinheiro ou à sua conta.",
   "legalBlurb": "Os documentos que regem o seu uso da Ntizo.",
   "legal": {
     "terms": "Termos de Serviço",
@@ -153,10 +136,8 @@
   "datePickerMonth": "Mês",
   "datePickerYear": "Ano",
   "datePickerYearSearch": "Procurar ano",
-  "navLanguage": "Idioma",
   "appearance": "Aspeto",
   "appearanceBlurb": "Modo de cor usado enquanto navega na Ntizo.",
-  "appearanceLabel": "Tema",
   "theme": {
     "light": "Claro",
     "dark": "Escuro",

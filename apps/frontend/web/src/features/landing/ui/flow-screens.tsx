@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { Check, Search, Star } from "lucide-react";
-import { BrandTile } from "@/shared/components/browse/brand-tile";
+import { MediaFallback } from "@/shared/components/brand-image";
 
 /**
  * The three moments, drawn rather than screenshotted.
@@ -23,7 +23,7 @@ function Row({ name, provider, price, minutes }: {
   return (
     <div className="grid grid-cols-[56px_minmax(0,1fr)] items-center gap-3 border-t border-[var(--color-border)] py-2.5 first:border-t-0 first:pt-0.5">
       <span className="aspect-square overflow-hidden rounded-lg bg-[var(--color-navy-surface)]">
-        <BrandTile name={provider} />
+        <MediaFallback className="h-full w-full" />
       </span>
       <span className="min-w-0">
         <b className="block truncate text-[12.5px] font-semibold">{name}</b>
@@ -83,7 +83,7 @@ export function BookScreen() {
     <div className="grid content-start gap-3 p-3.5 text-[12.5px]">
       <div className="grid grid-cols-[52px_minmax(0,1fr)] items-center gap-3">
         <span className="aspect-square overflow-hidden rounded-lg bg-[var(--color-navy-surface)]">
-          <BrandTile name="Estúdio Mavalane" />
+          <MediaFallback className="h-full w-full" />
         </span>
         <span>
           <b className="block text-[13px] font-bold">Corte de cabelo</b>
@@ -157,7 +157,7 @@ export function DoneScreen() {
       </div>
       <div className="grid grid-cols-[56px_minmax(0,1fr)] items-center gap-3 border-t border-[var(--color-border)] pt-2.5">
         <span className="aspect-square overflow-hidden rounded-lg bg-[var(--color-navy-surface)]">
-          <BrandTile name="Estúdio Mavalane" />
+          <MediaFallback className="h-full w-full" />
         </span>
         <span>
           <b className="block text-[12.5px] font-semibold">Corte de cabelo</b>

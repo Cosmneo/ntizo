@@ -433,3 +433,35 @@ whether anything is on at all.
 | Availability chips ("Hoje", "Vaga às 15:30") | an availability read model a list can read |
 | Response time, "contratado n vezes" | the aggregates exist |
 | `verified` filter on `/services`, subtitle counts | a decision to add them |
+
+## Revision 2026-09-07 — the lists use the site's own parts
+
+Reviewed on the dev environment against the landing page and a provider's
+page, the user found the header search pill and the icon category strip
+inconsistent with every other page. This revision overrides "The header",
+"The category strip" and the empty-photo tile in "The service tile"; the
+approved drawing is the artifact "Listagens no estilo do site".
+
+- **Header.** Both lists render `SiteHeader` exactly as every other page
+  does: the centred Explorar / Serviços / Prestadores pill with the current
+  page filled blue, the language switch and the sign-in button or avatar. The
+  `search` variant is removed.
+- **Search.** The landing hero's `ServiceSearch` bar, unchanged in look, sits
+  under the header inside the page shell (max 760px, centred). It gains a
+  destination: `/services` searches services, `/providers` searches
+  businesses by name, each with its own placeholder. The city stays in the
+  "Cidade" filter pill. Submitting from a list keeps the category, the
+  filters, the city and the sort, and returns to the first page — the same
+  rule every other control on these pages follows, changing one part of the
+  URL and leaving the rest alone. Only the home page's hero starts a fresh
+  search, because there is no list under it whose narrowing it could keep.
+- **Categories.** One row of chips in the filter pills' own style: 36px
+  tall, hairline border, small icon and label, "Todas" first, the chosen one
+  filled navy. The row keeps the strip's scroller, edge fades and round
+  arrows, and carries no band or hairline of its own.
+- **Missing photo.** The site's existing placeholder — the pale-blue tile
+  with the brand mark that the landing cards use (`MediaFallback`) — replaces
+  the navy tie-pattern tile with initials. `BrandTile` and the tie-pattern
+  asset are deleted.
+
+Everything from the heading down is unchanged.

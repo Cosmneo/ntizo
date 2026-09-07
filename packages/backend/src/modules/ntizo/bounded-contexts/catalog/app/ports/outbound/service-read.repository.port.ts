@@ -149,6 +149,24 @@ export interface ServiceDetailRow extends Omit<ServicePublicRow, "providerReview
 }
 
 export interface ListPublishedServicesFilter {
+  /**
+   * Narrows to these specific services — a filter like any other on this
+   * interface, and it composes with the rest rather than replacing them.
+   *
+   * Added for the read side of `favourite`, which holds a page of saved
+   * `service.id`s and has to turn them into cards. `getPublishedById` answers
+   * that one id at a time, and a page of twenty-four favourites must not be
+   * twenty-four queries. The published-AND-active gate still applies, which is
+   * the point: a favourite pointing at something unpublished, deleted, or
+   * belonging to a suspended provider resolves to nothing and the entry is
+   * dropped on read — the same rule the browse already applies to its own
+   * rows, inherited rather than restated somewhere else.
+   *
+   * An **empty array matches nothing**, never everything: `inArray` with no
+   * values emits `false`. "These zero services" is a real answer, and a caller
+   * that meant "no filter" omits the field.
+   */
+  ids?: string[] | undefined;
   categoryCode?: string | undefined;
   /** Scopes the page to one business's own services — a provider's public page, not the platform-wide browse. */
   providerId?: string | undefined;

@@ -100,8 +100,9 @@ export function SortDropdown<Sort extends string>({
             on the white heading row and inside the phone's navy capsule, and
             a token painted here would be navy ink on navy ground in the
             second. It also turns off `ghost`'s own blue, which would have put
-            the page's one blue somewhere other than the header's search
-            button. The muted prefix is `opacity`, for the same reason — a
+            the site's blue inside the results, where it never appears — it is
+            the header's and the search bar's button's. The muted prefix is
+            `opacity`, for the same reason — a
             grey token legible on white is not legible on navy. */}
         <Button
           type="button"
@@ -128,9 +129,10 @@ export function SortDropdown<Sort extends string>({
               role="menuitemradio"
               aria-checked={isActive}
               // Headline navy on the chosen row rather than the brand blue:
-              // blue appears once per browse page, on the header's search
-              // button, and navy is what everything else that is "on" wears —
-              // the filled pill, the current page number, the tick box.
+              // blue belongs to the header's nav pill and sign-in and to the
+              // search bar's button, never to anything in the results, and
+              // navy is what everything else that is "on" wears — the filled
+              // pill, the current page number, the tick box.
               className={cn(
                 "justify-between gap-6",
                 isActive ? "font-semibold text-[var(--color-headline)]" : "",

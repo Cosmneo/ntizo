@@ -3,6 +3,22 @@ import type { ProviderPublicDetailDTO } from "@ntizo/shared/read-models";
 
 /** How the directory narrows and orders the list. Every field but the paging ones is optional. */
 export interface ListActiveFilters {
+  /**
+   * Narrows to these specific businesses — a filter like any other here, and
+   * it composes with the rest rather than replacing them.
+   *
+   * Added for the read side of `favourite`, which holds a page of saved
+   * `provider.id`s. It is the only way to reach a business by id at all: the
+   * other single-row method on this port is `findActiveBySlug`, and a
+   * favourite stores an id, never a slug. The active-only rule still applies,
+   * which is the point — a favourite pointing at a business that is gone or no
+   * longer listed resolves to nothing and the entry is dropped on read, by the
+   * directory's own definition of visible rather than a second copy of it.
+   *
+   * An **empty array matches nothing**, never everything: `inArray` with no
+   * values emits `false`.
+   */
+  ids?: string[] | undefined;
   limit: number;
   offset: number;
   /** Which language the category names come back in. */

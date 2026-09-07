@@ -77,10 +77,10 @@ export const LANGUAGES = LOCALES;
  * **sort is kept**, because an order is not a narrowing and clearing filters
  * should not also reorder what is left.
  *
- * **The term is kept too.** It lives in the header's search pill now, which
- * has its own way off; a "Clear all" under a bar of empty pills that also
- * wiped what the reader typed would be taking something this control never
- * showed as on.
+ * **The term is kept too.** It lives in the search bar under the header,
+ * which shows it and has its own way of emptying it; a "Clear all" under a
+ * bar of empty pills that also wiped what the reader typed would be taking
+ * something this control never showed as on.
  *
  * `offset: undefined` because page 4 of a narrower result set is usually past
  * the end of it — a reader who cleared their filters would land on an empty
@@ -148,7 +148,7 @@ export function chooseServiceSort(
  * How many narrowings this bar is showing as on.
  *
  * `q` is not one of them, for the same reason `clearedBrowseSearch` keeps it:
- * the typed term belongs to the header's search pill, and a count that
+ * the typed term belongs to the search bar under the header, and a count that
  * included it would put a number on a control that offers no way to take it
  * off. See R18.
  */

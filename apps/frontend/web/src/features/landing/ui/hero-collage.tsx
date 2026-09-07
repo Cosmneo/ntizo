@@ -1,20 +1,13 @@
-import { BrandTile } from "@/shared/components/browse/brand-tile";
+import { MediaFallback } from "@/shared/components/brand-image";
 
 /**
  * Three photographs of the work, at two scales.
  *
- * Ntizo owns none yet, so all three draw the brand tile — the same designed
- * empty state every listing uses. When the company has photographs, they
- * replace `SLOTS` and nothing else here changes.
- *
- * The names are what the tile prints when it has no picture, so the empty
- * state still says which trades this marketplace is for.
+ * Ntizo owns none yet, so all three draw the same designed empty state every
+ * listing uses. When the company has photographs, they replace `SLOTS` and
+ * nothing else here changes.
  */
-const SLOTS = [
-  { name: "Pintura", className: "row-span-2" },
-  { name: "Beleza", className: "" },
-  { name: "Carpintaria", className: "" },
-] as const;
+const SLOTS = ["row-span-2", "", ""] as const;
 
 export function HeroCollage() {
   return (
@@ -22,12 +15,12 @@ export function HeroCollage() {
       aria-hidden="true"
       className="grid h-[360px] grid-cols-[1.15fr_1fr] grid-rows-2 gap-3 lg:h-[520px]"
     >
-      {SLOTS.map((slot) => (
+      {SLOTS.map((className, i) => (
         <div
-          key={slot.name}
-          className={`relative overflow-hidden rounded-[20px] bg-[var(--color-navy-surface)] ${slot.className}`}
+          key={i}
+          className={`relative overflow-hidden rounded-[20px] bg-[var(--color-navy-surface)] ${className}`}
         >
-          <BrandTile name={slot.name} />
+          <MediaFallback className="h-full w-full" />
         </div>
       ))}
     </div>

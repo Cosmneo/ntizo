@@ -1,17 +1,27 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { MapPin, Plus, Star, Trash2 } from "lucide-react";
+import { MapPin, Plus } from "lucide-react";
 import type { AddressDTO } from "@ntizo/shared";
-import { Badge, Button, countryName } from "@ntizo/frontend-ui";
+import { Button, countryName } from "@ntizo/frontend-ui";
 import { AddressForm } from "@/features/account/ui/address-form";
 import {
   useAddressMutations,
   useMyAddresses,
 } from "@/features/account/viewmodel/use-addresses";
 import { EmptyCard } from "@/shared/components/empty-card";
+import { textAction } from "@/shared/ui/text-action";
 
-function AddressCard({
+/**
+ * One address, on a hairline.
+ *
+ * A row rather than a card: a disc for the pin (a hairline ring, not a tint),
+ * the label with "default" as a word beside it, the address on one line, and
+ * the actions as text at the row's end — under it on a phone. It was a
+ * bordered card with an outlined button and a red link per address, which is
+ * a form's worth of chrome for a line of text.
+ */
+function AddressRow({
   address,
   onEdit,
   onDelete,
@@ -36,56 +46,47 @@ function AddressCard({
   ].filter(Boolean);
 
   return (
-    <div className="rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-background)] p-5">
-      <div className="flex flex-wrap items-start gap-3">
-        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[var(--radius-card-sm)] bg-[var(--color-muted)]">
-          <MapPin className="h-5 w-5 text-[var(--color-primary)]" />
-        </span>
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="type-h3 font-semibold">{address.label}</span>
-            {address.isDefault ? (
-              <Badge tone="info">{t("addrDefault")}</Badge>
-            ) : null}
-          </div>
-          <p className="type-body mt-1 text-[var(--color-muted-foreground)]">
-            {lines.join(" · ")}
-          </p>
-          {address.directions ? (
-            <p className="type-caption mt-1.5 text-[var(--color-muted-foreground)]">
-              {address.directions}
-            </p>
-          ) : null}
+    <li className="grid grid-cols-[36px_minmax(0,1fr)] gap-x-3.5 gap-y-3 border-t border-[var(--color-border)] py-4 first:border-t-0 sm:grid-cols-[36px_minmax(0,1fr)_auto] sm:items-start">
+      <span
+        aria-hidden="true"
+        className="grid h-9 w-9 place-items-center rounded-full border border-[var(--color-border)] text-[var(--color-headline)]"
+      >
+        <MapPin className="h-[17px] w-[17px]" strokeWidth={1.7} />
+      </span>
+
+      <div className="min-w-0 pt-px">
+        <div className="flex flex-wrap items-baseline gap-x-2">
+          <span className="type-body font-semibold">{address.label}</span>
+          {address.isDefault && (
+            <span className="type-caption text-[var(--color-muted-foreground)]">{t("addrDefault")}</span>
+          )}
         </div>
+        <p className="type-body mt-0.5 text-[var(--color-muted-foreground)]">{lines.join(" · ")}</p>
+        {address.directions && (
+          <p className="type-caption mt-1 text-[var(--color-muted-foreground)]">{address.directions}</p>
+        )}
       </div>
 
-      <div className="mt-4 flex flex-wrap gap-2">
-        <Button variant="outline" size="sm" onClick={onEdit} disabled={busy}>
+      {/* Second column on a phone, its own column from `sm`. */}
+      <div className="col-start-2 flex flex-wrap items-center gap-x-5 gap-y-1 sm:col-start-3 sm:pt-0.5">
+        <button type="button" onClick={onEdit} disabled={busy} className={textAction()}>
           {t("edit")}
-        </Button>
-        {!address.isDefault ? (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onMakeDefault}
-            disabled={busy}
-          >
-            <Star className="h-4 w-4" />
+        </button>
+        {!address.isDefault && (
+          <button type="button" onClick={onMakeDefault} disabled={busy} className={textAction()}>
             {t("addrMakeDefault")}
-          </Button>
-        ) : null}
-        <Button
-          variant="ghost"
-          size="sm"
+          </button>
+        )}
+        <button
+          type="button"
           onClick={onDelete}
           disabled={busy}
-          className="ml-auto text-[var(--color-destructive)]"
+          className={textAction({ destructive: true })}
         >
-          <Trash2 className="h-4 w-4" />
           {t("delete")}
-        </Button>
+        </button>
       </div>
-    </div>
+    </li>
   );
 }
 
@@ -99,23 +100,22 @@ export function AddressesPage() {
 
   return (
     <>
-      <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="type-h1">{t("navAddresses")}</h1>
-          <p className="type-body mt-1 text-[var(--color-muted-foreground)]">
-            {t("addressesBlurb")}
-          </p>
+          <h1 className="type-h1 text-[var(--color-headline)]">{t("navAddresses")}</h1>
+          <p className="type-body mt-1 text-[var(--color-muted-foreground)]">{t("addressesBlurb")}</p>
         </div>
-        {editing === null ? (
+        {/* The page's one filled button: adding is what the page is for. */}
+        {editing === null && (
           <Button onClick={() => setEditing("new")}>
             <Plus className="h-4 w-4" />
             {t("addrAdd")}
           </Button>
-        ) : null}
+        )}
       </div>
 
-      {editing !== null ? (
-        <div className="mb-4">
+      {editing !== null && (
+        <div className="mb-6">
           <AddressForm
             ariaLabel={editing === "new" ? t("addrAdd") : t("addrEditTitle")}
             initial={editing === "new" ? undefined : editing}
@@ -129,19 +129,14 @@ export function AddressesPage() {
             }}
           />
         </div>
-      ) : null}
+      )}
 
       {isPending ? null : addresses.length === 0 && editing === null ? (
-        <EmptyCard
-          framed
-          badge={MapPin}
-          title={t("addressesEmptyTitle")}
-          body={t("addressesEmptyBody")}
-        />
+        <EmptyCard badge={MapPin} title={t("addressesEmptyTitle")} body={t("addressesEmptyBody")} />
       ) : (
-        <div className="grid gap-4">
+        <ul className="grid list-none p-0">
           {addresses.map((address) => (
-            <AddressCard
+            <AddressRow
               key={address.id}
               address={address}
               busy={busy}
@@ -152,13 +147,11 @@ export function AddressesPage() {
                   .then(() => toast.success(t("saved")))
               }
               onDelete={() =>
-                void remove
-                  .mutateAsync(address.id)
-                  .then(() => toast.success(t("addrDeleted")))
+                void remove.mutateAsync(address.id).then(() => toast.success(t("addrDeleted")))
               }
             />
           ))}
-        </div>
+        </ul>
       )}
     </>
   );
