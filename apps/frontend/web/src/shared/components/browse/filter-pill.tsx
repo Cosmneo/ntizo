@@ -38,7 +38,18 @@ export function FilterPill({
       if (ref.current && !ref.current.contains(e.target as Node)) ref.current.removeAttribute("open");
     };
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") ref.current?.removeAttribute("open");
+      if (e.key !== "Escape") return;
+      // Only a pill that is actually open. This listener is on the document,
+      // so every pill on the page hears every Escape, and focusing from a
+      // closed one would take focus off whatever the reader was on.
+      const pill = ref.current;
+      if (!pill?.hasAttribute("open")) return;
+      pill.removeAttribute("open");
+      // Focus goes back to the summary that opened it: closing the panel
+      // leaves the reader standing on an element that no longer renders,
+      // which drops focus to `<body>` and sends the next Tab back to the top
+      // of the document.
+      pill.querySelector<HTMLElement>("summary")?.focus();
     };
     document.addEventListener("mousedown", onDown);
     document.addEventListener("keydown", onKey);
@@ -53,6 +64,12 @@ export function FilterPill({
     <div className="relative inline-flex">
       <details ref={ref}>
         <summary
+          /* Once applied, the pill draws the chosen option in place of the
+             group's own name — "Fixed price", with "How you pay" gone — and a
+             reader who cannot see the six pills beside it has no way to tell
+             which group that answers. The label says both; the visible text
+             stays the one word the design wants. */
+          {...(on ? { "aria-label": `${label}: ${active}` } : {})}
           className={[
             // `font-medium` is in the base, not in the branches: an applied
             // pill that turned semibold grew, and the pill after it moved.

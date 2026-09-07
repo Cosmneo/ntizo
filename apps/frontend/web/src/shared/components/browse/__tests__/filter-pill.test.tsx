@@ -36,7 +36,7 @@ describe("FilterPill", () => {
     expect(screen.getByRole("link", { name: "×" })).toBeInTheDocument();
   });
 
-  it("closes on Escape", async () => {
+  it("closes on Escape, and hands focus back to the summary that opened it", async () => {
     const { container } = render(
       <FilterPill label="Price">
         <a href="#">x</a>
@@ -46,6 +46,32 @@ describe("FilterPill", () => {
     details.setAttribute("open", "");
     await userEvent.keyboard("{Escape}");
     expect(details).not.toHaveAttribute("open");
+    // Without this the reader is left standing on a panel that no longer
+    // renders, focus drops to `<body>`, and the next Tab starts again at the
+    // top of the document.
+    expect(container.querySelector("summary")).toHaveFocus();
+  });
+
+  it("keeps the group's name audible once the pill is filled", async () => {
+    // Applied, the pill shows "Fixed price" and drops "How you pay", so the
+    // summary alone no longer says what it is an answer to.
+    render(
+      <FilterPill label="How you pay" active="Fixed price">
+        <a href="#">x</a>
+      </FilterPill>,
+    );
+    expect(screen.getByText("Fixed price")).toHaveAccessibleName(
+      "How you pay: Fixed price",
+    );
+
+    // Unfilled it is already its own name, and a label repeating it would be
+    // one more thing to keep in step with the visible text.
+    const { container } = render(
+      <FilterPill label="How you pay">
+        <a href="#">x</a>
+      </FilterPill>,
+    );
+    expect(container.querySelector("summary")).not.toHaveAttribute("aria-label");
   });
 
   it("moves only the colours when a filter is applied, never the weight", () => {
