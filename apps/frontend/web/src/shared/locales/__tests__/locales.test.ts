@@ -23,6 +23,14 @@ import itITBookings from "../it-IT/bookings.json";
 import nlNLBookings from "../nl-NL/bookings.json";
 import ptMZBookings from "../pt-MZ/bookings.json";
 import ptPTBookings from "../pt-PT/bookings.json";
+import deDEQuotes from "../de-DE/quotes.json";
+import enUSQuotes from "../en-US/quotes.json";
+import esESQuotes from "../es-ES/quotes.json";
+import frFRQuotes from "../fr-FR/quotes.json";
+import itITQuotes from "../it-IT/quotes.json";
+import nlNLQuotes from "../nl-NL/quotes.json";
+import ptMZQuotes from "../pt-MZ/quotes.json";
+import ptPTQuotes from "../pt-PT/quotes.json";
 import deDECompany from "../de-DE/company.json";
 import enUSCompany from "../en-US/company.json";
 import esESCompany from "../es-ES/company.json";
@@ -85,6 +93,10 @@ const NAMESPACES: Record<string, Record<string, unknown>> = {
   bookings: {
     "de-DE": deDEBookings, "en-US": enUSBookings, "es-ES": esESBookings, "fr-FR": frFRBookings,
     "it-IT": itITBookings, "nl-NL": nlNLBookings, "pt-MZ": ptMZBookings, "pt-PT": ptPTBookings,
+  },
+  quotes: {
+    "de-DE": deDEQuotes, "en-US": enUSQuotes, "es-ES": esESQuotes, "fr-FR": frFRQuotes,
+    "it-IT": itITQuotes, "nl-NL": nlNLQuotes, "pt-MZ": ptMZQuotes, "pt-PT": ptPTQuotes,
   },
   company: {
     "de-DE": deDECompany, "en-US": enUSCompany, "es-ES": esESCompany, "fr-FR": frFRCompany,
