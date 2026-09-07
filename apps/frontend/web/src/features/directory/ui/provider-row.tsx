@@ -133,9 +133,15 @@ export function ProviderRow({
              mask says the row ends mid-chip on purpose, the same way the
              category strip and the quick chips already do. */
           <ul className="mt-2 flex list-none flex-nowrap gap-1.5 overflow-hidden p-0 [mask-image:linear-gradient(90deg,#000_0,#000_calc(100%-56px),transparent_100%)] md:flex-wrap md:overflow-visible md:[mask-image:none]">
-            {provider.services.map((s) => (
+            {/* Keyed on the index, not on name-and-price: two services with
+                the same name at the same price are a real shape (the backend
+                dedupes on service id, not on name) and would collide. The
+                list is at most three and is never reordered, filtered or
+                added to on the client, which is the condition an index key
+                asks for. */}
+            {provider.services.map((s, index) => (
               <ServiceChip
-                key={`${s.name}-${String(s.amountMinor)}`}
+                key={index}
                 name={s.name}
                 price={formatHeadlinePrice(s.amountMinor, s.currency, locale)}
               />
