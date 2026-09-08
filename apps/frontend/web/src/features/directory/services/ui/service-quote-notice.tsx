@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import { buttonVariants } from "@ntizo/frontend-ui";
 import { MessageProviderButton } from "@/features/directory/ui/provider-rail";
+import { RailCard } from "@/features/directory/ui/rail-card";
 
 /**
  * What a service priced by quote shows where a price panel would be.
@@ -32,7 +33,7 @@ export function ServiceQuoteNotice({
   const { t } = useTranslation("quotes");
 
   return (
-    <div className="grid gap-3 rounded-[var(--radius-card)] border border-[var(--color-border)] p-5">
+    <RailCard className="grid gap-3">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <p className="type-h3">{t("entry.panelTitle")}</p>
         {quoteForm && (
@@ -58,6 +59,6 @@ export function ServiceQuoteNotice({
           the mockup asks for here: messaging stops being a button the moment
           the page has a real primary action. */}
       <MessageProviderButton providerId={providerId} compact />
-    </div>
+    </RailCard>
   );
 }
