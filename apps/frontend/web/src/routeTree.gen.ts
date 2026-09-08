@@ -78,6 +78,8 @@ import { Route as ProviderSlugWalletRouteImport } from './routes/provider/$slug/
 import { Route as CustomerQuotesQuoteIdAcceptRouteImport } from './routes/_customer/quotes.$quoteId.accept'
 import { Route as ProviderSlugBookingsIndexRouteImport } from './routes/provider/$slug/bookings.index'
 import { Route as ProviderSlugBookingsBookingIdRouteImport } from './routes/provider/$slug/bookings.$bookingId'
+import { Route as ProviderSlugQuotesIndexRouteImport } from './routes/provider/$slug/quotes.index'
+import { Route as ProviderSlugQuotesQuoteIdRouteImport } from './routes/provider/$slug/quotes.$quoteId'
 import { Route as ProviderSlugServicesIndexRouteImport } from './routes/provider/$slug/services.index'
 import { Route as ProviderSlugServicesServiceIdRouteImport } from './routes/provider/$slug/services.$serviceId'
 
@@ -435,6 +437,17 @@ const ProviderSlugBookingsBookingIdRoute =
     path: '/bookings/$bookingId',
     getParentRoute: () => ProviderSlugRouteRoute,
   } as any)
+const ProviderSlugQuotesIndexRoute = ProviderSlugQuotesIndexRouteImport.update({
+  id: '/quotes/',
+  path: '/quotes/',
+  getParentRoute: () => ProviderSlugRouteRoute,
+} as any)
+const ProviderSlugQuotesQuoteIdRoute =
+  ProviderSlugQuotesQuoteIdRouteImport.update({
+    id: '/quotes/$quoteId',
+    path: '/quotes/$quoteId',
+    getParentRoute: () => ProviderSlugRouteRoute,
+  } as any)
 const ProviderSlugServicesIndexRoute =
   ProviderSlugServicesIndexRouteImport.update({
     id: '/services/',
@@ -515,8 +528,10 @@ export interface FileRoutesByFullPath {
   '/admin/support/': typeof AdminSupportIndexRoute
   '/quotes/$quoteId/accept': typeof CustomerQuotesQuoteIdAcceptRoute
   '/provider/$slug/bookings/$bookingId': typeof ProviderSlugBookingsBookingIdRoute
+  '/provider/$slug/quotes/$quoteId': typeof ProviderSlugQuotesQuoteIdRoute
   '/provider/$slug/services/$serviceId': typeof ProviderSlugServicesServiceIdRoute
   '/provider/$slug/bookings/': typeof ProviderSlugBookingsIndexRoute
+  '/provider/$slug/quotes/': typeof ProviderSlugQuotesIndexRoute
   '/provider/$slug/services/': typeof ProviderSlugServicesIndexRoute
 }
 export interface FileRoutesByTo {
@@ -583,8 +598,10 @@ export interface FileRoutesByTo {
   '/admin/support': typeof AdminSupportIndexRoute
   '/quotes/$quoteId/accept': typeof CustomerQuotesQuoteIdAcceptRoute
   '/provider/$slug/bookings/$bookingId': typeof ProviderSlugBookingsBookingIdRoute
+  '/provider/$slug/quotes/$quoteId': typeof ProviderSlugQuotesQuoteIdRoute
   '/provider/$slug/services/$serviceId': typeof ProviderSlugServicesServiceIdRoute
   '/provider/$slug/bookings': typeof ProviderSlugBookingsIndexRoute
+  '/provider/$slug/quotes': typeof ProviderSlugQuotesIndexRoute
   '/provider/$slug/services': typeof ProviderSlugServicesIndexRoute
 }
 export interface FileRoutesById {
@@ -657,8 +674,10 @@ export interface FileRoutesById {
   '/admin/support/': typeof AdminSupportIndexRoute
   '/_customer/quotes/$quoteId/accept': typeof CustomerQuotesQuoteIdAcceptRoute
   '/provider/$slug/bookings/$bookingId': typeof ProviderSlugBookingsBookingIdRoute
+  '/provider/$slug/quotes/$quoteId': typeof ProviderSlugQuotesQuoteIdRoute
   '/provider/$slug/services/$serviceId': typeof ProviderSlugServicesServiceIdRoute
   '/provider/$slug/bookings/': typeof ProviderSlugBookingsIndexRoute
+  '/provider/$slug/quotes/': typeof ProviderSlugQuotesIndexRoute
   '/provider/$slug/services/': typeof ProviderSlugServicesIndexRoute
 }
 export interface FileRouteTypes {
@@ -730,8 +749,10 @@ export interface FileRouteTypes {
     | '/admin/support/'
     | '/quotes/$quoteId/accept'
     | '/provider/$slug/bookings/$bookingId'
+    | '/provider/$slug/quotes/$quoteId'
     | '/provider/$slug/services/$serviceId'
     | '/provider/$slug/bookings/'
+    | '/provider/$slug/quotes/'
     | '/provider/$slug/services/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -798,8 +819,10 @@ export interface FileRouteTypes {
     | '/admin/support'
     | '/quotes/$quoteId/accept'
     | '/provider/$slug/bookings/$bookingId'
+    | '/provider/$slug/quotes/$quoteId'
     | '/provider/$slug/services/$serviceId'
     | '/provider/$slug/bookings'
+    | '/provider/$slug/quotes'
     | '/provider/$slug/services'
   id:
     | '__root__'
@@ -871,8 +894,10 @@ export interface FileRouteTypes {
     | '/admin/support/'
     | '/_customer/quotes/$quoteId/accept'
     | '/provider/$slug/bookings/$bookingId'
+    | '/provider/$slug/quotes/$quoteId'
     | '/provider/$slug/services/$serviceId'
     | '/provider/$slug/bookings/'
+    | '/provider/$slug/quotes/'
     | '/provider/$slug/services/'
   fileRoutesById: FileRoutesById
 }
@@ -1386,6 +1411,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProviderSlugBookingsBookingIdRouteImport
       parentRoute: typeof ProviderSlugRouteRoute
     }
+    '/provider/$slug/quotes/': {
+      id: '/provider/$slug/quotes/'
+      path: '/quotes'
+      fullPath: '/provider/$slug/quotes/'
+      preLoaderRoute: typeof ProviderSlugQuotesIndexRouteImport
+      parentRoute: typeof ProviderSlugRouteRoute
+    }
+    '/provider/$slug/quotes/$quoteId': {
+      id: '/provider/$slug/quotes/$quoteId'
+      path: '/quotes/$quoteId'
+      fullPath: '/provider/$slug/quotes/$quoteId'
+      preLoaderRoute: typeof ProviderSlugQuotesQuoteIdRouteImport
+      parentRoute: typeof ProviderSlugRouteRoute
+    }
     '/provider/$slug/services/': {
       id: '/provider/$slug/services/'
       path: '/services'
@@ -1531,8 +1570,10 @@ interface ProviderSlugRouteRouteChildren {
   ProviderSlugSettingsRoute: typeof ProviderSlugSettingsRoute
   ProviderSlugWalletRoute: typeof ProviderSlugWalletRoute
   ProviderSlugBookingsBookingIdRoute: typeof ProviderSlugBookingsBookingIdRoute
+  ProviderSlugQuotesQuoteIdRoute: typeof ProviderSlugQuotesQuoteIdRoute
   ProviderSlugServicesServiceIdRoute: typeof ProviderSlugServicesServiceIdRoute
   ProviderSlugBookingsIndexRoute: typeof ProviderSlugBookingsIndexRoute
+  ProviderSlugQuotesIndexRoute: typeof ProviderSlugQuotesIndexRoute
   ProviderSlugServicesIndexRoute: typeof ProviderSlugServicesIndexRoute
 }
 
@@ -1546,8 +1587,10 @@ const ProviderSlugRouteRouteChildren: ProviderSlugRouteRouteChildren = {
   ProviderSlugSettingsRoute: ProviderSlugSettingsRoute,
   ProviderSlugWalletRoute: ProviderSlugWalletRoute,
   ProviderSlugBookingsBookingIdRoute: ProviderSlugBookingsBookingIdRoute,
+  ProviderSlugQuotesQuoteIdRoute: ProviderSlugQuotesQuoteIdRoute,
   ProviderSlugServicesServiceIdRoute: ProviderSlugServicesServiceIdRoute,
   ProviderSlugBookingsIndexRoute: ProviderSlugBookingsIndexRoute,
+  ProviderSlugQuotesIndexRoute: ProviderSlugQuotesIndexRoute,
   ProviderSlugServicesIndexRoute: ProviderSlugServicesIndexRoute,
 }
 

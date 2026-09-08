@@ -10,6 +10,11 @@ import {
 // list page and its row need `ProviderQuoteDTO`/`ProviderQuotePageDTO` the
 // same way the customer side's `use-my-quotes.ts` re-exports its own.
 export type { ProviderQuoteDTO, ProviderQuoteDetailDTO, ProviderQuotePageDTO } from "../data/quote.repository";
+// The two writes' own input shapes, for the same reason: the proposal form
+// and the detail page both need to name `ProposeQuoteInput`/
+// `DeclineQuoteInput` (a `send` function's own parameter, a form's `onSubmit`
+// prop) without reaching past this file into `data`.
+export type { DeclineQuoteInput, ProposeQuoteInput } from "../data/quote.repository";
 
 export function useProviderQuotes(input: { providerId: string; tab: ProviderQuoteTab; offset: number }) {
   return useQuery(providerQuoteQueries.page(input));
