@@ -1,6 +1,17 @@
-import { queryOptions } from "@tanstack/react-query";
+import { infiniteQueryOptions, queryOptions } from "@tanstack/react-query";
 import { sessionGraphql } from "@/shared/lib/graphql/session-graphql";
-import type { FavouriteList, FavouriteTargetType } from "../domain/types";
+// The browse pages' own field lists, imported rather than retyped. The two
+// union members below carry `serviceReadModel` and `providerPublicReadModel`
+// unchanged — the read model says so in as many words — so the favourites page
+// draws `ServiceCard` and `ProviderCard` from exactly the fields `/services`
+// and `/providers` fill them from. A hand-written selection here would be a
+// second answer to "what a card needs", and `SERVICE_FIELDS`' own comment
+// records what that costs: `providerSlug` went missing from it for one
+// release and every card in the browse linked to `/providers/undefined` with
+// the whole suite green.
+import { PROVIDER_FIELDS } from "@/features/directory/data/directory.repository";
+import { SERVICE_FIELDS } from "@/features/directory/services/data/service.repository";
+import type { FavouriteList, FavouriteListPage, FavouriteTargetType } from "../domain/types";
 
 /**
  * Field names taken from a **live introspection of a running server**
@@ -85,6 +96,45 @@ const MY_LISTS = `
     favouriteListMine(input: $input) { id name isDefault itemCount coverUrls }
   }`;
 
+/**
+ * One page of a list's own entries — the `/favourites` page's whole content.
+ *
+ * **The inline fragments are mandatory, not a style.** `items` is a GraphQL
+ * union, so a flat selection set on it is rejected at validation, before any
+ * resolver runs. Confirmed against the running dev server rather than read off
+ * the backend source: `FavouriteListByIdOutput_Items_Item` is a `UNION` whose
+ * `possibleTypes` are the two names below.
+ *
+ * **`kind` is selected inside each fragment, and leaving it out is the trap
+ * this query sets.** The document validates and the server answers happily
+ * without it — but `FavouriteEntryDTO` is a discriminated union on `kind`, so
+ * every entry would arrive with `kind: undefined` and the page's switch would
+ * match neither branch and draw an empty grid over a list that is full. The
+ * union has no fields of its own to hoist onto (only an interface would), so
+ * `kind` and `savedAt` are repeated in both fragments rather than pulled out.
+ *
+ * The input's four fields — `id`, `limit`, `cursor`, `locale` — are the
+ * server's, confirmed by introspecting `FavouriteListByIdInput`.
+ */
+const LIST_BY_ID = `
+  query FavouriteListById($input: FavouriteListByIdInput!) {
+    favouriteListById(input: $input) {
+      list { id name isDefault itemCount coverUrls }
+      items {
+        ... on FavouriteListByIdOutput_Items_Item_Service {
+          kind savedAt
+          service {${SERVICE_FIELDS}
+          }
+        }
+        ... on FavouriteListByIdOutput_Items_Item_Provider {
+          kind savedAt
+          provider { ${PROVIDER_FIELDS} }
+        }
+      }
+      nextCursor
+    }
+  }`;
+
 const QUICK_SAVE = `
   mutation FavouriteQuickSave($input: FavouriteQuickSaveInput!) {
     favouriteQuickSave(input: $input) { listIds }
@@ -162,6 +212,30 @@ export function fetchMyLists(): Promise<FavouriteList[]> {
   return sessionGraphql<{ favouriteListMine: FavouriteList[] }>(MY_LISTS, {
     input: {},
   }).then((d) => d.favouriteListMine);
+}
+
+/** How many entries one page of a list asks for — a browse page's own grid. */
+export const FAVOURITE_PAGE_SIZE = 24;
+
+/**
+ * One page of the entries in a list, with the list's own header riding along.
+ *
+ * The header is part of the same answer rather than a second query: the page
+ * draws the name and the count above the entries it drew, and two round trips
+ * is how a header comes to claim eight items over a grid showing seven.
+ *
+ * `locale` goes to the server because the entries carry category names, which
+ * are translated rows — the same argument every other listing read makes for
+ * carrying it.
+ */
+export function fetchFavouriteListPage(
+  listId: string,
+  locale: string,
+  cursor?: string,
+): Promise<FavouriteListPage> {
+  return sessionGraphql<{ favouriteListById: FavouriteListPage }>(LIST_BY_ID, {
+    input: { id: listId, limit: FAVOURITE_PAGE_SIZE, cursor, locale },
+  }).then((d) => d.favouriteListById);
 }
 
 /**
@@ -279,5 +353,28 @@ export const favouriteQueries = {
     queryOptions({
       queryKey: [FAVOURITES_QUERY_KEY, "lists", "mine"] as const,
       queryFn: () => fetchMyLists(),
+    }),
+
+  /**
+   * The entries in one list, paged by cursor.
+   *
+   * Under the `["favourites"]` prefix like everything else, so a save's
+   * whole-prefix invalidation reaches it: unsaving something from another tab
+   * must not leave it sitting on this page.
+   *
+   * `locale` is in the key. The entries carry translated category names, so
+   * one cache entry per language is correct — reusing a Portuguese page for an
+   * English reader is exactly the bug `RatingMark` was fixed for.
+   *
+   * `nextCursor` is null at the end and `hasNextPage` reads `undefined` as
+   * "no more", so the two are mapped rather than passed through — the same
+   * mapping `activityQueries.mine` documents.
+   */
+  listPage: (listId: string, locale: string) =>
+    infiniteQueryOptions({
+      queryKey: [FAVOURITES_QUERY_KEY, "listPage", listId, locale] as const,
+      queryFn: ({ pageParam }) => fetchFavouriteListPage(listId, locale, pageParam),
+      initialPageParam: undefined as string | undefined,
+      getNextPageParam: (last) => last.nextCursor ?? undefined,
     }),
 };

@@ -24,7 +24,7 @@ import { MessageComposer } from "@/features/messaging/ui/message-composer";
  * (or resumes) a thread and navigates straight to `/messages?thread=<id>`,
  * and this page has nothing more to do than read that id back out.
  *
- * No measure of its own, same reasoning `placeholder-pages.tsx`'s `Shell`
+ * No measure of its own, same reasoning the deleted `placeholder-pages.tsx` `Shell` gave
  * gives: `CustomerShell` already wraps this in `.page-shell`, so this fills
  * it rather than centring a narrower column inside it — commit `6480a31`
  * removed exactly that `mx-auto max-w-3xl` because it started the content

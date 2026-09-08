@@ -27,7 +27,7 @@ export function CustomerActivityPage() {
   const renderDescription = (entry: ActivityEntry) => describeActivity(t, entry);
 
   return (
-    // Same reasoning as `placeholder-pages.tsx`'s Shell: `CustomerShell`
+    // Same reasoning the deleted `placeholder-pages.tsx` Shell gave: `CustomerShell`
     // already provides `.page-shell`, so this fills it rather than centring a
     // narrower measure inside it and losing the header's alignment.
     <div>
