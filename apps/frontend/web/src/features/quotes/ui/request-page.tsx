@@ -39,6 +39,7 @@ const REQUEST_ERROR_COPY: Record<string, string> = {
   CONTACT_DETECTED: "request.errorContact",
   QUOTE_ALREADY_OPEN: "request.errorAlreadyOpen",
   QUOTE_SERVICE_NOT_QUOTABLE: "request.errorNotQuotable",
+  QUOTE_ADDRESS_REQUIRED: "request.errorAddressRequired",
 };
 
 /** One saved address, as a line an envelope would carry: label, street, then the bairro with its city. */
@@ -88,9 +89,15 @@ export function RequestQuotePage({ serviceId }: { serviceId: string }) {
   // The provider asks for the address when they need it to price the job; the
   // job happening at the customer's home forces the question regardless,
   // because a booking past DRAFT must carry one and asking here beats
-  // ambushing them on the acceptance page.
+  // ambushing them on the acceptance page. Mirrors the backend's own rule
+  // verbatim (`request-quote.command.ts`'s `addressIsRequired`): a provider
+  // who never configured a quote form still defaults to asking, and a
+  // "flexible" job asks the same way an "at_customer" one does.
   const form = service?.quoteForm ?? null;
-  const wantsAddress = (form?.askLocation ?? false) || service?.locationType === "at_customer";
+  const wantsAddress =
+    (form?.askLocation ?? true) ||
+    service?.locationType === "at_customer" ||
+    service?.locationType === "flexible";
   const addresses = useMyAddresses({ enabled: wantsAddress });
 
   // Declared above every early return, with every other hook — a service

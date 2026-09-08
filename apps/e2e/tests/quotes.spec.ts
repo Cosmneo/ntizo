@@ -12,29 +12,24 @@ import { seedQuoteService, QUOTE_SERVICE_NAME } from "../fixtures/quote";
  * thirteen rounds of unit tests, each proving one screen correct in
  * isolation, cannot see.
  *
- * **Finding, load-bearing for this whole file:** they do not fully join up.
- * `docs/superpowers/sdd/2026-09-07-quotes-web/task-6-brief.md` specced "the
- * entry points — the button finally goes somewhere": the browse row's and
- * the service page's own "Pedir orçamento"/"Ask for a quote" wired to
- * `/quote/$serviceId`. That task has no report in the plan's own ledger
- * (`progress.md`) and no matching commit anywhere in this branch's history —
- * every other task (1-5, 7-13) has both. `service-quote-notice.tsx` and
- * `service-row.tsx` are still exactly the pre-Task-6 shape: the service
- * page's quote panel offers only "Send message", and the browse row's own
- * "Ask for a quote" link still points at the service page itself, not at
- * the request form. The first test below proves this precisely, and stays
- * green while it is true — see that test's own doc comment for why a
- * passing assertion is the correct way to pin a real, current gap rather
- * than a flaky, always-red one.
+ * **The entry point, closed.** `docs/superpowers/sdd/2026-09-07-quotes-web/task-6-brief.md`
+ * specced "the entry points — the button finally goes somewhere": the browse
+ * row's and the service page's own "Pedir orçamento"/"Ask for a quote" wired
+ * to `/quote/$serviceId`. Task 14 first landed with that task still missing
+ * — `service-quote-notice.tsx` and `service-row.tsx` were exactly the
+ * pre-Task-6 shape, and the first test below pinned it as a passing
+ * assertion precisely so that the day Task 6 shipped, this file would go red
+ * and force whoever landed it to notice. Task 6 landed (`b8ae2e0f`) and
+ * nobody came back until this branch's whole-review fix wave did: the first
+ * test below now proves the link exists and reaches the request page by
+ * clicking it, the same way a customer would, rather than by `page.goto`.
  *
- * Every test after the first reaches `/quote/$serviceId` by `page.goto`
- * rather than by clicking a control that does not exist — a deliberate,
- * documented bypass of exactly the gap the first test names, so that the
- * thirteen tasks *downstream* of the entry point (the request form, the
- * customer's list and detail, the provider's queue and proposal form, the
- * acceptance page, and the two closing paths) still get the honest,
- * end-to-end proof this file exists to produce. See this branch's Task 14
- * report for the full finding and the smallest fix.
+ * Every test after the first still reaches `/quote/$serviceId` by
+ * `page.goto`, now a plain convenience rather than a bypass of a real gap:
+ * the first test already proves the click path works, and the tasks
+ * *downstream* of the entry point (the request form, the customer's list
+ * and detail, the provider's queue and proposal form, the acceptance page,
+ * and the two closing paths) are what the rest of this file exists to prove.
  *
  * **A second, more severe finding, fixed rather than merely reported.**
  * Reaching "Accept and pay …" from a live proposal changed the URL to
@@ -198,23 +193,13 @@ async function assertNoHorizontalScrollAt390(page: Page): Promise<void> {
 }
 
 /**
- * The finding this whole file is built around, pinned as a fast, passing
- * assertion rather than a slow one that clicks a control and times out.
- *
- * A test that *fails* today would be the wrong way to record this: this repo
- * has no convention for a permanently red or `fixme`d spec (every other file
- * in this directory is green), and a real click-then-timeout would cost
- * ~30s of every run for a fact already established by reading the source.
- * This passes today because the gap is real — there is genuinely no control
- * here — and it is written so that the day Task 6 ships, "Ask for a quote"
- * starts rendering on this page and this exact assertion goes red, forcing
- * whoever lands that fix to notice this test and update it. That is the
- * regression alarm a permanently-failing test cannot give: a real one, that
- * fires exactly once, the moment the gap it names actually closes.
+ * The finding this whole file was originally built around, now the proof
+ * that it closed: the one control `task-6-brief.md` specced for this exact
+ * panel — "Ask for a quote", linking to `/quote/$serviceId` — is on screen,
+ * and clicking it, the way a customer actually would, lands on the request
+ * page. Messaging keeps its place underneath, unchanged.
  */
-test("the service page's quote panel offers no way into the request page (Task 6 was never executed)", async ({
-  page,
-}) => {
+test("the service page's quote panel offers a way into the request page", async ({ page }) => {
   await page.setViewportSize(DESKTOP);
   const customer = await createVerifiedUser(undefined, { firstName: "Gita", lastName: "Gapcheck" });
   const { serviceId } = await seedQuoteService();
@@ -225,14 +210,16 @@ test("the service page's quote panel offers no way into the request page (Task 6
   await page.waitForLoadState("networkidle");
 
   await expect(page.getByRole("heading", { name: QUOTE_SERVICE_NAME })).toBeVisible();
-  await expect(page.getByText(/priced by quote/i)).toBeVisible();
 
-  // The one control `task-6-brief.md` specced for this exact panel —
-  // "Ask for a quote", linking to `/quote/$serviceId` — never shipped.
-  await expect(page.getByRole("link", { name: "Ask for a quote" })).toHaveCount(0);
-  // What the panel offers instead is the pre-Task-6 shape: a way to message
-  // the provider, and nothing else.
+  const quoteLink = page.getByRole("link", { name: "Ask for a quote" });
+  await expect(quoteLink).toBeVisible();
+  await expect(quoteLink).toHaveAttribute("href", `/quote/${serviceId}`);
+  // Messaging is still offered, demoted to text underneath the primary action.
   await expect(page.getByRole("button", { name: "Send message" })).toBeVisible();
+
+  await quoteLink.click();
+  await page.waitForURL(new RegExp(`/quote/${serviceId}$`));
+  await expect(page.getByRole("heading", { name: "Ask for a quote" })).toBeVisible();
 });
 
 test("a customer requests a quote, the provider proposes a price, and the customer reaches the acceptance page", async ({
@@ -251,10 +238,13 @@ test("a customer requests a quote, the provider proposes a price, and the custom
     // sends them to "/" — see `messaging.spec.ts`'s identical note.
     await signIn(customerPage, customer, "http://localhost:3000/");
 
-    // ── The request, from a URL Task 6 was supposed to link here — see this
-    // file's own top-of-file note and the first test above. ─────────────────
-    await customerPage.goto(`/quote/${serviceId}`);
+    // ── The request, reached the way a customer actually would: from the ────
+    // ── service page's own quote panel, not a direct `page.goto` — see this ─
+    // ── file's own top-of-file note and the first test above. ───────────────
+    await customerPage.goto(`/services/${serviceId}`);
     await customerPage.waitForLoadState("networkidle");
+    await customerPage.getByRole("link", { name: "Ask for a quote" }).click();
+    await customerPage.waitForURL(new RegExp(`/quote/${serviceId}$`));
     await expect(customerPage.getByRole("heading", { name: "Ask for a quote" })).toBeVisible();
     const description =
       "The AC in the living room stopped cooling and makes a rattling noise. Please take a look and give me a quote.";
@@ -390,8 +380,10 @@ test("a provider declines a quote, and the customer sees the reason", async ({ b
     await customerPage.setViewportSize(DESKTOP);
     await signIn(customerPage, customer, "http://localhost:3000/");
 
-    // Same documented bypass as the main flow test — see this file's
-    // top-of-file note.
+    // A direct `page.goto`, not a click-through: the first test in this file
+    // and the main flow test above it already prove the entry point works,
+    // so this test — about the decline path, not the entry point — reaches
+    // the request page the plain way.
     await customerPage.goto(`/quote/${serviceId}`);
     await customerPage.waitForLoadState("networkidle");
     await customerPage

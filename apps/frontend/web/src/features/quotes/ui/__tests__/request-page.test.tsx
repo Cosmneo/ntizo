@@ -207,6 +207,25 @@ describe("RequestQuotePage", () => {
     expect(await screen.findByText("Onde é o trabalho")).toBeInTheDocument();
   });
 
+  it("asks for the address anyway when the job is flexible, whatever the form says", async () => {
+    await renderRequest({
+      locationType: "flexible",
+      quoteForm: {
+        responseHours: 24,
+        askDeadline: false,
+        askPhotos: false,
+        askLocation: false,
+        intro: null,
+      },
+    });
+    expect(await screen.findByText("Onde é o trabalho")).toBeInTheDocument();
+  });
+
+  it("asks for the address when the provider never configured a quote form, mirroring the backend's own default", async () => {
+    await renderRequest({ locationType: "at_provider", quoteForm: null });
+    expect(await screen.findByText("Onde é o trabalho")).toBeInTheDocument();
+  });
+
   it("refuses an empty description before it sends anything", async () => {
     await renderRequest();
     await userEvent.click(screen.getByRole("button", { name: "Enviar pedido" }));
@@ -241,5 +260,12 @@ describe("RequestQuotePage", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Já tem um orçamento em aberto para este serviço.",
     );
+  });
+
+  it("says which field is missing when the backend still refuses for want of an address, rather than the generic try-again", async () => {
+    await renderRequest({ requestError: "QUOTE_ADDRESS_REQUIRED" });
+    await userEvent.type(screen.getByLabelText("O que precisa"), "Preciso de um orçamento");
+    await userEvent.click(screen.getByRole("button", { name: "Enviar pedido" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Escolha onde é o trabalho.");
   });
 });

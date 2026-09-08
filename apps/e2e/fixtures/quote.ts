@@ -42,18 +42,15 @@ export interface SeededQuoteService {
  *    joining up, not about exercising every optional field a provider could
  *    configure (Tasks 1-5's own unit tests already cover each of those in
  *    isolation).
- * 2. It sidesteps a real default mismatch this reading turned up between
- *    the read side and the write side: with `locationType: "at_provider"`
- *    and *no* `service_quote_form` row at all, `RequestQuoteCommand`
- *    defaults `askLocation` to `true` (`service.quoteForm?.askLocation ??
- *    true` — see `request-quote.command.ts`) while the frontend's own
- *    `request-page.tsx` defaults the identical fallback to `false`
- *    (`form?.askLocation ?? false`) — a customer in that exact shape would
- *    never be shown an address field to fill in, yet the mutation would
- *    refuse every submission with `QuoteAddressRequiredError` until one is
- *    supplied. Reported in this branch's Task 14 report rather than fixed
- *    here; inserting an explicit row with `askLocation: false` keeps this
- *    fixture out of that gap's way.
+ * 2. It sidesteps a default mismatch this reading turned up, and the
+ *    whole-branch fix wave then closed, between the read side and the write
+ *    side: with `locationType: "at_provider"` and *no* `service_quote_form`
+ *    row at all, `RequestQuoteCommand` defaults `askLocation` to `true`
+ *    (`service.quoteForm?.askLocation ?? true` — see
+ *    `request-quote.command.ts`), and `request-page.tsx` now defaults the
+ *    identical fallback the same way. Inserting an explicit row with
+ *    `askLocation: false` still keeps this fixture's own request form to the
+ *    one field every quote needs, described in point 1 above.
  *
  * One `service_member` row too, matching one performer — the provider's own
  * owner — so the proposal form's "who does the work" field pre-selects
@@ -100,8 +97,9 @@ export async function seedQuoteService(): Promise<SeededQuoteService> {
     VALUES (${serviceRow.id}, 'en-US', ${QUOTE_SERVICE_NAME})`;
 
   // See this function's own doc comment: explicit and all `false`, not
-  // omitted — an omitted row would default `askLocation` to `true` on the
-  // write side while the read side defaults the identical field to `false`.
+  // omitted, to keep this fixture's request form to the one field every
+  // quote needs — both sides now default an omitted row's `askLocation` to
+  // `true` alike.
   await sql()`
     INSERT INTO ntizo_catalog.service_quote_form
       (service_id, response_hours, ask_deadline, ask_photos, ask_location)
