@@ -207,7 +207,7 @@
   },
   "provider": {
     "title": "Preventivi",
-    "blurb": "{{count}} da rispondere · il più vecchio da {{oldest}}",
+    "blurb": "{{count}} da rispondere · il più urgente scade tra {{left}}",
     "blurbNone": "Niente in attesa di risposta.",
     "tab": { "toAnswer": "Da rispondere", "waiting": "In attesa del cliente", "history": "Cronologia" },
     "column": { "customer": "Cliente", "service": "Servizio", "status": "Stato", "price": "Prezzo" },

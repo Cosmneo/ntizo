@@ -119,23 +119,38 @@ export function ProviderQuotesPage() {
    * list when `tab === "toAnswer"` means this is the very same cache entry —
    * not a second request — and on any other tab it is one small, cached page
    * rather than the whole queue.
+   *
+   * The urgency figure is the *soonest deadline*, not the oldest request.
+   * `quoteForProvider` sorts every live tab by ascending `expiresAt` — see
+   * `orderFor` in the backend's `quote-read.repository.ts` — so the first
+   * item of the "toAnswer" page's first offset is *guaranteed* to be the one
+   * nearest its own deadline, at any page size. "Oldest request" carries no
+   * such guarantee: `expires_at` is `requested_at + response_hours`, and
+   * `response_hours` is configured per service, so a newer request from a
+   * faster-response service can expire before an older one from a slower
+   * one. A reduce over `requestedAt` — this page's first cut — could
+   * therefore read a stale figure off a truncated page and state something
+   * false. Reading `items[0]` instead states the queue's actual urgency,
+   * true by construction regardless of how many pages have loaded.
    */
   const toAnswerPeek = useProviderQuotes({ providerId, tab: "toAnswer", offset: 0 });
-  const toAnswerAnswer = tab === "toAnswer" ? answered : toAnswerPeek.data;
-  const toAnswerCount = toAnswerAnswer?.counts.toAnswer ?? 0;
-  const oldestRequestedAt = (tab === "toAnswer" ? items : (toAnswerPeek.data?.items ?? [])).reduce<
-    string | null
-  >((oldest, quote) => (oldest === null || quote.requestedAt < oldest ? quote.requestedAt : oldest), null);
-  const oldestSpan = oldestRequestedAt
-    ? coarseDuration(now.getTime() - new Date(oldestRequestedAt).getTime())
+  // `counts` is a workspace-wide summary present on every page's answer,
+  // whichever tab was asked for — the existing "counts all three tabs" test
+  // already proves this — so the main query's own answer supplies it as
+  // soon as it is in, and the peek is only a fallback for the instant before
+  // it has.
+  const toAnswerCount = answered?.counts.toAnswer ?? toAnswerPeek.data?.counts.toAnswer ?? 0;
+  const soonest = tab === "toAnswer" ? items[0] : toAnswerPeek.data?.items[0];
+  const soonestSpan = soonest?.expiresAt
+    ? coarseDuration(new Date(soonest.expiresAt).getTime() - now.getTime())
     : null;
   const subtitle =
     toAnswerCount === 0
       ? t("provider.blurbNone")
-      : oldestSpan
+      : soonestSpan
         ? t("provider.blurb", {
             count: toAnswerCount,
-            oldest: t(`unit.${oldestSpan.unit}`, { count: oldestSpan.count }),
+            left: t(`unit.${soonestSpan.unit}`, { count: soonestSpan.count }),
           })
         : undefined;
   usePageHeader(t("provider.title"), subtitle);

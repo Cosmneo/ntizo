@@ -1,3 +1,4 @@
+import { useState, type ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -10,6 +11,7 @@ import {
 } from "@tanstack/react-router";
 import { PROVIDER_QUOTE_TABS, type ProviderQuoteTab } from "@ntizo/shared";
 import i18n from "@/shared/lib/i18n";
+import { PageHeaderContext, type PageHeaderState } from "@/shared/lib/page-header";
 import type { ProviderQuoteDTO, ProviderQuotePageDTO } from "../../viewmodel/use-provider-quotes";
 import { ProviderQuotesPage } from "../quotes-page";
 
@@ -159,21 +161,51 @@ function pageWith(
   };
 }
 
-/** What the server answers for every request this render makes. */
-function setAnswers(page: ProviderQuotePageDTO) {
+/**
+ * What the server answers for every request this render makes. A function
+ * when the test is about *which tab was asked for* — the header's own
+ * urgency figure has to come from the "toAnswer" tab's own request
+ * regardless of which tab is on screen, and a mock that answers identically
+ * whatever it is asked cannot fail on a page that conflates the two.
+ */
+type Answer =
+  | ProviderQuotePageDTO
+  | ((input: { tab: ProviderQuoteTab; offset: number }) => ProviderQuotePageDTO);
+
+function setAnswers(answer: Answer) {
   fakes.graphql.mockReset();
-  fakes.graphql.mockImplementation((query: string) => {
-    if (query.includes("QuoteForProvider")) {
-      return Promise.resolve({ quoteForProvider: page });
-    }
-    if (query.includes("ProviderById")) {
-      // The workspace's own rate, for the price cell's "recebe" line —
-      // `console-strip.tsx` already loads this on every console screen, so
-      // the page reads it from the same query rather than fetching it twice.
-      return Promise.resolve({ providerById: { commissionBps: 1000 } });
-    }
-    throw new Error(`unexpected query: ${query}`);
-  });
+  fakes.graphql.mockImplementation(
+    (query: string, variables: { input: { tab: ProviderQuoteTab; offset: number } }) => {
+      if (query.includes("QuoteForProvider")) {
+        const page = typeof answer === "function" ? answer(variables.input) : answer;
+        return Promise.resolve({ quoteForProvider: page });
+      }
+      if (query.includes("ProviderById")) {
+        // The workspace's own rate, for the price cell's "recebe" line —
+        // `console-strip.tsx` already loads this on every console screen, so
+        // the page reads it from the same query rather than fetching it twice.
+        return Promise.resolve({ providerById: { commissionBps: 1000 } });
+      }
+      throw new Error(`unexpected query: ${query}`);
+    },
+  );
+}
+
+/**
+ * Stands in for `ConsoleShell`'s own header context, exactly as
+ * `page-header.test.tsx`'s own `Shell` does: state in `useState`, the value
+ * assembled inline. The subtitle is rendered into a probe so the header's
+ * own text — not just its presence — is assertable, since `usePageHeader`
+ * quietly no-ops with no provider ancestor.
+ */
+function HeaderShell({ children }: { children: ReactNode }) {
+  const [header, setHeader] = useState<PageHeaderState>({ title: "" });
+  return (
+    <PageHeaderContext.Provider value={{ header, setHeader, action: null, setAction: () => {} }}>
+      <span data-testid="subtitle">{header.subtitle ?? ""}</span>
+      {children}
+    </PageHeaderContext.Provider>
+  );
 }
 
 /**
@@ -186,8 +218,8 @@ function setAnswers(page: ProviderQuotePageDTO) {
  * knows about, exactly as `bookings-page.test.tsx` registers the booking
  * detail route beside its list.
  */
-async function renderQueue(page: ProviderQuotePageDTO, opts: { tab?: ProviderQuoteTab } = {}) {
-  setAnswers(page);
+async function renderQueue(answer: Answer, opts: { tab?: ProviderQuoteTab } = {}) {
+  setAnswers(answer);
   const rootRoute = createRootRoute();
   const quotesRoute = createRoute({
     getParentRoute: () => rootRoute,
@@ -211,7 +243,9 @@ async function renderQueue(page: ProviderQuotePageDTO, opts: { tab?: ProviderQuo
   await router.load();
   render(
     <QueryClientProvider client={qc}>
-      <RouterProvider router={router} />
+      <HeaderShell>
+        <RouterProvider router={router} />
+      </HeaderShell>
     </QueryClientProvider>,
   );
   return { router };
@@ -289,5 +323,44 @@ describe("ProviderQuotesPage", () => {
       expect(screen.getByRole("tab", { name: /Por responder/ })).toHaveTextContent("3"),
     );
     expect(screen.getByRole("tab", { name: /Histórico/ })).toHaveTextContent("11");
+  });
+
+  // The three cases below cover the header's own blurb — `usePageHeader`'s
+  // title/subtitle, read back through `HeaderShell`'s probe. Every expected
+  // string is computed through the real `i18n` instance's own interpolation
+  // rather than hand-typed, per the report's own rule for money strings —
+  // the same discipline applies to any translated sentence this test derives
+  // rather than hardcodes.
+  const qt = i18n.getFixedT("pt-MZ", "quotes");
+
+  it("states how many are owed an answer and how soon the most urgent one is due", async () => {
+    const soon = { ...toAnswerQuote, expiresAt: inHours(4) };
+    await renderQueue(pageWith(soon, { counts: { toAnswer: 3, waiting: 0, history: 0 } }));
+    const expected = qt("provider.blurb", { count: 3, left: qt("unit.h", { count: 4 }) });
+    await waitFor(() => expect(screen.getByTestId("subtitle")).toHaveTextContent(expected));
+  });
+
+  it("says nothing is owed when the toAnswer count is zero", async () => {
+    await renderQueue({ items: [], counts: { toAnswer: 0, waiting: 1, history: 2 }, hasMore: false });
+    await waitFor(() =>
+      expect(screen.getByTestId("subtitle")).toHaveTextContent(qt("provider.blurbNone")),
+    );
+  });
+
+  it("keeps the blurb's figure honest about the toAnswer queue while a different tab is on screen", async () => {
+    // The visible "waiting" tab's own soonest deadline (40h, from
+    // `waitingQuote`'s proposal) is deliberately far from the "toAnswer"
+    // tab's (4h) — if the page ever read the active tab's own items for this
+    // figure instead of the dedicated "toAnswer" peek, this test would see
+    // 40h, or 5's count mismatched against 40h's span, rather than the pair
+    // below.
+    const soonToAnswer = { ...toAnswerQuote, expiresAt: inHours(4) };
+    const byTab = (input: { tab: ProviderQuoteTab }): ProviderQuotePageDTO =>
+      input.tab === "toAnswer"
+        ? pageWith(soonToAnswer, { counts: { toAnswer: 5, waiting: 1, history: 0 } })
+        : pageWith(waitingQuote, { counts: { toAnswer: 5, waiting: 1, history: 0 } });
+    await renderQueue(byTab, { tab: "waiting" });
+    const expected = qt("provider.blurb", { count: 5, left: qt("unit.h", { count: 4 }) });
+    await waitFor(() => expect(screen.getByTestId("subtitle")).toHaveTextContent(expected));
   });
 });

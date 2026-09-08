@@ -207,7 +207,7 @@
   },
   "provider": {
     "title": "Orçamentos",
-    "blurb": "{{count}} por responder · o mais antigo há {{oldest}}",
+    "blurb": "{{count}} por responder · o mais urgente expira em {{left}}",
     "blurbNone": "Nada à espera de resposta.",
     "tab": { "toAnswer": "Por responder", "waiting": "À espera do cliente", "history": "Histórico" },
     "column": { "customer": "Cliente", "service": "Serviço", "status": "Estado", "price": "Preço" },

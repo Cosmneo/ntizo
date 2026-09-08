@@ -207,7 +207,7 @@
   },
   "provider": {
     "title": "Offertes",
-    "blurb": "{{count}} nog te beantwoorden · de oudste al {{oldest}}",
+    "blurb": "{{count}} nog te beantwoorden · de meest urgente verloopt over {{left}}",
     "blurbNone": "Niets wacht op een antwoord.",
     "tab": { "toAnswer": "Te beantwoorden", "waiting": "Wacht op klant", "history": "Geschiedenis" },
     "column": { "customer": "Klant", "service": "Dienst", "status": "Status", "price": "Prijs" },

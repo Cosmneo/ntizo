@@ -207,7 +207,7 @@
   },
   "provider": {
     "title": "Quotes",
-    "blurb": "{{count}} awaiting your answer · the oldest for {{oldest}}",
+    "blurb": "{{count}} awaiting your answer · the most urgent expires in {{left}}",
     "blurbNone": "Nothing waiting for an answer.",
     "tab": { "toAnswer": "To answer", "waiting": "Waiting on the customer", "history": "History" },
     "column": { "customer": "Customer", "service": "Service", "status": "Status", "price": "Price" },

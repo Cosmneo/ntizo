@@ -207,7 +207,7 @@
   },
   "provider": {
     "title": "Kostenvoranschläge",
-    "blurb": "{{count}} noch zu beantworten · der älteste seit {{oldest}}",
+    "blurb": "{{count}} noch zu beantworten · der dringendste läuft in {{left}} ab",
     "blurbNone": "Nichts wartet auf eine Antwort.",
     "tab": { "toAnswer": "Zu beantworten", "waiting": "Warten auf den Kunden", "history": "Verlauf" },
     "column": { "customer": "Kunde", "service": "Leistung", "status": "Status", "price": "Preis" },

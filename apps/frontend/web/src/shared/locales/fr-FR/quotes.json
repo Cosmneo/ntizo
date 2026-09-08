@@ -207,7 +207,7 @@
   },
   "provider": {
     "title": "Devis",
-    "blurb": "{{count}} à traiter · le plus ancien depuis {{oldest}}",
+    "blurb": "{{count}} à traiter · le plus urgent expire dans {{left}}",
     "blurbNone": "Rien en attente de réponse.",
     "tab": { "toAnswer": "À traiter", "waiting": "En attente du client", "history": "Historique" },
     "column": { "customer": "Client", "service": "Service", "status": "Statut", "price": "Prix" },

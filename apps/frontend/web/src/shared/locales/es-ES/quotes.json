@@ -207,7 +207,7 @@
   },
   "provider": {
     "title": "Presupuestos",
-    "blurb": "{{count}} por responder · el más antiguo hace {{oldest}}",
+    "blurb": "{{count}} por responder · el más urgente caduca en {{left}}",
     "blurbNone": "Nada esperando respuesta.",
     "tab": { "toAnswer": "Por responder", "waiting": "Esperando al cliente", "history": "Historial" },
     "column": { "customer": "Cliente", "service": "Servicio", "status": "Estado", "price": "Precio" },
