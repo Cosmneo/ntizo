@@ -47,18 +47,21 @@ export function ServiceQuoteNotice({
         {t("entry.panelBody", { provider: providerName })}
       </p>
 
-      <Link
-        to="/quote/$serviceId"
-        params={{ serviceId }}
-        className={buttonVariants({ className: "w-full" })}
-      >
-        {t("entry.action")}
-      </Link>
-
-      {/* `compact` is this component's own text-link treatment, which is what
-          the mockup asks for here: messaging stops being a button the moment
-          the page has a real primary action. */}
-      <MessageProviderButton providerId={providerId} compact />
+      {/* The same pair, in the same order and at the same spacing, as the
+          price card's "Ver disponibilidade" / "Enviar mensagem" — see
+          `RailPriceSummary`. A quote service and a priced one ask for
+          different things, but the rail should not change shape between
+          them: one filled action, one outlined way to ask a question first. */}
+      <div className="grid gap-2.5">
+        <Link
+          to="/quote/$serviceId"
+          params={{ serviceId }}
+          className={buttonVariants({ className: "w-full" })}
+        >
+          {t("entry.action")}
+        </Link>
+        <MessageProviderButton providerId={providerId} variant="outline" />
+      </div>
     </RailCard>
   );
 }
