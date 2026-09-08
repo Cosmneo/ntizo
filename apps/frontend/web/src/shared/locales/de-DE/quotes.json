@@ -200,6 +200,7 @@
       "too_expensive": "Liegt über meinem Budget",
       "wrong_time": "Der Termin passt mir nicht",
       "found_elsewhere": "Ich habe es bereits anders gelöst",
+      "withdrawn": "Ich brauche es nicht mehr",
       "other": "Anderer Grund"
     },
     "errorMoved": "Das hat sich inzwischen geändert. Wir haben es neu geladen.",
@@ -251,6 +252,7 @@
     "dateLabel": "Datum",
     "timeLabel": "Uhrzeit",
     "durationLabel": "Dauer",
+    "durationUnit": "Std.",
     "memberLabel": "Wer die Arbeit übernimmt",
     "memberSelf": "{{name}} (ich)",
     "noteLabel": "Notiz für den Kunden",

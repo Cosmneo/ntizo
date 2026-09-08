@@ -200,6 +200,7 @@
       "too_expensive": "C'est au-dessus de mon budget",
       "wrong_time": "La date ne me convient pas",
       "found_elsewhere": "J'ai déjà réglé cela autrement",
+      "withdrawn": "Je n'en ai plus besoin",
       "other": "Autre"
     },
     "errorMoved": "Ceci a changé entre-temps. Nous l'avons rechargé.",
@@ -251,6 +252,7 @@
     "dateLabel": "Date",
     "timeLabel": "Heure",
     "durationLabel": "Durée",
+    "durationUnit": "h",
     "memberLabel": "Qui s'occupe du travail",
     "memberSelf": "{{name}} (moi)",
     "noteLabel": "Note pour le client",

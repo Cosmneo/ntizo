@@ -245,6 +245,38 @@ describe("QuotesPage", () => {
     expect(screen.queryByRole("button", { name: "Mais" })).not.toBeInTheDocument();
   });
 
+  it("says the load failed rather than claiming there are no quotes", async () => {
+    fakes.graphql.mockReset();
+    fakes.graphql.mockRejectedValue(new Error("network down"));
+    const rootRoute = createRootRoute();
+    const quotesRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: "/quotes",
+      validateSearch,
+      component: QuotesPage,
+    });
+    const servicesRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: "/services",
+      component: () => <p>services</p>,
+    });
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([quotesRoute, servicesRoute]),
+      history: createMemoryHistory({ initialEntries: ["/quotes"] }),
+    });
+    await router.load();
+    render(
+      <QueryClientProvider client={qc}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>,
+    );
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Não foi possível carregar os seus orçamentos.",
+    );
+  });
+
   it("invites a customer with nothing yet to go and find a quotable service", async () => {
     await renderQuotes({ items: [], counts: { open: 0, history: 0 }, hasMore: false });
     // Scoped to the table: `CollectionCard` draws its empty state once for

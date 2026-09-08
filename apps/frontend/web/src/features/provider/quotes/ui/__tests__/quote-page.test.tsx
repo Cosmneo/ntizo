@@ -207,6 +207,7 @@ beforeEach(async () => {
 
 afterEach(async () => {
   await i18n.changeLanguage("en-US");
+  vi.unstubAllGlobals();
 });
 
 describe("ProviderQuotePage", () => {
@@ -252,6 +253,46 @@ describe("ProviderQuotePage", () => {
     expect(screen.getByLabelText("Hora")).toHaveValue("08:30");
     expect(screen.getByLabelText("Duração")).toHaveValue("2");
     expect(screen.getByLabelText("Quem faz o trabalho")).toHaveValue("m1");
+  });
+
+  /**
+   * The bug this pins: `send()` used to call `setEditing(false)` without
+   * ever resetting `proposeAttachments`, so a file staged for the proposal
+   * just sent was still sitting in `files` the moment "Rever proposta"
+   * reopened the form — and sending the revision would have uploaded a
+   * second copy of it and attached it again. Stubs `fetch` for the upload
+   * leg the same way `message-composer.test.tsx` does, since a `ui/` test
+   * may not import `data/attachment.repository` directly.
+   */
+  it("does not carry a sent proposal's attachments into its revision", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        new Response(
+          JSON.stringify({
+            storageKey: "quotes/prop-1/nota.pdf",
+            fileName: "nota.pdf",
+            contentType: "application/pdf",
+            sizeBytes: 1024,
+          }),
+          { status: 201 },
+        ),
+      ),
+    );
+
+    await renderProviderQuote(toAnswerDetail);
+
+    const fileInput = await screen.findByLabelText("Juntar ficheiro");
+    await userEvent.upload(fileInput, new File(["x"], "nota.pdf", { type: "application/pdf" }));
+    expect(screen.getByText("nota.pdf")).toBeInTheDocument();
+
+    await fillAndSend();
+    await screen.findByRole("heading", { name: "Proposta enviada" });
+
+    await userEvent.click(await screen.findByRole("button", { name: "Rever proposta" }));
+
+    expect(await screen.findByLabelText("Preço para o cliente")).toHaveValue("9800,00");
+    expect(screen.queryByText("nota.pdf")).not.toBeInTheDocument();
   });
 
   it("opens blank when there is no proposal yet to revise from", async () => {

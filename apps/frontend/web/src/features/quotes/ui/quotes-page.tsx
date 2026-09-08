@@ -104,6 +104,12 @@ export function QuotesPage() {
         {t("list.blurb")}
       </p>
 
+      {query.isError && (
+        <p role="alert" className="type-body mt-4 text-[var(--color-destructive)]">
+          {t("list.loadError")}
+        </p>
+      )}
+
       <div
         role="tablist"
         aria-label={t("list.title")}

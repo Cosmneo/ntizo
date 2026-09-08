@@ -96,9 +96,10 @@ export function QuoteStatusLine({
       break;
     case "closedReason":
       // The reason is a raw token off the write side (a decline or reject
-      // reason, or the fixed "withdrawn"). `close.reason.*` translates the
-      // seven decline/reject tokens; a token with no entry there — only
-      // "withdrawn" — falls back to itself rather than to a bare key id.
+      // reason, or the fixed "withdrawn"). `close.reason.*` translates all
+      // eight; `defaultValue` is a last-resort fallback to the raw token
+      // itself, kept in case a future closing path adds a token this list
+      // has not caught up with yet.
       line = t(`clock.${side}.closedReason`, {
         reason: t(`close.reason.${clock.reason}`, { defaultValue: clock.reason }),
       });

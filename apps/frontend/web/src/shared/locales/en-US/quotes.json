@@ -200,6 +200,7 @@
       "too_expensive": "It's above my budget",
       "wrong_time": "The date doesn't work for me",
       "found_elsewhere": "I've already sorted it another way",
+      "withdrawn": "I no longer need it",
       "other": "Other"
     },
     "errorMoved": "This changed in the meantime. We reloaded it.",
@@ -251,6 +252,7 @@
     "dateLabel": "Date",
     "timeLabel": "Time",
     "durationLabel": "Duration",
+    "durationUnit": "h",
     "memberLabel": "Who does the work",
     "memberSelf": "{{name}} (me)",
     "noteLabel": "Note for the customer",

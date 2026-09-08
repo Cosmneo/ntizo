@@ -326,14 +326,19 @@ export function ProposalForm({
         <label htmlFor="proposal-duration" className={FORM_LABEL}>
           {t("propose.durationLabel")}
         </label>
-        <input
-          id="proposal-duration"
-          inputMode="decimal"
-          value={durationHours}
-          onChange={(event) => setDurationHours(event.target.value)}
-          disabled={busy}
-          className={TEXT_FIELD}
-        />
+        <div className="flex items-center gap-2">
+          <input
+            id="proposal-duration"
+            inputMode="decimal"
+            value={durationHours}
+            onChange={(event) => setDurationHours(event.target.value)}
+            disabled={busy}
+            className={TEXT_FIELD}
+          />
+          <span className="type-caption text-[var(--color-muted-foreground)]">
+            {t("propose.durationUnit")}
+          </span>
+        </div>
       </div>
 
       <div className="grid gap-1.5">

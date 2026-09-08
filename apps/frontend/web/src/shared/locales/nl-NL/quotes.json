@@ -200,6 +200,7 @@
       "too_expensive": "Het gaat boven mijn budget",
       "wrong_time": "De datum komt me niet uit",
       "found_elsewhere": "Ik heb het al op een andere manier opgelost",
+      "withdrawn": "Ik heb het niet meer nodig",
       "other": "Anders"
     },
     "errorMoved": "Dit is intussen veranderd. We hebben het opnieuw geladen.",
@@ -251,6 +252,7 @@
     "dateLabel": "Datum",
     "timeLabel": "Tijd",
     "durationLabel": "Duur",
+    "durationUnit": "u",
     "memberLabel": "Wie het werk doet",
     "memberSelf": "{{name}} (ik)",
     "noteLabel": "Notitie voor de klant",

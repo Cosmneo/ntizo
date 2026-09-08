@@ -239,6 +239,13 @@ export function ProviderQuotePage({ quoteId }: { quoteId: string }) {
         setNotice("propose.errorMoved");
         return;
       }
+      // Without this, `attachments.files` still carries whatever was staged
+      // for the proposal just sent — the next "Rever proposta" would reopen
+      // the form with them still attached, and sending the revision would
+      // upload a second copy of each and attach it again. Every sibling
+      // closing path resets its own attachments the same way: the
+      // customer's `confirmClose` and this file's own decline dialog.
+      proposeAttachments.reset();
       setEditing(false);
     } catch (error) {
       const code = error instanceof GraphqlError ? error.code : undefined;

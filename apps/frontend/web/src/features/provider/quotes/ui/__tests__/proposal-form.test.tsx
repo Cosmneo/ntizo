@@ -60,6 +60,18 @@ describe("ProposalForm", () => {
     expect(screen.getByText("8820,00 MTn")).toBeInTheDocument();
   });
 
+  // The bug this pins: the field carried no unit at all, so a provider who
+  // meant 20 minutes and typed "20" would have sent a binding 20-hour job —
+  // it clears the 1..1440-minute check and reaches the customer. "h" is
+  // rendered beside the input the same way the price field renders its own
+  // `currency` — see `proposal-form.tsx`'s `propose.durationUnit`.
+  it("labels the duration field with its unit, the way the price field labels its own", async () => {
+    render(<ProposalForm {...DEFAULT_PROPS} onSubmit={vi.fn()} />);
+
+    const durationField = await screen.findByLabelText("Duração");
+    expect(durationField.parentElement).toHaveTextContent("h");
+  });
+
   it("names the rate in the commission line, so the number is not a mystery", async () => {
     render(<ProposalForm {...DEFAULT_PROPS} commissionBps={1250} onSubmit={vi.fn()} />);
 
