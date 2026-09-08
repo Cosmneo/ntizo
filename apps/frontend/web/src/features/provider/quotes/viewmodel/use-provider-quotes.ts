@@ -5,6 +5,12 @@ import {
   type DeclineQuoteInput, type ProposeQuoteInput,
 } from "../data/quote.repository";
 
+// The shapes a `ui` file needs, re-exported here rather than reached for
+// directly — `ui -> data` is not an edge the layer boundaries allow, and the
+// list page and its row need `ProviderQuoteDTO`/`ProviderQuotePageDTO` the
+// same way the customer side's `use-my-quotes.ts` re-exports its own.
+export type { ProviderQuoteDTO, ProviderQuoteDetailDTO, ProviderQuotePageDTO } from "../data/quote.repository";
+
 export function useProviderQuotes(input: { providerId: string; tab: ProviderQuoteTab; offset: number }) {
   return useQuery(providerQuoteQueries.page(input));
 }
