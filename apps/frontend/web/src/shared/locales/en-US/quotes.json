@@ -82,7 +82,6 @@
     "cancel": "Cancel",
     "railWho": "Who answers",
     "verified": "Verified",
-    "ratingAndJobs": "{{rating}} ★ · {{jobs}} jobs",
     "railPromise": "They commit to answering within {{hours}} hours. If they don't, the request expires and we'll let you know.",
     "railNextTitle": "What happens next",
     "step1Title": "You get a proposal",
@@ -114,7 +113,6 @@
     "chat": "Chat",
     "withdraw": "Withdraw the request",
     "seeBooking": "See the booking",
-    "waitingTitle": "Waiting for the proposal",
     "waitingBody": "{{provider}} has until {{when}} to answer. We'll let you know as soon as there's a response.",
     "closedTitle": "This quote has ended",
     "yourRequest": "Your request",
@@ -137,8 +135,7 @@
     "stepPaymentBody": "once you accept, you get the request on your phone",
     "stepConfirmed": "Booking confirmed",
     "stepConfirmedBody": "the slot is yours",
-    "railFooter": "Accepting creates the booking and sends the M-Pesa request. You have 15 minutes to confirm it on your phone; if you don't, the slot is released and the provider is notified.",
-    "movedOn": "This quote changed in the meantime. We reloaded it."
+    "railFooter": "Accepting creates the booking and sends the M-Pesa request. You have 15 minutes to confirm it on your phone; if you don't, the slot is released and the provider is notified."
   },
   "accept": {
     "back": "Proposal from {{provider}}",
@@ -150,8 +147,6 @@
     "where": "Where",
     "includes": "Includes",
     "total": "Total to pay",
-    "phoneLead": "You'll get the payment request at",
-    "phoneChange": "Change",
     "phoneLabel": "M-Pesa number",
     "phoneHint": "It has to be an active M-Pesa number, with enough balance for {{amount}}.",
     "phoneRequired": "Write the number that gets the M-Pesa request.",
@@ -222,7 +217,6 @@
     "photos_one": "{{count}} photo",
     "noPhotos": "no photos",
     "neededBy": "by {{when}}",
-    "noDeadline": "no deadline",
     "more": "More",
     "loadError": "The quotes couldn't be loaded.",
     "back": "Quotes",
@@ -239,7 +233,6 @@
     "completedBookings_zero": "first time on Ntizo",
     "historyTitle": "History",
     "requestReceived": "Request received",
-    "responseWindow": "Response window of {{hours}} h, set on the service.",
     "movedOn": "This request changed in the meantime. We reloaded it."
   },
   "propose": {
@@ -254,7 +247,6 @@
     "durationLabel": "Duration",
     "durationUnit": "h",
     "memberLabel": "Who does the work",
-    "memberSelf": "{{name}} (me)",
     "noteLabel": "Note for the customer",
     "optional": "optional",
     "notePlaceholder": "What's included, what's not, what to sort out on site.",
@@ -262,7 +254,6 @@
     "attachmentsLimit": "up to 5",
     "attachmentsAction": "Add file",
     "attachmentsHint": "PDF quote, photos of similar jobs",
-    "validityNote": "The proposal stays valid for {{hours}} hours. You can revise it while the customer hasn't decided; the previous one stays in the history.",
     "submit": "Send proposal",
     "submitRevise": "Send new proposal",
     "reviseAction": "Revise proposal",
@@ -287,11 +278,9 @@
     "tooMany": "{{max}} files maximum."
   },
   "entry": {
-    "price": "By quote",
     "respondsIn": "answers within {{hours}} h",
     "panelTitle": "By quote",
     "panelBody": "The price depends on the job. Tell us what you need and {{provider}} answers with an amount, a date, and the duration, with no obligation on your part.",
-    "action": "Ask for a quote",
-    "message": "Send a message"
+    "action": "Ask for a quote"
   }
 }

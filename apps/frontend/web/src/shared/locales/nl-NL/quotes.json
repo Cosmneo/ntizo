@@ -82,7 +82,6 @@
     "cancel": "Annuleren",
     "railWho": "Wie antwoordt",
     "verified": "Geverifieerd",
-    "ratingAndJobs": "{{rating}} ★ · {{jobs}} klussen",
     "railPromise": "Ze verplichten zich om binnen {{hours}} uur te antwoorden. Doen ze dat niet, dan verloopt de aanvraag en laten we het je weten.",
     "railNextTitle": "Wat er daarna gebeurt",
     "step1Title": "Je krijgt een voorstel",
@@ -114,7 +113,6 @@
     "chat": "Chatten",
     "withdraw": "Aanvraag intrekken",
     "seeBooking": "Bekijk de boeking",
-    "waitingTitle": "Wachten op het voorstel",
     "waitingBody": "{{provider}} heeft tot {{when}} om te antwoorden. We laten het je weten zodra er een reactie is.",
     "closedTitle": "Deze offerte is afgesloten",
     "yourRequest": "Jouw aanvraag",
@@ -137,8 +135,7 @@
     "stepPaymentBody": "zodra je accepteert, krijg je de aanvraag op je telefoon",
     "stepConfirmed": "Boeking bevestigd",
     "stepConfirmedBody": "de plek is van jou",
-    "railFooter": "Accepteren maakt de boeking aan en stuurt de M-Pesa-aanvraag. Je hebt 15 minuten om deze op je telefoon te bevestigen; doe je dat niet, dan komt de plek weer vrij en wordt de dienstverlener op de hoogte gebracht.",
-    "movedOn": "Deze offerte is intussen veranderd. We hebben hem opnieuw geladen."
+    "railFooter": "Accepteren maakt de boeking aan en stuurt de M-Pesa-aanvraag. Je hebt 15 minuten om deze op je telefoon te bevestigen; doe je dat niet, dan komt de plek weer vrij en wordt de dienstverlener op de hoogte gebracht."
   },
   "accept": {
     "back": "Voorstel van {{provider}}",
@@ -150,8 +147,6 @@
     "where": "Waar",
     "includes": "Inclusief",
     "total": "Totaal te betalen",
-    "phoneLead": "Je ontvangt het betaalverzoek op",
-    "phoneChange": "Wijzigen",
     "phoneLabel": "M-Pesa-nummer",
     "phoneHint": "Het moet een actief M-Pesa-nummer zijn, met genoeg saldo voor {{amount}}.",
     "phoneRequired": "Vul het nummer in dat het M-Pesa-verzoek ontvangt.",
@@ -222,7 +217,6 @@
     "photos_one": "{{count}} foto",
     "noPhotos": "geen foto's",
     "neededBy": "voor {{when}}",
-    "noDeadline": "geen termijn",
     "more": "Meer",
     "loadError": "De offertes konden niet worden geladen.",
     "back": "Offertes",
@@ -239,7 +233,6 @@
     "completedBookings_zero": "eerste keer op Ntizo",
     "historyTitle": "Geschiedenis",
     "requestReceived": "Aanvraag ontvangen",
-    "responseWindow": "Reactietermijn van {{hours}} u, ingesteld op de dienst.",
     "movedOn": "Deze aanvraag is intussen veranderd. We hebben hem opnieuw geladen."
   },
   "propose": {
@@ -254,7 +247,6 @@
     "durationLabel": "Duur",
     "durationUnit": "u",
     "memberLabel": "Wie het werk doet",
-    "memberSelf": "{{name}} (ik)",
     "noteLabel": "Notitie voor de klant",
     "optional": "optioneel",
     "notePlaceholder": "Wat is inbegrepen, wat niet, wat je ter plekke afspreekt.",
@@ -262,7 +254,6 @@
     "attachmentsLimit": "tot 5",
     "attachmentsAction": "Bestand toevoegen",
     "attachmentsHint": "offerte als PDF, foto's van vergelijkbare klussen",
-    "validityNote": "Het voorstel blijft {{hours}} uur geldig. Je kunt het herzien zolang de klant nog niet heeft beslist; het vorige blijft in de geschiedenis staan.",
     "submit": "Voorstel versturen",
     "submitRevise": "Nieuw voorstel versturen",
     "reviseAction": "Voorstel herzien",
@@ -287,11 +278,9 @@
     "tooMany": "Maximaal {{max}} bestanden."
   },
   "entry": {
-    "price": "Op offerte",
     "respondsIn": "antwoordt binnen {{hours}} u",
     "panelTitle": "Op offerte",
     "panelBody": "De prijs hangt af van de klus. Vertel wat je nodig hebt en {{provider}} antwoordt met een bedrag, een datum en de duur, geheel vrijblijvend.",
-    "action": "Offerte aanvragen",
-    "message": "Bericht versturen"
+    "action": "Offerte aanvragen"
   }
 }

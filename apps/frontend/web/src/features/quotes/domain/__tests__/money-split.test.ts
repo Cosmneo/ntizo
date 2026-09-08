@@ -12,6 +12,12 @@ describe("the split the provider is deciding on", () => {
     expect(commissionMinorOf(1, 1250)).toBe(0);
     expect(commissionMinorOf(3, 1250)).toBe(0);
     expect(commissionMinorOf(5, 1250)).toBe(1);
+    // 4 cents at 12.5% is 0.5 exactly — the one input in this file that
+    // actually lands on the tie `Math.round` breaks by rounding up, rather
+    // than landing just short of or past it the way the other three cases
+    // here do. This is the branch's highest-stakes arithmetic, so the exact
+    // tie is worth pinning, not just its neighbours.
+    expect(commissionMinorOf(4, 1250)).toBe(1);
   });
 
   it("gives the whole price away at 100% and nothing at 0%", () => {

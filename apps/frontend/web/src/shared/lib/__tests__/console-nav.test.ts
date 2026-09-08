@@ -38,9 +38,6 @@ const WORKSPACE_ROUTES = [
   "/provider/$slug/services", "/provider/$slug/members", "/provider/$slug/wallet",
   "/provider/$slug/activity", "/provider/$slug/settings", "/provider/$slug/notifications",
   "/provider/$slug/bookings",
-  // Not a file route yet — the next task in this plan creates it. Nav and
-  // count land first, on purpose (see this plan's Task 11), so the sidebar
-  // and the badge exist one task before the page they point to does.
   "/provider/$slug/quotes",
 ];
 const PLATFORM_ROUTES = [

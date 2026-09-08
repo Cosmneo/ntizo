@@ -82,7 +82,6 @@
     "cancel": "Annulla",
     "railWho": "Chi risponde",
     "verified": "Verificato",
-    "ratingAndJobs": "{{rating}} ★ · {{jobs}} lavori",
     "railPromise": "Si impegnano a rispondere entro {{hours}} ore. Se non rispondono, la richiesta scade e ti avvisiamo.",
     "railNextTitle": "Cosa succede dopo",
     "step1Title": "Ricevi una proposta",
@@ -114,7 +113,6 @@
     "chat": "Chatta",
     "withdraw": "Ritira la richiesta",
     "seeBooking": "Vedi la prenotazione",
-    "waitingTitle": "In attesa della proposta",
     "waitingBody": "{{provider}} ha tempo fino a {{when}} per rispondere. Ti avvisiamo appena c'è una risposta.",
     "closedTitle": "Questo preventivo è concluso",
     "yourRequest": "La tua richiesta",
@@ -137,8 +135,7 @@
     "stepPaymentBody": "quando accetti, ricevi la richiesta sul cellulare",
     "stepConfirmed": "Prenotazione confermata",
     "stepConfirmedBody": "il posto è tuo",
-    "railFooter": "Accettare crea la prenotazione e invia la richiesta M-Pesa. Hai 15 minuti per confermarla sul cellulare; se non confermi, il posto viene liberato e il professionista viene avvisato.",
-    "movedOn": "Questo preventivo è cambiato nel frattempo. Lo abbiamo ricaricato."
+    "railFooter": "Accettare crea la prenotazione e invia la richiesta M-Pesa. Hai 15 minuti per confermarla sul cellulare; se non confermi, il posto viene liberato e il professionista viene avvisato."
   },
   "accept": {
     "back": "Proposta di {{provider}}",
@@ -150,8 +147,6 @@
     "where": "Dove",
     "includes": "Include",
     "total": "Totale da pagare",
-    "phoneLead": "Riceverai la richiesta di pagamento al",
-    "phoneChange": "Cambia",
     "phoneLabel": "Numero M-Pesa",
     "phoneHint": "Deve essere un numero M-Pesa attivo, con saldo sufficiente per {{amount}}.",
     "phoneRequired": "Scrivi il numero che riceve la richiesta M-Pesa.",
@@ -222,7 +217,6 @@
     "photos_one": "{{count}} foto",
     "noPhotos": "nessuna foto",
     "neededBy": "entro {{when}}",
-    "noDeadline": "nessuna scadenza",
     "more": "Altro",
     "loadError": "Non è stato possibile caricare i preventivi.",
     "back": "Preventivi",
@@ -239,7 +233,6 @@
     "completedBookings_zero": "prima volta su Ntizo",
     "historyTitle": "Cronologia",
     "requestReceived": "Richiesta ricevuta",
-    "responseWindow": "Termine di risposta di {{hours}} h, impostato sul servizio.",
     "movedOn": "Questa richiesta è cambiata nel frattempo. L'abbiamo ricaricata."
   },
   "propose": {
@@ -254,7 +247,6 @@
     "durationLabel": "Durata",
     "durationUnit": "h",
     "memberLabel": "Chi fa il lavoro",
-    "memberSelf": "{{name}} (io)",
     "noteLabel": "Nota per il cliente",
     "optional": "facoltativo",
     "notePlaceholder": "Cosa è incluso, cosa resta fuori, cosa si concorda sul posto.",
@@ -262,7 +254,6 @@
     "attachmentsLimit": "fino a 5",
     "attachmentsAction": "Aggiungi file",
     "attachmentsHint": "preventivo in PDF, foto di lavori simili",
-    "validityNote": "La proposta resta valida {{hours}} ore. Puoi rivederla finché il cliente non decide; la precedente resta nella cronologia.",
     "submit": "Invia proposta",
     "submitRevise": "Invia nuova proposta",
     "reviseAction": "Rivedi proposta",
@@ -287,11 +278,9 @@
     "tooMany": "Massimo {{max}} file."
   },
   "entry": {
-    "price": "Su preventivo",
     "respondsIn": "risponde entro {{hours}} h",
     "panelTitle": "Su preventivo",
     "panelBody": "Il prezzo dipende dal lavoro. Racconta cosa ti serve e {{provider}} risponde con un importo, una data e la durata, senza alcun impegno da parte tua.",
-    "action": "Richiedi un preventivo",
-    "message": "Invia messaggio"
+    "action": "Richiedi un preventivo"
   }
 }

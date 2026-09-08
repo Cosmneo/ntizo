@@ -36,7 +36,7 @@ const NEXT_STEPS = [
  * `errorMoved`, `errorAddressRequired` and `errorGeneric`, none of which mean
  * the *number* is wrong. An explicit set (rather than a
  * `refusal.startsWith("accept.phone")` prefix test) is what this checks
- * against: a prefix would also light up for some future `accept.phoneLead`-
+ * against: a prefix would also light up for some future `accept.phone*`-
  * shaped key that has nothing to do with a refusal, and three literals is a
  * small enough list that spelling them out is no less clear than a pattern.
  */

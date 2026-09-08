@@ -82,7 +82,6 @@
     "cancel": "Abbrechen",
     "railWho": "Wer antwortet",
     "verified": "Verifiziert",
-    "ratingAndJobs": "{{rating}} ★ · {{jobs}} Aufträge",
     "railPromise": "Sie verpflichten sich, innerhalb von {{hours}} Stunden zu antworten. Antworten sie nicht, läuft die Anfrage ab und wir benachrichtigen Sie.",
     "railNextTitle": "Was als Nächstes passiert",
     "step1Title": "Sie erhalten ein Angebot",
@@ -114,7 +113,6 @@
     "chat": "Chatten",
     "withdraw": "Anfrage zurückziehen",
     "seeBooking": "Buchung ansehen",
-    "waitingTitle": "Warten auf das Angebot",
     "waitingBody": "{{provider}} hat bis {{when}} Zeit zu antworten. Wir benachrichtigen Sie, sobald eine Antwort da ist.",
     "closedTitle": "Dieser Kostenvoranschlag ist beendet",
     "yourRequest": "Ihre Anfrage",
@@ -137,8 +135,7 @@
     "stepPaymentBody": "bei Annahme erhalten Sie die Anfrage auf dem Handy",
     "stepConfirmed": "Buchung bestätigt",
     "stepConfirmedBody": "der Platz gehört Ihnen",
-    "railFooter": "Mit der Annahme wird die Buchung erstellt und die M-Pesa-Anfrage gesendet. Sie haben 15 Minuten, um sie auf dem Handy zu bestätigen; tun Sie das nicht, wird der Platz freigegeben und der Anbieter benachrichtigt.",
-    "movedOn": "Dieser Kostenvoranschlag hat sich inzwischen geändert. Wir haben ihn neu geladen."
+    "railFooter": "Mit der Annahme wird die Buchung erstellt und die M-Pesa-Anfrage gesendet. Sie haben 15 Minuten, um sie auf dem Handy zu bestätigen; tun Sie das nicht, wird der Platz freigegeben und der Anbieter benachrichtigt."
   },
   "accept": {
     "back": "Angebot von {{provider}}",
@@ -150,8 +147,6 @@
     "where": "Wo",
     "includes": "Enthält",
     "total": "Zu zahlender Betrag",
-    "phoneLead": "Sie erhalten die Zahlungsanfrage unter",
-    "phoneChange": "Ändern",
     "phoneLabel": "M-Pesa-Nummer",
     "phoneHint": "Es muss eine aktive M-Pesa-Nummer mit ausreichendem Guthaben für {{amount}} sein.",
     "phoneRequired": "Geben Sie die Nummer ein, die die M-Pesa-Anfrage erhält.",
@@ -222,7 +217,6 @@
     "photos_one": "{{count}} Foto",
     "noPhotos": "keine Fotos",
     "neededBy": "bis {{when}}",
-    "noDeadline": "keine Frist",
     "more": "Mehr",
     "loadError": "Die Kostenvoranschläge konnten nicht geladen werden.",
     "back": "Kostenvoranschläge",
@@ -239,7 +233,6 @@
     "completedBookings_zero": "erstes Mal auf Ntizo",
     "historyTitle": "Verlauf",
     "requestReceived": "Anfrage erhalten",
-    "responseWindow": "Antwortfrist von {{hours}} Std., in der Leistung festgelegt.",
     "movedOn": "Diese Anfrage hat sich inzwischen geändert. Wir haben sie neu geladen."
   },
   "propose": {
@@ -254,7 +247,6 @@
     "durationLabel": "Dauer",
     "durationUnit": "Std.",
     "memberLabel": "Wer die Arbeit übernimmt",
-    "memberSelf": "{{name}} (ich)",
     "noteLabel": "Notiz für den Kunden",
     "optional": "optional",
     "notePlaceholder": "Was enthalten ist, was nicht, was vor Ort abgesprochen wird.",
@@ -262,7 +254,6 @@
     "attachmentsLimit": "bis zu 5",
     "attachmentsAction": "Datei hinzufügen",
     "attachmentsHint": "Kostenvoranschlag als PDF, Fotos ähnlicher Arbeiten",
-    "validityNote": "Das Angebot bleibt {{hours}} Stunden gültig. Sie können es überarbeiten, solange der Kunde noch nicht entschieden hat; das vorherige bleibt im Verlauf.",
     "submit": "Angebot senden",
     "submitRevise": "Neues Angebot senden",
     "reviseAction": "Angebot überarbeiten",
@@ -287,11 +278,9 @@
     "tooMany": "Maximal {{max}} Dateien."
   },
   "entry": {
-    "price": "Auf Anfrage",
     "respondsIn": "antwortet innerhalb von {{hours}} Std.",
     "panelTitle": "Auf Anfrage",
     "panelBody": "Der Preis hängt von der Arbeit ab. Beschreiben Sie, was Sie brauchen, und {{provider}} antwortet mit einem Betrag, einem Termin und der Dauer, ganz unverbindlich.",
-    "action": "Kostenvoranschlag anfragen",
-    "message": "Nachricht senden"
+    "action": "Kostenvoranschlag anfragen"
   }
 }

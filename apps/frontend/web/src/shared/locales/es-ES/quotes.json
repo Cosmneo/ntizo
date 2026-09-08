@@ -82,7 +82,6 @@
     "cancel": "Cancelar",
     "railWho": "Quién responde",
     "verified": "Verificado",
-    "ratingAndJobs": "{{rating}} ★ · {{jobs}} trabajos",
     "railPromise": "Se comprometen a responder en {{hours}} horas. Si no responden, la solicitud caduca y te avisamos.",
     "railNextTitle": "Qué pasa después",
     "step1Title": "Recibes una propuesta",
@@ -114,7 +113,6 @@
     "chat": "Chatear",
     "withdraw": "Retirar la solicitud",
     "seeBooking": "Ver la reserva",
-    "waitingTitle": "Esperando la propuesta",
     "waitingBody": "{{provider}} tiene hasta {{when}} para responder. Te avisamos en cuanto haya respuesta.",
     "closedTitle": "Este presupuesto ha terminado",
     "yourRequest": "Tu solicitud",
@@ -137,8 +135,7 @@
     "stepPaymentBody": "al aceptar, recibes la solicitud en el móvil",
     "stepConfirmed": "Reserva confirmada",
     "stepConfirmedBody": "la plaza es tuya",
-    "railFooter": "Aceptar crea la reserva y envía la solicitud M-Pesa. Tienes 15 minutos para confirmarla en el móvil; si no la confirmas, la plaza se libera y se avisa al profesional.",
-    "movedOn": "Este presupuesto ha cambiado mientras tanto. Lo hemos vuelto a cargar."
+    "railFooter": "Aceptar crea la reserva y envía la solicitud M-Pesa. Tienes 15 minutos para confirmarla en el móvil; si no la confirmas, la plaza se libera y se avisa al profesional."
   },
   "accept": {
     "back": "Propuesta de {{provider}}",
@@ -150,8 +147,6 @@
     "where": "Dónde",
     "includes": "Incluye",
     "total": "Total a pagar",
-    "phoneLead": "Recibirás la solicitud de pago en",
-    "phoneChange": "Cambiar",
     "phoneLabel": "Número de M-Pesa",
     "phoneHint": "Tiene que ser un número de M-Pesa activo, con saldo suficiente para {{amount}}.",
     "phoneRequired": "Escribe el número que recibe la solicitud M-Pesa.",
@@ -222,7 +217,6 @@
     "photos_one": "{{count}} foto",
     "noPhotos": "sin fotos",
     "neededBy": "antes de {{when}}",
-    "noDeadline": "sin plazo",
     "more": "Más",
     "loadError": "No se han podido cargar los presupuestos.",
     "back": "Presupuestos",
@@ -239,7 +233,6 @@
     "completedBookings_zero": "primera vez en Ntizo",
     "historyTitle": "Historial",
     "requestReceived": "Solicitud recibida",
-    "responseWindow": "Plazo de respuesta de {{hours}} h, definido en el servicio.",
     "movedOn": "Esta solicitud ha cambiado mientras tanto. La hemos vuelto a cargar."
   },
   "propose": {
@@ -254,7 +247,6 @@
     "durationLabel": "Duración",
     "durationUnit": "h",
     "memberLabel": "Quién hace el trabajo",
-    "memberSelf": "{{name}} (yo)",
     "noteLabel": "Nota para el cliente",
     "optional": "opcional",
     "notePlaceholder": "Qué está incluido, qué queda fuera, qué se acuerda en el sitio.",
@@ -262,7 +254,6 @@
     "attachmentsLimit": "hasta 5",
     "attachmentsAction": "Añadir archivo",
     "attachmentsHint": "presupuesto en PDF, fotos de trabajos parecidos",
-    "validityNote": "La propuesta queda válida {{hours}} horas. Puedes revisarla mientras el cliente no decida; la anterior queda en el historial.",
     "submit": "Enviar propuesta",
     "submitRevise": "Enviar nueva propuesta",
     "reviseAction": "Revisar propuesta",
@@ -287,11 +278,9 @@
     "tooMany": "Máximo {{max}} archivos."
   },
   "entry": {
-    "price": "A presupuesto",
     "respondsIn": "responde en {{hours}} h",
     "panelTitle": "A presupuesto",
     "panelBody": "El precio depende del trabajo. Cuenta lo que necesitas y {{provider}} responde con un importe, una fecha y la duración, sin ningún compromiso por tu parte.",
-    "action": "Pedir presupuesto",
-    "message": "Enviar mensaje"
+    "action": "Pedir presupuesto"
   }
 }

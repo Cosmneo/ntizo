@@ -32,7 +32,7 @@ export function ServiceQuoteNotice({
   const { t } = useTranslation("quotes");
 
   return (
-    <div className="grid gap-3">
+    <div className="grid gap-3 rounded-[var(--radius-card)] border border-[var(--color-border)] p-5">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <p className="type-h3">{t("entry.panelTitle")}</p>
         {quoteForm && (

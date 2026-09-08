@@ -33,9 +33,9 @@ import { quoteColumns, quoteRow } from "./quote-row";
  *    at most a page or two — nothing here to search or filter, so the tabs
  *    are drawn directly, the way the customer's `quotes-page.tsx` draws its
  *    own two.
- * 3. **The header carries a blurb**, `t("provider.blurb", { count, oldest })`
- *    — how many are owed an answer and how long the oldest of them has
- *    waited. It reads off the "toAnswer" tab's own first page regardless of
+ * 3. **The header carries a blurb**, `t("provider.blurb", { count, left })`
+ *    — how many are owed an answer and how long until the soonest of them
+ *    expires. It reads off the "toAnswer" tab's own first page regardless of
  *    which tab is on screen, the same page `useQuoteToAnswerCount` and this
  *    page's own default view share — so the blurb never lags behind a tab
  *    switch to "waiting" or "history".
