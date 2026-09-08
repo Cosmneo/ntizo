@@ -59,7 +59,10 @@ export function DetailGallery({
     <div className="grid grid-cols-1 gap-3 sm:h-[clamp(340px,40vw,520px)] sm:grid-cols-[minmax(0,1.72fr)_minmax(0,1fr)]">
       <div
         className={cn(
-          "relative aspect-[4/3] overflow-hidden rounded-[var(--radius-card)] bg-[var(--color-muted)] sm:aspect-auto sm:h-full",
+          // `sm:min-h-0` for the reason the side column carries it too: a grid
+          // item's automatic minimum size is its content's, so a tall photo
+          // holds its tile open past the row the collage clamped.
+          "relative aspect-[4/3] overflow-hidden rounded-[var(--radius-card)] bg-[var(--color-muted)] sm:aspect-auto sm:h-full sm:min-h-0",
           // A single photo has no side column to sit beside — without this,
           // the outer grid's two-track template still reserves the second
           // track, and CSS Grid's auto-placement leaves it empty rather than
@@ -77,12 +80,20 @@ export function DetailGallery({
       </div>
 
       {hasSide && (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-1 sm:grid-rows-[1fr_1fr_auto]">
+        // `minmax(0,1fr)` rather than `1fr`, and `sm:min-h-0` on the column
+        // itself: a `1fr` track's floor is its content's own minimum, so two
+        // large photos and the button together asked for more height than the
+        // collage clamps to — 573px against 520px on a 1920px window — and
+        // the difference spilled out of the grid, which has no `overflow` of
+        // its own, over the heading below the gallery. The tracks may now
+        // shrink and `object-cover` crops, which is what the clamped height
+        // was for in the first place.
+        <div className="grid grid-cols-2 gap-3 sm:min-h-0 sm:grid-cols-1 sm:grid-rows-[minmax(0,1fr)_minmax(0,1fr)_auto]">
           {sideImages.map((src) => (
             <div
               key={src}
               className={cn(
-                "overflow-hidden rounded-[var(--radius-card)] bg-[var(--color-muted)]",
+                "overflow-hidden rounded-[var(--radius-card)] bg-[var(--color-muted)] sm:min-h-0",
                 // With only one side photo (two images in the whole gallery),
                 // there is no second tile to fill the paired row below it —
                 // so the lone tile takes both rows instead of leaving one
