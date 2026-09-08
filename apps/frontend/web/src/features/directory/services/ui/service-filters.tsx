@@ -18,6 +18,7 @@ import {
   type SortDropdownOption,
 } from "@/shared/components/browse/sort-dropdown";
 import { FacetBox, FacetCount, facetOptionClass } from "@/shared/components/browse/facet-panel";
+import { SearchableOptions } from "@/shared/components/browse/searchable-options";
 import { EXACT_MATCH } from "@/shared/components/browse/active-match";
 import {
   browseSearch,
@@ -30,6 +31,10 @@ import {
 import type { BrowseSort } from "@/features/directory/services/domain/types";
 import { useServiceCities } from "@/features/directory/services/viewmodel/use-browse-services";
 import { PriceRangeFilter } from "@/features/directory/services/ui/price-range-filter";
+import {
+  CATEGORY_FILTER_LIMIT,
+  useCategoryPreview,
+} from "@/features/landing/viewmodel/use-categories";
 
 /**
  * The four places a service can happen.
@@ -70,12 +75,14 @@ export const LANGUAGES = LOCALES;
  * Everything the pill bar can narrow, taken off at once — but not what was
  * typed.
  *
- * Exactly the set `browseFilterChips` lists other than `q`, and for the same
- * reasons the category and the sort are kept: the **category is kept**,
- * because the strip above the results is still showing it and clearing
- * something visible from a control somewhere else reads as a bug; the
- * **sort is kept**, because an order is not a narrowing and clearing filters
- * should not also reorder what is left.
+ * The set `browseFilterChips` lists other than `q`, plus the category. The
+ * **category goes** now that it is a pill on this bar: it used to be kept,
+ * because the strip above the results went on showing it and clearing
+ * something visible from a control somewhere else reads as a bug — but the
+ * control and the category are the same control today, and a "Clear all" that
+ * left one of its own pills filled would be the bug instead. The **sort is
+ * kept**, because an order is not a narrowing and clearing filters should not
+ * also reorder what is left.
  *
  * **The term is kept too.** It lives in the search bar under the header,
  * which shows it and has its own way of emptying it; a "Clear all" under a
@@ -88,6 +95,9 @@ export const LANGUAGES = LOCALES;
  */
 export function clearedBrowseSearch(current: BrowseSearch): BrowseSearch {
   return browseSearch(current, {
+    // The category came off the strip above the results and onto this bar, so
+    // "clear all" owes it the same clearing as every other filter beside it.
+    category: undefined,
     locationType: undefined,
     paymentMode: undefined,
     providerType: undefined,
@@ -153,7 +163,13 @@ export function chooseServiceSort(
  * off. See R18.
  */
 function appliedCount(current: BrowseSearch): number {
-  return browseFilterChips(current).filter((c) => c.key !== "q").length;
+  // The chips are the results' own summary and carry no category — the heading
+  // above them already names it, and a chip would say it twice. The count is
+  // the phone's "Filters (n)" badge, though, and a category is one of the
+  // things it now counts.
+  return (
+    browseFilterChips(current).filter((c) => c.key !== "q").length + (current.category ? 1 : 0)
+  );
 }
 
 function PillClear({ search, label }: { search: BrowseSearch; label: string }) {
@@ -237,6 +253,7 @@ function ClearAll({ current, onNavigate }: { current: BrowseSearch; onNavigate?:
 export function ServiceFilters({ current }: { current: BrowseSearch }) {
   const { t } = useTranslation("directory");
   const cities = useServiceCities();
+  const categories = useCategoryPreview(CATEGORY_FILTER_LIMIT).data?.items ?? [];
   const chips = browseFilterChips(current);
 
   const priceChip = chipFor(chips, "price");
@@ -246,6 +263,12 @@ export function ServiceFilters({ current }: { current: BrowseSearch }) {
   const languageChip = chipFor(chips, "language");
   const cityChip = chipFor(chips, "city");
 
+  // The name, not the code, because the pill fills with what was chosen. It is
+  // undefined until the categories land, exactly as the heading's own name is
+  // — one request answers both, so they fill together.
+  const categoryName = categories.find((c) => c.code === current.category)?.name;
+
+  const categoryLabel = t("filterCategory");
   const priceLabel = t("filterPrice");
   const whereLabel = t("filterWhere");
   const paymentLabel = t("filterPayment");
@@ -255,6 +278,25 @@ export function ServiceFilters({ current }: { current: BrowseSearch }) {
 
   return (
     <FilterBar>
+      {/* First, because it is the widest narrowing on the bar: every other
+          pill divides a set this one has already chosen. It is also where the
+          strip that used to carry the categories sat — above the results and
+          before everything else. */}
+      <FilterPill
+        label={categoryLabel}
+        active={categoryName}
+        clear={
+          current.category ? (
+            <PillClear
+              search={browseSearch(current, { category: undefined, offset: undefined })}
+              label={categoryLabel}
+            />
+          ) : undefined
+        }
+      >
+        <CategoryOptions current={current} />
+      </FilterPill>
+
       {/* The one group that is not a closed set, so the one that is not
           links — see `PriceRangeFilter`, which explains why a range has to
           be typed and submitted. */}
@@ -413,6 +455,12 @@ export function MobileServiceFilters({
         apply={t("filterSheetApply", { count: total })}
         onApply={() => setOpen(false)}
       >
+        {/* The phone's only way to a category now that the strip is gone, so
+            it leads the sheet the way the pill leads the bar. */}
+        <SheetGroup label={t("filterCategory")}>
+          <CategoryOptions current={current} />
+        </SheetGroup>
+
         <SheetGroup label={t("filterPrice")}>
           <PriceRangeFilter current={current} />
         </SheetGroup>
@@ -508,6 +556,47 @@ function LanguageOptions({ current }: { current: BrowseSearch }) {
         />
       ))}
     </>
+  );
+}
+
+/**
+ * The categories, as the bar's first group.
+ *
+ * Every category in one request rather than a page of them: `SearchableOptions`
+ * matches against what it holds, so a category left out of the response is one
+ * a reader can type the name of and be told does not exist. See
+ * `CATEGORY_FILTER_LIMIT`.
+ */
+function CategoryOptions({ current }: { current: BrowseSearch }) {
+  const { t } = useTranslation("directory");
+  const categories = useCategoryPreview(CATEGORY_FILTER_LIMIT).data?.items ?? [];
+
+  return (
+    <SearchableOptions
+      searchLabel={t("filterCategorySearchLabel")}
+      searchPlaceholder={t("filterCategorySearchPlaceholder")}
+      noMatchLabel={(term) => t("filterCategoryNoMatch", { term })}
+      lead={
+        <FacetOption
+          label={t("servicesAllCategories")}
+          active={!current.category}
+          value=""
+          toSearch={() => browseSearch(current, { category: undefined, offset: undefined })}
+        />
+      }
+      options={categories.map((c) => ({
+        key: c.id,
+        label: c.name,
+        node: (
+          <FacetOption
+            label={c.name}
+            active={current.category === c.code}
+            value={c.code}
+            toSearch={(category) => browseSearch(current, { category, offset: undefined })}
+          />
+        ),
+      }))}
+    />
   );
 }
 

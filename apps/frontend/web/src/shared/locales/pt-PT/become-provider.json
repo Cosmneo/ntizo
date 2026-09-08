@@ -1,5 +1,4 @@
 {
-  "eyebrow": "Prestadores Ntizo",
   "title": "Ofereça os seus serviços.",
   "titleAccent": "Define o preço.",
   "subtitle": "Junte-se aos prestadores que encontram clientes em Maputo, Matola e Beira. Sem mensalidade — apenas uma percentagem fixa sobre o que ganha, mostrada antes de listar.",
@@ -63,10 +62,7 @@
     }
   },
   "ctaSecondary": "Ver prestadores",
-  "pathsEyebrow": "Escolha o seu caminho",
-  "pricingEyebrow": "O que lhe custa",
   "stepsEyebrow": "Do registo à primeira reserva",
-  "requirementsEyebrow": "Antes de começar",
   "closingTitle": "Pronto para começar a ganhar?",
   "closingBody": "A inscrição é gratuita e não há nada a pagar até ter a primeira reserva.",
   "closingTalk": "Falar connosco"

@@ -49,6 +49,7 @@ vi.mock("@/features/directory/viewmodel/use-directory", () => ({
 }));
 
 vi.mock("@/features/landing/viewmodel/use-categories", () => ({
+  CATEGORY_FILTER_LIMIT: 48,
   useCategoryPreview: () => ({
     data: { items: [{ id: "c1", code: "hair", name: "Hair & beauty", icon: "Scissors" }] },
   }),
@@ -167,7 +168,7 @@ describe("DirectoryPage", () => {
     expect(screen.queryByText("in all categories")).not.toBeInTheDocument();
   });
 
-  it("puts the heading under the strip, and names the place in the summary's scope", async () => {
+  it("heads the page and names the place in the summary's scope", async () => {
     // The hero is gone: the `h1` is the first thing inside `main`, under the
     // category strip, rather than sitting in a tinted band above it.
     renderPage("/providers?city=Maputo", { items: [provider()], total: 1 });
@@ -181,48 +182,29 @@ describe("DirectoryPage", () => {
 
   it("heads the page with the term when one is typed", async () => {
     // The term is what the reader asked for; the category they are in is
-    // already stated by the chip lit in the strip above.
+    // already stated by the filled category pill below.
     renderPage("/providers?q=estúdio", { items: [provider()], total: 1 });
     expect(await screen.findByRole("heading", { level: 1 })).toHaveTextContent("estúdio");
   });
 
-  it("shows what each business sells, with prices, inside the row", async () => {
-    // The one thing the page this replaces could not say. Scoped to the chip:
-    // the fixture's own `fromAmountMinor` is 80_000 too, so the side rail's
-    // "from" price prints the identical string.
-    renderPage("/providers", {
-      items: [
-        provider({
-          services: [
-            { name: "Corte com barba", amountMinor: 80_000, currency: "MZN", pricingMode: "fixed" },
-          ],
-        }),
-      ],
-      total: 1,
-    });
-    expect(await screen.findByText("Corte com barba")).toBeInTheDocument();
-    // `formatHeadlinePrice(80_000, "MZN", "en-US")` renders "MZN 800" — the
-    // currency leads in this locale, not the amount.
-    expect(screen.getByText("Corte com barba").closest("li")).toHaveTextContent("MZN 800");
-  });
+  // `ProviderRow` used to show up to three of a business's services with
+  // their prices, and its own description paragraph, in a rail a card has no
+  // room for — both dropped with the row itself. See `ProviderCard`'s own
+  // doc comment.
 
-  it("draws no button on a row at all — the row is the link", async () => {
+  it("draws no button on a card at all — the card is the link", async () => {
     // A blue "View business" repeated twenty times down a page competes with
     // every price on it and with the one button that matters, in the search
     // bar.
-    // The destination is said inside the row's one link, as the tail of its
-    // own accessible name, rather than as a second control to step past or —
-    // as it was before — a sentence loose in the side column that a screen
-    // reader met after the price, belonging to nothing.
     renderPage("/providers", { items: [provider()], total: 1 });
-    const row = await screen.findByRole("link", { name: /Estúdio Mavalane/ });
+    await screen.findByRole("link", { name: /Estúdio Mavalane/ });
     expect(screen.getAllByRole("link", { name: /Estúdio Mavalane/ })).toHaveLength(1);
     expect(screen.queryByRole("button", { name: /View business/i })).toBeNull();
-
-    const destination = screen.getByText("View business");
-    expect(row).toContainElement(destination);
-    expect(destination.className).toContain("sr-only");
-    expect(row).toHaveAccessibleName("Estúdio Mavalane View business");
+    // `ProviderRow` closed its link with a screen-reader-only "View business"
+    // / "View profile" suffix on its accessible name; the card carries no
+    // such suffix, which is a real drop from the row and not merely a
+    // rename — see `provider-card.test.tsx`.
+    expect(screen.queryByText(/View business|View profile/)).toBeNull();
   });
 
   it("does not tell somebody who filtered that the platform is empty", async () => {
@@ -432,22 +414,22 @@ describe("DirectoryPage", () => {
   });
 
   it("marks no filter link as the current page just for removing a filter", async () => {
-    // The same subset trap, now in three places. A filter's *active* option
-    // links back to `/providers` — an empty search, which is a subset of every
-    // one — so the filter pill's row, the phone's quick chip and the sheet's
-    // row all announced it as where you are.
+    // The subset trap. A filter's *active* option links back to `/providers` —
+    // an empty search, which is a subset of every one — so both the filter
+    // pill's row and the sheet's row announced it as where you are. There
+    // used to be a third, the phone's quick chip; the chips are gone and the
+    // trap is not, so the guard stays on both survivors.
     renderPage("/providers?providerType=individual", { items: [provider()], total: 1 });
-    // Two while the sheet is shut: the filter pill's option row and the
-    // phone's quick chip, which offers this same narrowing in one tap.
+    // One while the sheet is shut: the filter pill's option row alone.
     // `SheetContent` returns null until it is opened.
     const closed = await screen.findAllByRole("link", { name: "A person" });
-    expect(closed).toHaveLength(2);
+    expect(closed).toHaveLength(1);
 
     fireEvent.click(screen.getByRole("button", { name: /^Filters/ }));
 
-    // Three now, and all three must be clean.
+    // Two now, and both must be clean.
     const options = screen.getAllByRole("link", { name: "A person" });
-    expect(options).toHaveLength(3);
+    expect(options).toHaveLength(2);
     for (const option of options) expect(option).not.toHaveAttribute("aria-current");
 
     // The clear-all is the same trap wearing a different label, and the worst
@@ -517,44 +499,22 @@ describe("DirectoryPage", () => {
     expect(screen.getByRole("dialog", { name: "Filters" })).toBeInTheDocument();
   });
 
-  it("offers four one-tap narrowings on a phone, each of which taps off again", async () => {
-    // The pills are a toolbar and a toolbar does not fit a thumb, so the phone
-    // gets the narrowings people actually use. A chip already on links back to
-    // the same search without it.
-    const { container } = renderPage("/providers?verified=true", {
-      items: [provider()],
-      total: 1,
-    });
+  /**
+   * The chips are gone, and that is the decision.
+   *
+   * They were the third surface for one job: the same narrowings lived on the
+   * pill bar for a wide screen, in the sheet the floating capsule opens, and
+   * in this row above the results. On a 390px screen the row sat between the
+   * count and the first card and pushed the results down for a narrowing the
+   * capsule already offers one tap away.
+   */
+  it("offers no row of chips above the results — the sheet is the phone's filters", async () => {
+    renderPage("/providers?verified=true", { items: [provider()], total: 1 });
     await screen.findByRole("heading", { level: 1 });
-    const chips = within(container).getByRole("list", { name: "Quick filters" });
-    const verified = within(chips).getByRole("link", { name: "Verified only" });
-    expect(verified).toHaveAttribute("aria-pressed", "true");
-    expect(verified).toHaveAttribute("href", "/providers");
-    // The threshold is a decimal, so it is written the way this reader writes
-    // decimals — the same formatter the rating pill's own rows use.
-    expect(within(chips).getByRole("link", { name: "4.5 or more" })).toHaveAttribute(
-      "href",
-      "/providers?minRating=4.5&verified=true",
-    );
-    expect(within(chips).getByRole("link", { name: "A person" })).toHaveAttribute(
-      "href",
-      "/providers?providerType=individual&verified=true",
-    );
-    expect(within(chips).getByRole("link", { name: "An establishment" })).toHaveAttribute(
-      "href",
-      "/providers?providerType=organization&verified=true",
-    );
-  });
 
-  it("does not offer four ways to narrow a platform with nothing on it", async () => {
-    // Chips under "No providers listed yet" are work that cannot help. They
-    // stay on an empty *search*, where they are one tap out of it.
-    renderPage("/providers", { items: [], total: 0 });
-    await screen.findByText("No providers listed yet");
     expect(screen.queryByRole("list", { name: "Quick filters" })).toBeNull();
-
-    renderPage("/providers?city=Maputo", { items: [], total: 0 });
-    expect(await screen.findByRole("list", { name: "Quick filters" })).toBeInTheDocument();
+    // And the capsule that replaces them is still there.
+    expect(screen.getByRole("button", { name: /^Filters/ })).toBeInTheDocument();
   });
 
   it("offers no numbered pages when everything matched fits on one", async () => {

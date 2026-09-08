@@ -6,10 +6,10 @@ import { SERVICE_FIELDS } from "@/features/directory/services/data/service.repos
 /**
  * The services the home page puts under "popular".
  *
- * `SERVICE_FIELDS` is imported rather than restated: the home page's own
- * `PopularServiceCard` prices and rates a service the same way the browse's
- * `ServiceTile` does, off the same `ServiceDTO`, so a field the browse adds
- * and this string forgets is a field the card silently renders as nothing.
+ * `SERVICE_FIELDS` is imported rather than restated: the home page's rail and
+ * `/services`' own grid both price and rate a service off the shared
+ * `ServiceCard`, from the same `ServiceDTO`, so a field the browse adds and
+ * this string forgets is a field the card silently renders as nothing.
  */
 const POPULAR = `
   query LandingPopularServices($input: ServiceAllInput!) {

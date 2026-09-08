@@ -25,8 +25,8 @@ export interface FavouriteSaveResult {
  * on one.
  *
  * **On the photograph, never in the words.** It positions itself against the
- * media box it is handed to — `TileMedia`'s for a tile, `ResultRow`'s media
- * cell for a row — so the three lines of text keep their column and a saved
+ * media box it is handed to — `ServiceCard`'s picture frame, or
+ * `ProviderCard`'s — so the lines of text below keep their column and a saved
  * result is exactly as tall as an unsaved one. Nothing in the grid moves when
  * a mark arrives.
  *
@@ -162,11 +162,14 @@ export function FavouriteButton({
         // `z-[3]` is what puts it above the title link's `::after`, which
         // covers the whole result and — being later in the tree than the
         // photograph — otherwise paints over the heart and takes its clicks.
-        // Above the provider row's logo (`z-[2]`) for the same reason.
+        // Above the provider card's logo badge (`z-[2]`) for the same reason.
         "absolute top-1.5 right-1.5 z-[3] grid h-[27px] w-[27px] place-items-center rounded-full",
-        // 27px on the phone's 116px-square photograph, 32px from `sm` where
-        // the tile's picture is the full width of a grid cell. A small photo
-        // must not become mostly button.
+        // 27px below `sm`, 32px above it. The smaller size was measured
+        // against the borderless tile's 116px-square phone photograph, where a
+        // 32px disc would have been a quarter of the picture. The card's
+        // picture is the full width of a grid cell at every width, so the two
+        // sizes are worth revisiting — deliberately not inside this merge,
+        // which is changing what draws a result and not what a heart is.
         "sm:top-2.5 sm:right-2.5 sm:h-8 sm:w-8",
         // The theme's own ground at 92%, which is exactly the mockup's
         // `rgba(255,255,255,.92)` in light and its inverse in dark. The

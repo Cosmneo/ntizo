@@ -1,5 +1,4 @@
 {
-  "eyebrow": "Ntizo-Anbieter",
   "title": "Biete deine Leistungen an.",
   "titleAccent": "Du legst den Preis fest.",
   "subtitle": "Werde einer der Anbieter, die in Maputo, Matola und Beira Kundschaft finden. Keine monatliche Gebühr — nur ein fester Prozentsatz von dem, was du verdienst, angezeigt, bevor du inserierst.",
@@ -63,10 +62,7 @@
     }
   },
   "ctaSecondary": "Anbieter ansehen",
-  "pathsEyebrow": "Wähle deinen Weg",
-  "pricingEyebrow": "Was es dich kostet",
   "stepsEyebrow": "Von der Anmeldung bis zu deiner ersten Buchung",
-  "requirementsEyebrow": "Bevor du startest",
   "closingTitle": "Bereit, mit dem Verdienen anzufangen?",
   "closingBody": "Die Anmeldung ist kostenlos, und bis zu deiner ersten Buchung gibt es nichts zu bezahlen.",
   "closingTalk": "Sprich mit uns"

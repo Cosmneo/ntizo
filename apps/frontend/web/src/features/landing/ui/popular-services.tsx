@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { Skeleton } from "@ntizo/frontend-ui";
-import { PopularServiceCard } from "@/features/landing/ui/popular-service-card";
+import { ServiceCard } from "@/shared/components/browse/service-card";
+import { ScrollRail } from "@/shared/components/browse/scroll-rail";
 import { usePopularServices } from "@/features/landing/viewmodel/use-popular-services";
 import { useLocale } from "@/features/landing/viewmodel/use-locale";
 import { SectionHead } from "@/features/landing/ui/section-head";
@@ -15,11 +16,14 @@ export const LANDING_SERVICES = 8;
  * *providers*, with no price on any of them — so the home page of a
  * marketplace whose whole promise is a fixed price never showed one.
  *
- * It shows `PopularServiceCard` here, not the browse's borderless
- * `ServiceTile` — the client asked this page's card for a bordered,
- * photo-on-top shape of its own, separate from `/services`, which keeps its
- * approved design untouched. The two cards still share one price treatment,
- * one rating mark and one photo fallback: only the frame around them differs.
+ * It shows the shared `ServiceCard` — a bordered, photo-on-top shape the
+ * client asked for here first and then asked to see everywhere: `/services`'
+ * own grid now draws the same component rather than its old borderless
+ * `ServiceTile`.
+ *
+ * Below `sm` the grid becomes `ScrollRail`'s sideways row, at the rail's own
+ * default `cardWidth` (72%): one card plus a generous quarter-card peek of
+ * the next, wide enough to keep the title and price legible.
  */
 export function PopularServices() {
   const { t } = useTranslation("landing"); // t:PopularServices
@@ -38,7 +42,7 @@ export function PopularServices() {
         blurb={t("home.servicesBlurb")}
         more={{ label: t("home.servicesAll"), to: "/services" }}
       />
-      <ul className="grid list-none grid-cols-1 gap-6 p-0 sm:grid-cols-2 lg:grid-cols-4">
+      <ScrollRail as="ul" columns={2} className="lg:grid-cols-4">
         {isLoading
           ? Array.from({ length: LANDING_SERVICES }, (_, i) => (
               <li key={i}>
@@ -58,10 +62,10 @@ export function PopularServices() {
             ))
           : items.map((s) => (
               <li key={s.id}>
-                <PopularServiceCard service={s} locale={locale} />
+                <ServiceCard service={s} locale={locale} />
               </li>
             ))}
-      </ul>
+      </ScrollRail>
     </section>
   );
 }

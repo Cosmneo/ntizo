@@ -26,6 +26,17 @@ import { SiteHeader } from "@/shared/components/site-header";
  * 5000 job. The rail is sticky because it is the part a reader acts on, and
  * the left column is the part they read first and scroll past.
  *
+ * **The collage is inside the left column, and the rail starts level with
+ * it.** The page used to open with a collage spanning the whole shell, which
+ * pushed the rail — the price, and the button that opens a conversation — a
+ * full gallery down the page, below the fold on every laptop. This is the
+ * move `ServiceDetailPage` made first and left noted as owed here; the two
+ * pages now open the same way, which is the point of them looking alike at
+ * all. Everything under the collage kept its order and its spacing:
+ * `ProviderHero`'s `mt-10` measures the same 40px the grid's old `py-10` did,
+ * including for the majority of providers who have no photographs and whose
+ * page therefore opens on the hero either way.
+ *
  * Below `lg` the rail unstacks under the content, so the phone reads
  * top-to-bottom the way somebody decides: photographs, who they are, the four
  * facts, what they say about themselves, what they sell, what customers said.
@@ -67,23 +78,27 @@ export function ProviderDetailPage({ slug }: { slug: string }) {
       <main className="page-shell py-8">
         <Breadcrumb provider={provider} />
 
-        {/* No verification badge over the photograph, though `DetailGallery`
-            offers the slot. `ProviderHero` badges the name a few lines below
-            this, and the rail states the same fact a third time in words —
-            three assertions of one boolean inside one screen. The hero's is
-            the one that survives, because it is a fact about the name it sits
-            beside and it renders for every provider, where a gallery badge
-            disappears for the majority who have uploaded no photographs. */}
-        {/* Keyed by slug, like `service.id` keys the identical component on
-            the service page: the route reuses this page's instance across
-            slugs, and `DetailGallery` holds its own `open` dialog state —
-            without the key, navigating from one provider to another with the
-            photo dialog open leaves it open over a different provider's
-            photographs. */}
-        <DetailGallery key={provider.slug} images={provider.photoUrls} alt={provider.name} />
-
-        <div className="grid gap-10 py-10 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
+        {/* `pb-10`, with no top padding: the collage is the first thing in
+            the left column now, so it starts straight under the breadcrumb
+            the way it used to when it spanned the whole shell. */}
+        <div className="grid gap-10 pb-10 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
           <div className="min-w-0">
+            {/* No verification badge over the photograph, though
+                `DetailGallery` offers the slot. `ProviderHero` badges the name
+                a few lines below this, and the rail states the same fact a
+                third time in words — three assertions of one boolean inside
+                one screen. The hero's is the one that survives, because it is
+                a fact about the name it sits beside and it renders for every
+                provider, where a gallery badge disappears for the majority who
+                have uploaded no photographs. */}
+            {/* Keyed by slug, like `service.id` keys the identical component
+                on the service page: the route reuses this page's instance
+                across slugs, and `DetailGallery` holds its own `open` dialog
+                state — without the key, navigating from one provider to
+                another with the photo dialog open leaves it open over a
+                different provider's photographs. */}
+            <DetailGallery key={provider.slug} images={provider.photoUrls} alt={provider.name} />
+
             <ProviderHero provider={provider} />
 
             <DetailFacts

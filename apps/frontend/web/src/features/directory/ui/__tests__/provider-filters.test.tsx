@@ -22,6 +22,27 @@ vi.mock("@/features/directory/viewmodel/use-directory", () => ({
   ],
 }));
 
+/**
+ * The category filter reads the same list the pages do. Stubbed here for the
+ * same reason the cities are: this suite renders the bar on its own, outside
+ * the query client the real page provides.
+ *
+ * Nine of them, which is under `OPTION_SEARCH_THRESHOLD` — the searchable case
+ * has its own test that pushes the list past it.
+ */
+vi.mock("@/features/landing/viewmodel/use-categories", () => ({
+  CATEGORY_FILTER_LIMIT: 48,
+  useCategoryPreview: () => ({
+    data: {
+      items: [
+        { id: "1", code: "plumbing", name: "Canalização", icon: null, imageUrl: null },
+        { id: "2", code: "electrical", name: "Electricidade", icon: null, imageUrl: null },
+        { id: "3", code: "cleaning", name: "Limpeza de casa", icon: null, imageUrl: null },
+      ],
+    },
+  }),
+}));
+
 const { MobileProviderFilters, ProviderFilters } = await import("../provider-filters");
 
 async function renderIn(node: ReactNode) {
@@ -93,6 +114,49 @@ describe("ProviderFilters", () => {
     expect(ok.className).toContain("--color-navy-surface");
     expect(ok.className).not.toContain("--color-primary");
   });
+  /**
+   * The category was a strip of chips above the results until it became the
+   * bar's first pill. Three things have to hold for it to be a filter like
+   * the five beside it rather than a strip in a new shape.
+   */
+  it("leads the bar with the category, filled with the name and not the code", async () => {
+    const { container } = await renderFilters({ category: "plumbing" });
+
+    const summaries = [...container.querySelectorAll("summary")].map((s) => s.textContent);
+    // First, because every other pill divides a set this one already chose.
+    expect(summaries[0]).toContain("Canalização");
+    // The name the reader picked, never the code the URL carries.
+    expect(summaries[0]).not.toContain("plumbing");
+  });
+
+  it("takes only the category off with the category pill's ×", async () => {
+    await renderFilters({ category: "plumbing", city: "Maputo", minRating: 4 });
+
+    const clear = screen.getByRole("link", { name: "Remove Category" });
+    expect(clear).toHaveAttribute("href", expect.stringContaining("city=Maputo"));
+    expect(clear).toHaveAttribute("href", expect.stringContaining("minRating=4"));
+    expect(clear.getAttribute("href")).not.toContain("category");
+  });
+
+  it("offers no × on the category pill when no category is chosen", async () => {
+    await renderFilters({ city: "Maputo" });
+    expect(screen.queryByRole("link", { name: "Remove Category" })).toBeNull();
+  });
+
+  /**
+   * Nine categories on the platform today, which is under
+   * `OPTION_SEARCH_THRESHOLD` — the panel is a plain list until an
+   * administrator adds enough of them to make one worth scanning.
+   * `searchable-options.test.tsx` owns the searching itself.
+   */
+  it("lists the categories plainly while there are few of them", async () => {
+    await renderFilters({});
+
+    expect(screen.queryByRole("searchbox", { name: "Search categories" })).toBeNull();
+    expect(screen.getByRole("link", { name: "Canalização" })).toBeInTheDocument();
+    // And the row that clears the group, marked as the one in force.
+    expect(screen.getByRole("link", { name: "All" })).toHaveAttribute("aria-pressed", "true");
+  });
 });
 
 describe("MobileProviderFilters", () => {
@@ -127,5 +191,23 @@ describe("MobileProviderFilters", () => {
       "aria-pressed",
       "true",
     );
+  });
+  it("leads the phone's sheet with the category, now that the strip is gone", async () => {
+    // The pills are desktop-only, so the sheet is the phone's only way to a
+    // category once the strip above the results went away.
+    await renderMobile({}, 12);
+    fireEvent.click(screen.getByRole("button", { name: /^Filters/ }));
+
+    const sheet = screen.getByRole("dialog", { name: "Filters" });
+    const groups = [...sheet.querySelectorAll("h3")].map((h) => h.textContent);
+    expect(groups[0]).toBe("Category");
+    expect(within(sheet).getByRole("link", { name: "Electricidade" })).toBeInTheDocument();
+  });
+
+  it("counts a chosen category on the phone's own control", async () => {
+    // The chips beside the results carry no category — the heading already
+    // names it — but the badge counts what the sheet can take off.
+    await renderMobile({ category: "plumbing" });
+    expect(screen.getByRole("button", { name: /^Filters/ })).toHaveTextContent("Filters · 1");
   });
 });

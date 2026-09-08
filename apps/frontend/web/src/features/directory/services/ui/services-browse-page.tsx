@@ -5,29 +5,25 @@ import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { LayoutGrid, SearchX } from "lucide-react";
 import { EmptyCard } from "@/shared/components/empty-card";
 import { SiteHeader } from "@/shared/components/site-header";
-import {
-  CATEGORY_STRIP_LIMIT,
-  CategoryStrip,
-  categoryItemClass,
-  iconComponent,
-} from "@/shared/components/browse/category-strip";
 import { SortDropdown } from "@/shared/components/browse/sort-dropdown";
-import { QuickChips, quickChipClass } from "@/shared/components/browse/quick-chips";
 import { PAGER_EDGE_CLASS, Pager, pagerPageClass } from "@/shared/components/browse/pager";
 import { EXACT_MATCH } from "@/shared/components/browse/active-match";
 // Categories are platform data that happens to be fetched under `landing/`.
 // Reached through its viewmodel rather than its repository — `ui` may not
 // touch `data`, and going through the hook reuses the cache the home page has
 // usually already filled.
-import { useCategoryPreview } from "@/features/landing/viewmodel/use-categories";
+import {
+  CATEGORY_FILTER_LIMIT,
+  useCategoryPreview,
+} from "@/features/landing/viewmodel/use-categories";
 import { useBrowseServices } from "@/features/directory/services/viewmodel/use-browse-services";
 // One question about the hearts for the whole page, and the control that
 // answers it — see the `useFavouriteMarks` call below for why the page owns
-// the query rather than the tile.
+// the query rather than the card.
 import { useFavouriteMarks } from "@/features/favourites/viewmodel/use-favourite-marks";
 import { FavouriteButton } from "@/features/favourites/ui/favourite-button";
 import { SaveToListDialog } from "@/features/favourites/ui/save-to-list-dialog";
-import { ServiceTile } from "@/features/directory/services/ui/service-tile";
+import { ServiceCard } from "@/shared/components/browse/service-card";
 import {
   MobileServiceFilters,
   ServiceFilters,
@@ -73,16 +69,15 @@ import { resultsScope, scopeValues } from "@/features/directory/domain/results-s
  * a third place and are not any more: they are bare text, and the lit one is
  * navy.
  * Everything below is headline navy, ink, grey and the amber star, which is
- * why the tiles carry no border, no shadow and no button of their own: what
- * the eye should land on down a column of results is the photographs and the
- * prices, not twenty-four identical calls to action.
+ * why the cards carry no button of their own: what the eye should land on
+ * down a grid of results is the photographs and the prices, not twenty-four
+ * identical calls to action.
  *
- * **Nothing straddles the strip.** Header, then strip, then `main`: three
- * bands stacked, none of them overlapping the next — the search band that
- * used to sit between the first two is inside the header now. The card that
- * once sat in a well across the strip's top edge is gone, so the strip is a
- * single positioned layer with no paint-order split — anything reintroduced
- * there on a negative margin would be painted over by it.
+ * **Two bands, and nothing straddles them.** Header, then `main`: the search
+ * band that used to sit between them is inside the header, and the category
+ * strip that used to run under it is a pill on the filter bar. Neither band
+ * overlaps the next, so there is no paint-order split — anything reintroduced
+ * between them on a negative margin would be painted over.
  *
  * **The phone is not this page shrunk.** The pills give way to three one-tap
  * chips above the results and one navy capsule at the thumb holding the
@@ -118,10 +113,10 @@ export function ServicesBrowsePage() {
     offset,
   });
   /**
-   * Which of the tiles on this page the reader has already saved — asked
+   * Which of the cards on this page the reader has already saved — asked
    * **once, here**, and handed down as a filled or empty heart.
    *
-   * Never a hook inside the tile: every tile would ask the same question, and
+   * Never a hook inside the card: every card would ask the same question, and
    * the heart would cost twenty-four round trips a page instead of one. The
    * query is disabled for a signed-out reader and for an empty page, so this
    * costs nothing at all in either case — see `useFavouriteMarks`.
@@ -138,7 +133,7 @@ export function ServicesBrowsePage() {
    * the photograph, the name and the price — and looking it back up by id
    * would be this page searching for a row it is already holding.
    *
-   * Held here and not in the tile, for the same reason the marks query is:
+   * Held here and not in the card, for the same reason the marks query is:
    * one dialog for the page, never one mounted per result.
    */
   const [filing, setFiling] = useState<{ service: ServiceDTO; listIds?: string[] } | null>(
@@ -147,7 +142,7 @@ export function ServicesBrowsePage() {
   const navigate = useNavigate();
   // A plain query, unlike the services: this is a control, not the content a
   // crawler came for, so it may arrive a beat later.
-  const categories = useCategoryPreview(CATEGORY_STRIP_LIMIT).data?.items ?? [];
+  const categories = useCategoryPreview(CATEGORY_FILTER_LIMIT).data?.items ?? [];
   const categoryName = categories.find((c) => c.code === category)?.name ?? null;
 
   const title = browseTitle(current, categoryName);
@@ -199,26 +194,13 @@ export function ServicesBrowsePage() {
         }}
       />
 
-      <CategoryStrip label={t("categoryStripLabel")}>
-        <StripItem
-          search={browseSearch(current, { category: undefined, offset: undefined })}
-          label={t("servicesAllCategories")}
-          icon={null}
-          isAll
-          active={!category}
-        />
-        {categories.map((c) => (
-          <StripItem
-            key={c.id}
-            search={browseSearch(current, { category: c.code, offset: undefined })}
-            label={c.name}
-            icon={c.icon}
-            active={category === c.code}
-          />
-        ))}
-      </CategoryStrip>
 
-      <main className="page-shell pb-14">
+      {/* The floating capsule is `fixed` and covers whatever the page ends
+          with — which is the pager, so "Next →" was sitting behind it and
+          could not be pressed. The root layout's own `pb-14` clears
+          `MobileNav` and nothing more; this clears the capsule above it, and
+          stops at `lg`, where the capsule is hidden and the pills take over. */}
+      <main className="page-shell pb-[calc(7rem+env(safe-area-inset-bottom))] lg:pb-14">
         <div className="flex items-end justify-between gap-5 pt-6 pb-3.5">
           <div>
             <h1 className="text-[26px] leading-tight font-bold tracking-[-0.02em] text-[var(--color-headline)]">
@@ -258,49 +240,6 @@ export function ServicesBrowsePage() {
 
         <ServiceFilters current={current} />
 
-        {/* The phone's two or three narrowings, one tap each, above the results
-            they narrow — the pills are a toolbar and a toolbar does not fit a
-            thumb. Hidden exactly where the floating capsule is hidden, so a
-            reader is never offered both.
-
-            Not drawn over an empty platform: three ways to narrow nothing,
-            under a sentence saying nothing is published, offers a reader work
-            that cannot help them. They stay on an empty *search*, because
-            there they are one tap out of it. */}
-        {(page.items.length > 0 || isNarrowed) && (
-          <div className="pb-5 lg:hidden">
-            <QuickChips label={t("quickChipsLabel")}>
-              <QuickChip
-                current={current}
-                active={current.paymentMode === "fixed"}
-                change={{ paymentMode: current.paymentMode === "fixed" ? undefined : "fixed" }}
-                label={t("filterPaymentOption.fixed")}
-              />
-              <QuickChip
-                current={current}
-                active={current.locationType === "at_customer"}
-                change={{
-                  locationType: current.locationType === "at_customer" ? undefined : "at_customer",
-                }}
-                label={t("filterWhereOption.at_customer")}
-              />
-              <QuickChip
-                current={current}
-                active={current.maxPrice === QUICK_MAX_PRICE}
-                change={{
-                  maxPrice: current.maxPrice === QUICK_MAX_PRICE ? undefined : QUICK_MAX_PRICE,
-                }}
-                // The amount is money, so it is formatted as money — the same
-                // function and the same locale the tiles print their prices
-                // with, rather than a bare number the reader has to guess a
-                // currency for.
-                label={t("quickChipMaxPrice", {
-                  amount: formatHeadlinePrice(QUICK_MAX_PRICE * 100, DEFAULT_CURRENCY, locale),
-                })}
-              />
-            </QuickChips>
-          </div>
-        )}
 
         {page.items.length === 0 ? (
           // Two different sentences, because they are two different
@@ -319,21 +258,19 @@ export function ServicesBrowsePage() {
           )
         ) : (
           <>
-            {/* Four across at `lg`, two at `sm`. The row gap is larger than
-                the column gap on purpose: the tiles carry no border, so what
-                separates one row from the next is the space itself, and equal
-                gaps read as a grid of unrelated things rather than as rows.
-
-                Below `sm` the tiles become hairline rows, so the separation
-                changes with them: no gap at all, and a `divide-y` hairline
-                between the list's own children. `divide-y` draws between
-                children and not above the first, which is exactly the rule
-                the mockup's `.m-row:first-child{border-top:0}` states — so
-                unlike `/providers`, no row has to be told it is first. */}
-            <ul className="grid list-none grid-cols-1 gap-0 divide-y divide-[var(--color-border)] p-0 sm:grid-cols-2 sm:gap-x-6 sm:gap-y-8 sm:divide-y-0 md:grid-cols-3 lg:grid-cols-4">
+            {/* Four across at `lg`, two at `sm`, one below it. The card is a
+                bordered object with its own edge, so — unlike the borderless
+                tile it replaces — it is separated from its neighbours by a
+                gap at every width, never a hairline: a divider between two
+                boxes that already draw their own border would be a third
+                separation doing the one job the gap already does. The row
+                gap is larger than the column gap on purpose, so equal gaps
+                do not read as a grid of unrelated things rather than as
+                rows. */}
+            <ul className="grid list-none grid-cols-1 gap-x-6 gap-y-8 p-0 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
               {page.items.map((service) => (
                 <li key={service.id}>
-                  <ServiceTile
+                  <ServiceCard
                     service={service}
                     locale={locale}
                     favourite={
@@ -433,13 +370,13 @@ export function ServicesBrowsePage() {
 
 /**
  * What the dialog draws down its left panel: this service, said the way the
- * tile beside it says it.
+ * card beside it says it.
  *
  * Here rather than in the dialog, which is handed a listing and knows nothing
  * about services: the price is a `ServicePriceLine`, whose amount is either
  * money to format in the reader's locale or a phrase to translate, and that
  * branch belongs where the DTO does. It reads `servicePriceLine` — the same
- * function `ServiceTile` prints from — so the dialog and the tile behind it
+ * function `ServiceCard` prints from — so the dialog and the card behind it
  * can never come to disagree about what this listing costs.
  */
 function serviceListing(service: ServiceDTO, t: TFunction, locale: string) {
@@ -455,92 +392,3 @@ function serviceListing(service: ServiceDTO, t: TFunction, locale: string) {
   };
 }
 
-/**
- * The currency the phone's price chip is written in.
- *
- * The one price on this page that does not come from data: every amount on a
- * tile carries its own service's currency, and this chip is a threshold the
- * page invents, so it has no row to take one from. Mozambique is a
- * single-currency market and `MZN` is right today; the day a second one is
- * listed, this constant is where the page has to start asking somebody.
- */
-const DEFAULT_CURRENCY = "MZN";
-
-/**
- * The ceiling the phone's price chip offers, in whole meticais.
- *
- * One number rather than a range, because a quick filter is one tap: the chip
- * says "Até 1 000 MZN" and taps off again. Whole units, which is what the URL
- * and `PriceRangeFilter`'s own boxes carry — the chip's own label multiplies
- * by 100 for `formatHeadlinePrice`, which speaks minor units like every price
- * on a tile, rather than the two being written out separately and drifting.
- */
-const QUICK_MAX_PRICE = 1000;
-
-/** One category, as a chip in the strip: its icon beside its name. */
-function StripItem({
-  search,
-  label,
-  icon,
-  isAll = false,
-  active,
-}: {
-  /** Already built by `browseSearch`, which omits the category rather than emptying it. */
-  search: BrowseSearch;
-  label: string;
-  /** A Lucide name from the category's own `icon` column, or null. */
-  icon: string | null;
-  isAll?: boolean;
-  active: boolean;
-}) {
-  const Icon = iconComponent(icon, isAll);
-  return (
-    <Link
-      to="/services"
-      activeOptions={EXACT_MATCH}
-      search={search}
-      className={categoryItemClass(active)}
-    >
-      <Icon className="h-[15px] w-[15px]" aria-hidden="true" />
-      <span>{label}</span>
-    </Link>
-  );
-}
-
-/**
- * One of the phone's quick narrowings.
- *
- * A link like every other filter on this page, and a toggle like every option
- * row: tapping the one already on hands back the same search without it, so a
- * chip comes off the way it went on. `browseSearch` builds the URL, so a chip
- * cannot drop the term, the category or the order the way a hand-built search
- * object at this call site would.
- */
-function QuickChip({
-  current,
-  active,
-  change,
-  label,
-}: {
-  current: BrowseSearch;
-  active: boolean;
-  /** The one parameter this chip writes — or clears, when it is already on. */
-  change: BrowseSearch;
-  label: string;
-}) {
-  return (
-    /* `shrink-0` here as well as on the link: this `<li>` is the flex item
-       `QuickChips` lays out, and it is the one that was being squeezed. */
-    <li className="shrink-0">
-      <Link
-        to="/services"
-        activeOptions={EXACT_MATCH}
-        search={browseSearch(current, { ...change, offset: undefined })}
-        aria-pressed={active}
-        className={quickChipClass(active)}
-      >
-        {label}
-      </Link>
-    </li>
-  );
-}

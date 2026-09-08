@@ -82,10 +82,8 @@ export function ServiceDetailPage({ id }: { id: string }) {
  * order and its spacing: the title still follows the pictures, `mt-10` still
  * measures the same 40px the grid's old `py-10` did.
  *
- * `ProviderDetailPage` still opens with a full-width collage. It is the same
- * trade there and probably wants the same answer, but its rail and header are
- * different components, so that is a separate move rather than this patch
- * applied twice.
+ * `ProviderDetailPage` has since made the same move, for the same reason, and
+ * the two pages now open identically.
  *
  * **The packages moved out of the rail and into the body.** `PackageChooser`
  * held the radio list and the total together in a 22rem column, which is too

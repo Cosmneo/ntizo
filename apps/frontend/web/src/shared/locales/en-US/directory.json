@@ -109,6 +109,10 @@
   "providerFrom": "from",
   "providerOpen": "View business",
   "filterCity": "City",
+  "filterCategory": "Category",
+  "filterCategorySearchLabel": "Search categories",
+  "filterCategorySearchPlaceholder": "Search categories",
+  "filterCategoryNoMatch": "No category matches “{{term}}”",
   "filterCityHint": "Remote services appear under every city.",
   "filterRating": "Rating",
   "filterRatingHint": "Only businesses customers have already reviewed.",
@@ -236,14 +240,12 @@
   "titleServicesTermCity": "{{term}} in {{city}}",
   "titleProvidersTerm": "{{term}}",
   "titleProvidersTermCity": "{{term}} in {{city}}",
-
   "priceToAgree": "Price to agree",
   "priceQuoteHint": "Ask for a quote",
   "priceOptionCount_one": "{{count}} option",
   "priceOptionCount_other": "{{count}} options",
   "priceFromPrefix": "from",
   "pricePerHourUnit": "/h",
-
   "ratingNew": "New",
   "providerKindSentence": {
     "individual": "{{category}} in {{place}}",
@@ -252,14 +254,8 @@
   "providerServicesMore": "{{count}} more",
   "providerOpenBusiness": "View business",
   "providerOpenPerson": "View profile",
-
-  "categoryStripLabel": "Categories",
-
   "filterPillRemove": "Remove {{filter}}",
   "filterSheetApply_one": "Show {{count}} result",
   "filterSheetApply_other": "Show {{count}} results",
-  "sortTrigger": "Sort:",
-
-  "quickChipMaxPrice": "Up to {{amount}}",
-  "quickChipsLabel": "Quick filters"
+  "sortTrigger": "Sort:"
 }

@@ -6,31 +6,26 @@ import { SearchX, Store } from "lucide-react";
 import type { ProviderPublicDTO } from "@ntizo/shared";
 import { EmptyCard } from "@/shared/components/empty-card";
 import { SiteHeader } from "@/shared/components/site-header";
-import {
-  CATEGORY_STRIP_LIMIT,
-  CategoryStrip,
-  categoryItemClass,
-  iconComponent,
-} from "@/shared/components/browse/category-strip";
 import { SortDropdown } from "@/shared/components/browse/sort-dropdown";
-import { QuickChips, quickChipClass } from "@/shared/components/browse/quick-chips";
 import { PAGER_EDGE_CLASS, Pager, pagerPageClass } from "@/shared/components/browse/pager";
 import { EXACT_MATCH } from "@/shared/components/browse/active-match";
-import { formatRating } from "@/shared/domain/rating";
 import { formatHeadlinePrice } from "@/features/directory/services/domain/service-card";
 // Categories are platform data that happens to be fetched under `landing/`.
 // Reached through its viewmodel rather than its repository — `ui` may not
 // touch `data`, and going through the hook reuses the cache the home page has
 // usually already filled.
-import { useCategoryPreview } from "@/features/landing/viewmodel/use-categories";
+import {
+  CATEGORY_FILTER_LIMIT,
+  useCategoryPreview,
+} from "@/features/landing/viewmodel/use-categories";
 import { useDirectory } from "@/features/directory/viewmodel/use-directory";
 // One question about the hearts for the whole page, and the control that
 // answers it — see the `useFavouriteMarks` call below for why the page owns
-// the query rather than the row.
+// the query rather than the card.
 import { useFavouriteMarks } from "@/features/favourites/viewmodel/use-favourite-marks";
 import { FavouriteButton } from "@/features/favourites/ui/favourite-button";
 import { SaveToListDialog } from "@/features/favourites/ui/save-to-list-dialog";
-import { ProviderRow } from "@/features/directory/ui/provider-row";
+import { ProviderCard } from "@/shared/components/browse/provider-card";
 import {
   MobileProviderFilters,
   ProviderFilters,
@@ -41,7 +36,6 @@ import { DIRECTORY_PAGE_SIZE } from "@/features/directory/domain/provider-listin
 import {
   directorySearch,
   type DirectorySearch,
-  type RatingThreshold,
 } from "@/features/directory/domain/directory-search";
 import { directoryTitle } from "@/features/directory/domain/directory-title";
 import { resultsScope, scopeValues } from "@/features/directory/domain/results-scope";
@@ -54,8 +48,8 @@ import { resultsScope, scopeValues } from "@/features/directory/domain/results-s
  * in the nav.
  *
  * Deliberately the twin of `ServicesBrowsePage`: the same shells in the same
- * order, differing in exactly four things — the filters it draws, the copy it
- * counts with, a `<ul>` of rows in place of a grid of tiles, and a pager that
+ * order, the same grid of cards underneath, differing in exactly three
+ * things — the filters it draws, the copy it counts with, and a pager that
  * steps by the page size because `providerPageReadModel` carries a total and
  * no `nextOffset`. The two had already drifted once — one grew a row of sort
  * links and the other a five-item dropdown, and each carried its own copy of
@@ -63,10 +57,12 @@ import { resultsScope, scopeValues } from "@/features/directory/domain/results-s
  * to learn the other. If the two page files differ in anything else, one of
  * them is wrong.
  *
- * What the *result* says does differ, and should: a service sells one job, a
- * business is something somebody is deciding whether to trust — which is why
- * a business gets a row with its services and their prices in it rather than
- * the tile a service gets. See `ProviderRow`.
+ * The result itself is the shared `ProviderCard` — the one card `/services`
+ * also draws, in the provider shape rather than the service one. A row this
+ * page drew before had room for a business's own description and up to
+ * three of its services with their prices; the card has room for neither,
+ * and both drop with it. See `ProviderCard`'s own doc comment for exactly
+ * what else a row could say that a card cannot.
  *
  * Four levels of narrowing, deliberately not the same shape. The header's own
  * search bar asks the opening question, pointed here and asking for a
@@ -84,16 +80,15 @@ import { resultsScope, scopeValues } from "@/features/directory/domain/results-s
  * a third place and are not any more: they are bare text, and the lit one is
  * navy.
  * Everything below is headline navy, ink, grey and the amber star, which is
- * why the rows carry no border, no shadow and no button of their own: what
- * the eye should land on down a column of results is the photographs, the
- * ratings and the prices, not twenty identical calls to action.
+ * why the cards carry no button of their own: what the eye should land on
+ * down a grid of results is the photographs, the ratings and the prices,
+ * not twenty identical calls to action.
  *
- * **Nothing straddles the strip.** Header, then strip, then `main`: three
- * bands stacked, none of them overlapping the next — the search band that
- * used to sit between the first two is inside the header now. The card that
- * once sat in a well across the strip's top edge is gone, so the strip is a
- * single positioned layer with no paint-order split — anything reintroduced
- * there on a negative margin would be painted over by it.
+ * **Two bands, and nothing straddles them.** Header, then `main`: the search
+ * band that used to sit between them is inside the header, and the category
+ * strip that used to run under it is a pill on the filter bar. Neither band
+ * overlaps the next, so there is no paint-order split — anything reintroduced
+ * between them on a negative margin would be painted over.
  *
  * **The phone is not this page shrunk.** The pills give way to four one-tap
  * chips above the results and one navy capsule at the thumb holding the
@@ -129,7 +124,7 @@ export function DirectoryPage() {
    * `"provider"` and not `"service"`: a service and a business may
    * legitimately share an id, so the type rides along on every question and
    * every write, or one page's marks fill the other's hearts. Never a hook
-   * inside the row, which would be one round trip per result. See
+   * inside the card, which would be one round trip per result. See
    * `useFavouriteMarks`.
    */
   const marks = useFavouriteMarks(
@@ -141,7 +136,7 @@ export function DirectoryPage() {
    * own save answered with. `null` is closed.
    *
    * The whole DTO rather than an id, and one dialog for the page rather than
-   * one per row — the same two rulings `ServicesBrowsePage` records, since
+   * one per card — the same two rulings `ServicesBrowsePage` records, since
    * these two pages differ only in what they list.
    */
   const [filing, setFiling] = useState<{
@@ -151,7 +146,7 @@ export function DirectoryPage() {
   const navigate = useNavigate();
   // A plain query, unlike the listings: this is a control, not the content a
   // crawler came for, so it may arrive a beat later.
-  const categories = useCategoryPreview(CATEGORY_STRIP_LIMIT).data?.items ?? [];
+  const categories = useCategoryPreview(CATEGORY_FILTER_LIMIT).data?.items ?? [];
   const categoryName = categories.find((c) => c.code === category)?.name ?? null;
 
   const title = directoryTitle(current, categoryName);
@@ -198,26 +193,13 @@ export function DirectoryPage() {
         }}
       />
 
-      <CategoryStrip label={t("categoryStripLabel")}>
-        <StripItem
-          search={directorySearch(current, { category: undefined, offset: undefined })}
-          label={t("providersAllCategories")}
-          icon={null}
-          isAll
-          active={!category}
-        />
-        {categories.map((c) => (
-          <StripItem
-            key={c.id}
-            search={directorySearch(current, { category: c.code, offset: undefined })}
-            label={c.name}
-            icon={c.icon}
-            active={category === c.code}
-          />
-        ))}
-      </CategoryStrip>
 
-      <main className="page-shell pb-14">
+      {/* The floating capsule is `fixed` and covers whatever the page ends
+          with — which is the pager, so "Next →" was sitting behind it and
+          could not be pressed. The root layout's own `pb-14` clears
+          `MobileNav` and nothing more; this clears the capsule above it, and
+          stops at `lg`, where the capsule is hidden and the pills take over. */}
+      <main className="page-shell pb-[calc(7rem+env(safe-area-inset-bottom))] lg:pb-14">
         <div className="flex items-end justify-between gap-5 pt-6 pb-3.5">
           <div>
             <h1 className="text-[26px] leading-tight font-bold tracking-[-0.02em] text-[var(--color-headline)]">
@@ -257,60 +239,6 @@ export function DirectoryPage() {
 
         <ProviderFilters current={current} />
 
-        {/* The phone's four narrowings, one tap each, above the results they
-            narrow — the pills are a toolbar and a toolbar does not fit a
-            thumb. Hidden exactly where the floating capsule is hidden, so a
-            reader is never offered both.
-
-            Not drawn over an empty platform: four ways to narrow nothing,
-            under a sentence saying nobody is listed, offers a reader work
-            that cannot help them. They stay on an empty *search*, because
-            there they are one tap out of it. */}
-        {(page.items.length > 0 || isNarrowed) && (
-          <div className="pb-5 lg:hidden">
-            <QuickChips label={t("quickChipsLabel")}>
-              <QuickChip
-                current={current}
-                active={current.verified === true}
-                // `verified: false` is never written — `directorySearch` drops
-                // it — so taking the chip off is taking the parameter off.
-                change={{ verified: current.verified === true ? undefined : true }}
-                label={t("filterVerifiedOnly")}
-              />
-              <QuickChip
-                current={current}
-                active={current.minRating === QUICK_MIN_RATING}
-                change={{
-                  minRating: current.minRating === QUICK_MIN_RATING ? undefined : QUICK_MIN_RATING,
-                }}
-                // The threshold is a decimal, so it is written the way this
-                // reader writes decimals — the same function the rating pill
-                // formats its own rows with, rather than a "4.5" hard-coded
-                // for one of the eight languages the platform ships.
-                label={t("filterRatingOption", {
-                  score: formatRating(QUICK_MIN_RATING, locale),
-                })}
-              />
-              <QuickChip
-                current={current}
-                active={current.providerType === "individual"}
-                change={{
-                  providerType: current.providerType === "individual" ? undefined : "individual",
-                }}
-                label={t("filterProviderKindOption.individual")}
-              />
-              <QuickChip
-                current={current}
-                active={current.providerType === "organization"}
-                change={{
-                  providerType:
-                    current.providerType === "organization" ? undefined : "organization",
-                }}
-                label={t("filterProviderKindOption.organization")}
-              />
-            </QuickChips>
-          </div>
-        )}
 
         {page.items.length === 0 ? (
           // Two different sentences, because they are two different
@@ -325,19 +253,19 @@ export function DirectoryPage() {
           )
         ) : (
           <>
-            {/* No gap of its own: a row draws the hairline that separates it
-                from the one above, and space between them as well would be
-                two separations doing one job. The first row is told it is
-                first rather than working it out from a `first:` variant —
-                inside `<li>` every article is its parent's first child, so
-                the variant stripped the hairline from all of them. */}
-            <ul className="grid list-none p-0">
-              {page.items.map((provider, index) => (
+            {/* The same grid `/services` lays its cards in — four across at
+                `lg`, two at `sm`, one below it — because the two pages are
+                meant to be twins and a provider is now drawn on the same
+                bordered card a service is. The gap is the only separation
+                a card needs: it already draws its own border, so a hairline
+                between two bordered boxes would be a second separation
+                doing the first one's job. */}
+            <ul className="grid list-none grid-cols-1 gap-x-6 gap-y-8 p-0 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+              {page.items.map((provider) => (
                 <li key={provider.id}>
-                  <ProviderRow
+                  <ProviderCard
                     provider={provider}
                     locale={locale}
-                    first={index === 0}
                     favourite={
                       <FavouriteButton
                         targetType="provider"
@@ -439,18 +367,8 @@ export function DirectoryPage() {
 }
 
 /**
- * The threshold the phone's rating chip offers.
- *
- * One of `RATING_THRESHOLDS` rather than a number of its own: a quick filter
- * is one tap onto a value the rating pill also offers, so tapping the chip and
- * picking the pill's top row have to write the same URL, and the chip has to
- * come back on when the pill was used instead.
- */
-const QUICK_MIN_RATING: RatingThreshold = 4.5;
-
-/**
  * What the dialog draws down its left panel: this business, said the way the
- * row beside it says it.
+ * card beside it says it.
  *
  * Here rather than in the dialog, which is handed a listing and knows nothing
  * about providers. The photograph falls back to the logo — a business with no
@@ -484,70 +402,3 @@ function providerListing(provider: ProviderPublicDTO, t: TFunction, locale: stri
   };
 }
 
-/** One category, as a chip in the strip: its icon beside its name. */
-function StripItem({
-  search,
-  label,
-  icon,
-  isAll = false,
-  active,
-}: {
-  /** Already built by `directorySearch`, which omits the category rather than emptying it. */
-  search: DirectorySearch;
-  label: string;
-  /** A Lucide name from the category's own `icon` column, or null. */
-  icon: string | null;
-  isAll?: boolean;
-  active: boolean;
-}) {
-  const Icon = iconComponent(icon, isAll);
-  return (
-    <Link
-      to="/providers"
-      activeOptions={EXACT_MATCH}
-      search={search}
-      className={categoryItemClass(active)}
-    >
-      <Icon className="h-[15px] w-[15px]" aria-hidden="true" />
-      <span>{label}</span>
-    </Link>
-  );
-}
-
-/**
- * One of the phone's quick narrowings.
- *
- * A link like every other filter on this page, and a toggle like every option
- * row: tapping the one already on hands back the same search without it, so a
- * chip comes off the way it went on. `directorySearch` builds the URL, so a
- * chip cannot drop the term, the category or the order the way a hand-built
- * search object at this call site would.
- */
-function QuickChip({
-  current,
-  active,
-  change,
-  label,
-}: {
-  current: DirectorySearch;
-  active: boolean;
-  /** The one parameter this chip writes — or clears, when it is already on. */
-  change: DirectorySearch;
-  label: string;
-}) {
-  return (
-    /* `shrink-0` here as well as on the link: this `<li>` is the flex item
-       `QuickChips` lays out, and it is the one that was being squeezed. */
-    <li className="shrink-0">
-      <Link
-        to="/providers"
-        activeOptions={EXACT_MATCH}
-        search={directorySearch(current, { ...change, offset: undefined })}
-        aria-pressed={active}
-        className={quickChipClass(active)}
-      >
-        {label}
-      </Link>
-    </li>
-  );
-}

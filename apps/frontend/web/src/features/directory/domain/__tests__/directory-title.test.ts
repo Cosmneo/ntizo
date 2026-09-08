@@ -67,7 +67,7 @@ describe("directoryTitle with a typed term", () => {
     });
   });
 
-  it("lets the term outrank the category, which the strip is already showing", () => {
+  it("lets the term outrank the category, which the filled pill is already showing", () => {
     expect(directoryTitle({ q: "corte", category: "hair" }, "Beleza")).toEqual({
       key: "titleProvidersTerm",
       values: { term: "corte" },

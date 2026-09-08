@@ -54,7 +54,9 @@ function navLinkClassName(active: boolean, overlay: boolean): string {
  * beside the account controls rather than in a column of their own: two
  * clusters and a field reads as a bar, where three separated groups read as
  * three. They are bare text — see `navLinkClassName` for why the capsule and
- * the icons went.
+ * the icons went. There are three and only three: the provider's door lives
+ * in the footer's Company column, and a day spent in this row proved why —
+ * see the header test that now keeps it out.
  *
  * **The bar is centred in the window, and the middle track's width is what
  * centres it.** Two earlier versions both read as a centring that had

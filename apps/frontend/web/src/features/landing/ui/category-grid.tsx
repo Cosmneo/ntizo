@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Sparkles, icons } from "lucide-react";
 import { Skeleton } from "@ntizo/frontend-ui";
 import { BrandImage } from "@/shared/components/brand-image";
+import { ScrollRail } from "@/shared/components/browse/scroll-rail";
 import { useCategoryPreview } from "@/features/landing/viewmodel/use-categories";
 import { SectionHead } from "@/features/landing/ui/section-head";
 
@@ -34,6 +35,11 @@ function getIconComponent(name: string | null) {
  * `BrandImage`'s brand tile: the brand tile prints initials, and a row of
  * eight tiles each printing two letters of its own name is a row of eight
  * near-identical squares.
+ *
+ * Below `sm` the grid becomes `ScrollRail`'s sideways row. `cardWidth="38%"`
+ * lands two tiles on screen at 390px with a clear quarter-tile peek of a
+ * third — a small square with one line of text under it reads fine that
+ * dense, unlike the two bigger card sections below it on the page.
  */
 export function CategoryGrid() {
   const { t } = useTranslation("landing"); // t:CategoryGrid
@@ -49,7 +55,12 @@ export function CategoryGrid() {
         blurb={t("home.categoriesBlurb")}
         more={{ label: t("home.categoriesAll"), to: "/services" }}
       />
-      <ul className="grid grid-cols-4 gap-x-4 gap-y-4 xl:grid-cols-8">
+      <ScrollRail
+        as="ul"
+        columns={4}
+        cardWidth="38%"
+        className="sm:gap-x-4 sm:gap-y-4 xl:grid-cols-8"
+      >
         {isLoading
           ? Array.from({ length: LANDING_CATEGORIES }, (_, i) => (
               <li key={i}>
@@ -91,7 +102,7 @@ export function CategoryGrid() {
                 </li>
               );
             })}
-      </ul>
+      </ScrollRail>
     </section>
   );
 }

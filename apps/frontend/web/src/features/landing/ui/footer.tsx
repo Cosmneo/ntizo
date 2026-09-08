@@ -8,13 +8,7 @@
  */
 import { useTranslation } from "react-i18next";
 import { Link, useRouterState } from "@tanstack/react-router";
-import {
-  BORDER,
-  CARD,
-  MUTED,
-  NAVY,
-  PAGE_TOP,
-} from "@/features/landing/ui/palette";
+import { BORDER, CARD, MUTED, NAVY } from "@/features/landing/ui/palette";
 import { CONTACT } from "@/shared/lib/contact";
 import { useHelpCenter } from "@/features/help-center/viewmodel/use-help-center";
 
@@ -122,18 +116,19 @@ export function Footer() {
               </SocialIcon>
             </div>
           </div>
-          <div style={{ textAlign: "right" }}>
+          {/* The alignment is a breakpoint's business, so it is in classes
+              rather than in the inline styles the rest of this file leans on.
+              The strip is a row from `sm` up, socials at one end and payments
+              at the other, so the block right-aligns to meet the edge. Below
+              `sm` the strip stacks `items-start` and the inline
+              `text-align: right` no breakpoint could reach was still firing:
+              the label sat left and the chip was pushed to the far side of
+              it, which is what a reader sees as a chip belonging to nothing. */}
+          <div className="text-left sm:text-right">
             <div style={{ fontSize: 13, color: MUTED, marginBottom: 12 }}>
               {t("footer.acceptedPayments")}
             </div>
-            <div
-              style={{
-                display: "flex",
-                gap: 10,
-                justifyContent: "flex-end",
-                flexWrap: "wrap",
-              }}
-            >
+            <div className="flex flex-wrap justify-start gap-2.5 sm:justify-end">
               {/* One chip, because one method charges. e-Mola, Visa and
                   Mastercard stood here until 2026-09-02, advertising methods
                   the checkout refuses — see the FAQ's "que métodos aceitam".
@@ -316,7 +311,13 @@ function LinkedInGlyph() {
  */
 const footer: React.CSSProperties = {
   marginTop: 60,
-  background: PAGE_TOP,
+  // White, with a hairline instead of a tint. The footer was the last
+  // `#f2f8fe` surface on the site once the home, the listings and the
+  // provider pitch all went white — a tinted band under a white page reads as
+  // a section that failed to load its background, and it was on every page
+  // including the ones already following the new rules.
+  background: CARD,
+  borderTop: `1px solid ${BORDER}`,
   // 24px, matching `.page-shell`'s gutter. At 48 the footer's content sat
   // inset from every section above it on anything narrower than ~1416px —
   // the same 1320 ceiling, a different edge.

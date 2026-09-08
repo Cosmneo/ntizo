@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   RouterProvider,
@@ -59,12 +59,27 @@ describe("Hero", () => {
     expect(screen.getByRole("banner")).toContainElement(box);
   });
 
-  // The provider's door is the footer's — `footer.test.tsx` holds it to that.
-  // It was in the header, in the same block as the account controls, where it
-  // stacked above them instead of sitting beside them.
-  it("leaves the provider's door to the footer", async () => {
+  /**
+   * The home page's header opens no door for a provider, and that is the
+   * decision, not an omission.
+   *
+   * The link lived here for a day. At ~148px it pushed the right-hand cluster
+   * past its track's equal share, and the middle track gave way — so the
+   * search bar sat 148px left of the window's middle on this page while every
+   * other page stayed centred, which is the failed-centring look the user had
+   * twice rejected. He asked for it removed.
+   *
+   * The provider still has two doors on this page: the footer's Company
+   * column (`footer.test.tsx`) and the navy band, which exists for nothing
+   * else.
+   */
+  it("leaves the provider's door to the footer and the band", async () => {
     await renderHero();
-    expect(screen.queryByRole("link", { name: "Become a Provider" })).toBeNull();
+
+    const inHeader = within(screen.getByRole("banner"))
+      .queryAllByRole("link")
+      .filter((link) => link.getAttribute("href") === "/become-provider");
+    expect(inHeader).toHaveLength(0);
   });
 
   // The collage stands in for photographs nobody has uploaded. A grey box
@@ -74,5 +89,49 @@ describe("Hero", () => {
   it("draws the brand rather than a grey box while there are no photographs", async () => {
     await renderHero();
     expect(screen.getAllByTestId("media-fallback")).toHaveLength(3);
+  });
+
+  /**
+   * And it draws none of that on a phone.
+   *
+   * Stacked under the claim it is 360px of empty tiles between the headline
+   * and the first real thing on the page — half a screen of nothing to scroll
+   * past to reach the categories, because Ntizo owns no photographs yet. At
+   * `lg` it sits beside the text and costs no vertical room at all.
+   *
+   * jsdom does no layout, so the class is the assertion. It stays in the
+   * document either way: this is a `display` decision, not a render one.
+   */
+  it("keeps the collage off the phone, where it is 360px of nothing", async () => {
+    await renderHero();
+    const collage = document.querySelector('[aria-hidden="true"].grid-rows-2')!;
+
+    expect(collage.className).toContain("hidden");
+    expect(collage.className).toContain("lg:grid");
+    // Never a bare `grid`, which would beat `hidden` and draw it anyway.
+    expect(collage.className.split(/\s+/)).not.toContain("grid");
+  });
+
+  /**
+   * The hole the collage left behind.
+   *
+   * Every section on this page is separated from the one above it by the
+   * 56px of its own `pt-14` and nothing else — except this one, which also
+   * carried `pb-14`. On a wide screen that balances the collage sitting
+   * beside the text; on a phone, with the collage gone, it stacked on the
+   * next section's `pt-14` and put 112px of white between "Pagamento por
+   * M-Pesa" and "Explorar por categoria". Measured at 390px on the deployed
+   * page before this changed: the trust list ended at y=543 and the heading
+   * began at y=655.
+   *
+   * So the padding is `lg:` only, and the phone falls back to the same
+   * rhythm as every other junction on the page.
+   */
+  it("does not stack its own bottom padding on the next section's, on a phone", async () => {
+    await renderHero();
+    const section = document.querySelector("section")!;
+
+    expect(section.className).toContain("lg:pb-14");
+    expect(section.className.split(/\s+/)).not.toContain("pb-14");
   });
 });

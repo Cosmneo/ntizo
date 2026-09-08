@@ -39,4 +39,31 @@ describe("HelpPage", () => {
     expect(within(contactSection).getByRole("button", { name: /talk to support/i })).toBeInTheDocument();
     expect(within(contactSection).getByRole("link", { name: /suporte@ntizo\.co\.mz/ })).toBeInTheDocument();
   });
+  /**
+   * The page's content sits in the column, not across the window.
+   *
+   * `CompanyPage` puts its own opening inside `page-shell` and hands
+   * `children` through untouched, because `/about`, `/careers`, `/contact` and
+   * `/feedback` each bring their own. This page never did — so the heading sat
+   * in the column while the categories and every accordion row ran the full
+   * width of the window, which is what a reader sees as a page that lost its
+   * layout.
+   *
+   * jsdom does no layout, so the gutter is not measurable; the class that
+   * produces it is, and it is the whole of the fix.
+   */
+  it("keeps the questions in the page's column", async () => {
+    await renderHelpPage();
+
+    const heading = screen.getByRole("heading", { name: "Customers" });
+    const shell = heading.closest(".page-shell");
+    expect(shell).not.toBeNull();
+
+    // Every question, not a sample: the bug put all of them outside the
+    // column, so an assertion that finds one button inside the shell it was
+    // handed passes on the broken page too.
+    const rows = screen.getAllByRole("listitem");
+    expect(rows.length).toBeGreaterThan(10);
+    expect(rows.filter((row) => shell!.contains(row))).toHaveLength(rows.length);
+  });
 });

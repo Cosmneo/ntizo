@@ -1,10 +1,10 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Link, useRouterState, useSearch } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
-import { ArrowRight, Check } from "lucide-react";
+import { Check } from "lucide-react";
+import { CARD_SURFACE_CLASS } from "@/shared/components/card-surface";
 import { CONTACT_TOPICS, contactEmailRequired, type ContactRequestKind } from "@ntizo/shared";
 import { Input, Label, Select } from "@ntizo/frontend-ui";
-import { ACCENT } from "@/features/landing/ui/palette";
 import { useCurrentUser } from "@/features/user/viewmodel/use-current-user";
 import { GraphqlError } from "@/shared/lib/graphql/session-graphql";
 import { CONTACT } from "@/shared/lib/contact";
@@ -92,19 +92,15 @@ export function ContactForm({ kind, messagePlaceholder }: { kind: ContactRequest
     const replyEmail = email.trim();
     return (
       <div
-        className="rounded-[20px] border p-8 text-center md:p-10"
-        style={{ borderColor: "var(--l-border)", background: "var(--l-card)" }}
+        className="rounded-[var(--radius-card)] border border-[var(--color-border)] p-8 text-center md:p-10"
       >
-        <span
-          className="inline-flex h-12 w-12 items-center justify-center rounded-full"
-          style={{ background: `color-mix(in srgb, ${ACCENT} 12%, transparent)`, color: ACCENT }}
-        >
+        <span className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-[var(--color-navy-surface)] text-[var(--color-navy-on)]">
           <Check className="h-6 w-6" aria-hidden="true" />
         </span>
         <h2 className="font-rounded mt-4 text-[clamp(1.4rem,2.4vw,1.8rem)] font-extrabold tracking-[-0.02em]">
           {t("form.success.title")}
         </h2>
-        <p className="mx-auto mt-2 max-w-[46ch] leading-relaxed text-[color:var(--l-muted)]">
+        <p className="mx-auto mt-2 max-w-[46ch] leading-relaxed text-[var(--color-muted-foreground)]">
           {replyEmail ? t("form.success.replyTo", { email: replyEmail }) : t("form.success.noEmail")}
         </p>
         <p className="mt-4 inline-block rounded-md px-3 py-1.5 font-mono text-sm" style={{ background: "var(--color-muted)" }}>
@@ -129,13 +125,16 @@ export function ContactForm({ kind, messagePlaceholder }: { kind: ContactRequest
     <form
       onSubmit={onSubmit}
       noValidate
-      className="relative rounded-[20px] border p-6 md:p-8"
-      style={{ borderColor: "var(--l-border)", background: "var(--l-card)" }}
+      className={`relative ${CARD_SURFACE_CLASS} p-6 md:p-8`}
     >
       {!user && (
-        <p className="m-0 mb-5 text-sm text-[color:var(--l-muted)]">
+        <p className="m-0 mb-5 text-sm text-[var(--color-muted-foreground)]">
           {t("form.signInHint")}{" "}
-          <Link to="/sign-in" search={{ next: pathname }} className="font-semibold" style={{ color: ACCENT }}>
+          <Link
+            to="/sign-in"
+            search={{ next: pathname }}
+            className="font-semibold text-[var(--color-headline)] underline decoration-[var(--color-border-strong)] underline-offset-4"
+          >
             {t("form.signInLink")}
           </Link>{" "}
           {t("form.signInHintRest")}
@@ -229,7 +228,7 @@ export function ContactForm({ kind, messagePlaceholder }: { kind: ContactRequest
       )}
 
       <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <p className="m-0 max-w-[48ch] text-xs leading-relaxed text-[color:var(--l-muted)]">
+        <p className="m-0 max-w-[48ch] text-xs leading-relaxed text-[var(--color-muted-foreground)]">
           {t("form.privacyNote")}{" "}
           <Link to="/privacy" className="underline" style={{ color: "inherit" }}>
             {t("form.privacyLink")}
@@ -238,11 +237,9 @@ export function ContactForm({ kind, messagePlaceholder }: { kind: ContactRequest
         <button
           type="submit"
           disabled={submit.isPending}
-          className="font-rounded inline-flex shrink-0 items-center justify-center gap-2 rounded-full px-7 py-3.5 text-[15px] font-extrabold text-white disabled:opacity-60"
-          style={{ background: ACCENT }}
+          className="font-rounded inline-flex shrink-0 items-center justify-center rounded-full bg-[var(--color-navy-surface)] px-7 py-3.5 text-[15px] font-bold text-[var(--color-navy-on)] disabled:opacity-60"
         >
           {submit.isPending ? t("form.sending") : t("form.submit")}
-          <ArrowRight className="h-4 w-4" aria-hidden="true" />
         </button>
       </div>
     </form>
@@ -258,7 +255,7 @@ function Field({
   return (
     <div>
       <Label htmlFor={htmlFor}>{label}</Label>
-      {hint && <p className="mt-1 mb-0 text-xs text-[color:var(--l-muted)]">{hint}</p>}
+      {hint && <p className="mt-1 mb-0 text-xs text-[var(--color-muted-foreground)]">{hint}</p>}
       <div className="mt-2">{children}</div>
       {error && <p id={errorId} className="mt-1.5 mb-0 text-xs text-[var(--color-destructive)]">{error}</p>}
     </div>

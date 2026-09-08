@@ -109,6 +109,10 @@
   "providerFrom": "ab",
   "providerOpen": "Betrieb ansehen",
   "filterCity": "Stadt",
+  "filterCategory": "Kategorie",
+  "filterCategorySearchLabel": "Kategorien suchen",
+  "filterCategorySearchPlaceholder": "Kategorien suchen",
+  "filterCategoryNoMatch": "Keine Kategorie passt zu „{{term}}“",
   "filterCityHint": "Dienstleistungen aus der Ferne erscheinen unter jeder Stadt.",
   "filterRating": "Bewertung",
   "filterRatingHint": "Nur Betriebe, die Kunden bereits bewertet haben.",
@@ -192,8 +196,20 @@
   "chipRating": "{{score}}+ Sterne",
   "chipVerified": "Nur geprüfte",
   "filtersClearAll": "Alle zurücksetzen",
-  "sortOption": { "default": "Empfohlen", "newest": "Neueste", "price": "Preis", "rating": "Beste Bewertung", "reviews": "Meiste Bewertungen", "name": "Name (A–Z)" },
-  "resultsScope": { "all": "in allen Kategorien", "category": "für {{category}}", "city": "in {{city}}", "categoryCity": "für {{category}} in {{city}}" },
+  "sortOption": {
+    "default": "Empfohlen",
+    "newest": "Neueste",
+    "price": "Preis",
+    "rating": "Beste Bewertung",
+    "reviews": "Meiste Bewertungen",
+    "name": "Name (A–Z)"
+  },
+  "resultsScope": {
+    "all": "in allen Kategorien",
+    "category": "für {{category}}",
+    "city": "in {{city}}",
+    "categoryCity": "für {{category}} in {{city}}"
+  },
   "searchFieldProviderEmpty": "Name des Betriebs oder der Fachkraft…",
   "pagerLabel": "Seiten",
   "factCategory": "Kategorie",
@@ -224,14 +240,12 @@
   "titleServicesTermCity": "{{term}} in {{city}}",
   "titleProvidersTerm": "{{term}}",
   "titleProvidersTermCity": "{{term}} in {{city}}",
-
   "priceToAgree": "Preis nach Absprache",
   "priceQuoteHint": "Fragen Sie nach einem Angebot",
   "priceOptionCount_one": "{{count}} Option",
   "priceOptionCount_other": "{{count}} Optionen",
   "priceFromPrefix": "ab",
   "pricePerHourUnit": "/Std.",
-
   "ratingNew": "Neu",
   "providerKindSentence": {
     "individual": "{{category}} in {{place}}",
@@ -240,14 +254,8 @@
   "providerServicesMore": "{{count}} weitere",
   "providerOpenBusiness": "Betrieb ansehen",
   "providerOpenPerson": "Profil ansehen",
-
-  "categoryStripLabel": "Kategorien",
-
   "filterPillRemove": "{{filter}} entfernen",
   "filterSheetApply_one": "{{count}} Ergebnis anzeigen",
   "filterSheetApply_other": "{{count}} Ergebnisse anzeigen",
-  "sortTrigger": "Sortieren:",
-
-  "quickChipMaxPrice": "Bis {{amount}}",
-  "quickChipsLabel": "Schnellfilter"
+  "sortTrigger": "Sortieren:"
 }

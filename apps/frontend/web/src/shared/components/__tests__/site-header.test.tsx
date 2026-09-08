@@ -166,12 +166,31 @@ describe("SiteHeader", () => {
   });
 
   /**
-   * The provider's door is the footer's, and the right-hand cluster is full:
-   * the nav pill moved into it. The link `providerCta` used to add sat in the
-   * same block as `HeaderActions` and stacked above it rather than beside it,
-   * which is the break this header was rebuilt to fix.
+   * The provider's door is the footer's, not the header's.
+   *
+   * It spent one day among the destinations. The link is ~148px wide, which
+   * put the right-hand cluster over its track's equal share and pushed the
+   * search bar 148px left of the window's middle — on the home page alone,
+   * while every other page stayed centred. That is the "centring that failed"
+   * look the user had already rejected twice while this header was being
+   * built, and he asked for the link removed rather than keep it.
+   *
+   * So the header carries three destinations and no fourth. The footer's
+   * Company column carries `/become-provider` on every page, and the landing
+   * page's navy band is the provider's real invitation.
    */
   it("leaves the provider's door to the footer", async () => {
+    await renderHeader();
+
+    expect(screen.queryByRole("link", { name: /become a provider/i })).toBeNull();
+    expect(
+      screen
+        .queryAllByRole("link")
+        .filter((link) => link.getAttribute("href") === "/become-provider"),
+    ).toHaveLength(0);
+  });
+
+  it("grows no door for the callers that did not ask", async () => {
     await renderHeader();
     expect(screen.queryByRole("link", { name: "Become a Provider" })).toBeNull();
   });

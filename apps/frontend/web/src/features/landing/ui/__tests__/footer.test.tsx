@@ -118,4 +118,32 @@ describe("Footer", () => {
     expect(screen.queryByText("Visa")).toBeNull();
     expect(screen.queryByText("Mastercard")).toBeNull();
   });
+
+  /**
+   * The chip only belongs on the right when there is something on the left.
+   *
+   * The bottom strip is a row from `sm` up, with the socials at one end and
+   * the payments at the other, so the payment block right-aligns itself to
+   * meet the edge. Below `sm` the strip stacks and every block is
+   * `items-start` — but the alignment was an inline `text-align: right` and
+   * `justify-content: flex-end`, which no breakpoint could reach, so on a
+   * phone the chip sat pushed to the right of a left-aligned label it is
+   * supposed to sit under.
+   *
+   * jsdom does no layout, so the assertion is the class that produces each
+   * side of it.
+   */
+  it("puts the payment chip under its label on a phone, not off to the right", async () => {
+    await renderFooter();
+    const chip = screen.getByText("M-Pesa");
+    const row = chip.closest("div")!;
+    const block = row.parentElement!;
+
+    expect(row.className).toContain("justify-start");
+    expect(row.className).toContain("sm:justify-end");
+    expect(row.getAttribute("style") ?? "").not.toContain("flex-end");
+    expect(block.className).toContain("text-left");
+    expect(block.className).toContain("sm:text-right");
+    expect(block.getAttribute("style") ?? "").not.toContain("right");
+  });
 });

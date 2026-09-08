@@ -136,7 +136,10 @@ describe("ContactRequestPage — contact", () => {
 
   it("offers feedback, help and about at the bottom", async () => {
     await renderCompanyPage(ContactPage, "/contact");
-    const strip = screen.getByRole("heading", { name: /see also/i }).parentElement!;
+    // `closest("section")`, not the heading's parent: `SectionHead` wraps the
+    // heading a div deep, so the parent holds no links and this quietly
+    // returned an empty list.
+    const strip = screen.getByRole("heading", { name: /see also/i }).closest("section")!;
     expect(Array.from(strip.querySelectorAll("a")).map((a) => a.getAttribute("href"))).toEqual(["/feedback?from=%2Fcontact", "/help", "/about"]);
   });
 });
