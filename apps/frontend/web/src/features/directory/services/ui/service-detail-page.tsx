@@ -271,12 +271,18 @@ function ServiceDetail({ service }: { service: ServiceDetailDTO }) {
                 // — no price is fixed until the provider has seen the job, so
                 // there is no slot to offer a time for, and no priced option
                 // for `booking.create` to be handed. `ServiceQuoteNotice`
-                // carries the one sentence that explains this
-                // (`availabilityQuoteNotice`, the same key checkout's own
-                // step 1 falls back to for the identical fact); a "see
-                // availability" link into a checkout that could not proceed
-                // would be a door onto a wall.
-                return <ServiceQuoteNotice providerId={service.providerId} />;
+                // now carries the request itself, not just an explanation of
+                // why there is no price: `quoteForm` is nullable — a service
+                // whose provider never configured one — and the panel
+                // handles that itself.
+                return (
+                  <ServiceQuoteNotice
+                    serviceId={service.id}
+                    providerId={service.providerId}
+                    providerName={service.providerName}
+                    quoteForm={service.quoteForm}
+                  />
+                );
               }
               // A `priced` service with no active packages — see
               // `ServicePackagesUnavailable`'s own doc comment for why this

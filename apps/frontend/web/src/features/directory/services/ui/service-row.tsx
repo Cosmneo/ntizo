@@ -162,16 +162,18 @@ function servicePriceAndCta({
   if (cell.kind === "quote") {
     return {
       price: <p className="type-h3 text-[var(--color-muted-foreground)]">{t("quotePrice")}</p>,
-      // The service's own page, not checkout: a quote service has no priced
-      // option to book and `booking.create` takes one. That page is where
-      // `ServiceQuoteNotice` explains why there is no price yet and offers
-      // the message button that actually starts the conversation — which is
-      // the same place this button reached before, since the sheet it used to
-      // open only ever showed that one sentence for a quote service.
+      // The request page, not the service's own: a quote service has no
+      // priced option to book and `booking.create` takes one, so there was
+      // never a calendar this button could open. It used to land on the
+      // service page instead, where `ServiceQuoteNotice` only ever showed
+      // one sentence and a message button — a second page to read before
+      // reaching the same dead end. Now it goes straight to
+      // `/quote/$serviceId`, the form that actually asks the provider for a
+      // price.
       cta: (
         <Link
-          to="/services/$id"
-          params={{ id: serviceId }}
+          to="/quote/$serviceId"
+          params={{ serviceId }}
           className={buttonVariants({ variant: "outline", size: "sm" })}
         >
           {t("quoteAction")}

@@ -403,14 +403,14 @@ describe("ProviderDetailPage", () => {
     ).not.toBeInTheDocument();
     // The priced row starts checkout; the quote row does not, because a
     // quote service has no priced option for `booking.create` to take — it
-    // goes to the service's own page, where the conversation starts instead.
+    // goes to the request page instead, where the conversation starts.
     expect(screen.getByRole("link", { name: "See availability" })).toHaveAttribute(
       "href",
       expect.stringContaining("/book/s1"),
     );
     expect(screen.getByRole("link", { name: "Request a quote" })).toHaveAttribute(
       "href",
-      expect.stringContaining("/services/s2"),
+      expect.stringContaining("/quote/s2"),
     );
   });
 

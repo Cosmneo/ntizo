@@ -2,22 +2,19 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, CalendarDays, FileText, MapPin, Smartphone } from "lucide-react";
-import type { AddressDTO } from "@ntizo/shared";
 import { toMpesaMsisdn } from "@ntizo/shared";
 import { Button, Skeleton } from "@ntizo/frontend-ui";
 import { CheckoutHeader } from "@/features/checkout/ui/checkout-header";
 import { useMyAddresses } from "@/features/account/viewmodel/use-addresses";
 import { useCurrentUser } from "@/features/user/viewmodel/use-current-user";
-import type {
-  CheckoutBooking,
-  SubmitBookingAddress,
-} from "@/features/checkout/viewmodel/use-checkout";
+import type { CheckoutBooking } from "@/features/checkout/viewmodel/use-checkout";
 import { useMyBooking, useSendBookingRequest } from "@/features/checkout/viewmodel/use-checkout";
 import { CheckoutCountdown } from "@/features/checkout/ui/checkout-countdown";
 import { CheckoutRail } from "@/features/checkout/ui/checkout-rail";
 import { readDraftDetails } from "@/features/checkout/domain/draft-store";
 import { checkoutOutcome } from "@/features/checkout/domain/booking-outcome";
 import { compactSlotWording, slotWording } from "@/features/checkout/domain/slot-wording";
+import { toAddressInput } from "@/shared/domain/address-input";
 import {
   BookingOutcomePanel,
   SentPanel,
@@ -33,45 +30,6 @@ const ICON_BADGE =
 
 /** The order money and commitment happen in, as three keys so each stays greppable. */
 const HOW_IT_WORKS = ["howItWorks1", "howItWorks2", "howItWorks3"] as const;
-
-/**
- * A stored coordinate as a number, or `null`.
- *
- * `AddressDTO` carries latitude and longitude as strings, because Postgres
- * `numeric` crosses the wire as one and rounding it to a float at the read
- * model would be losing precision the column was chosen to keep. The mutation
- * takes numbers, so the conversion happens here — and a value that does not
- * parse becomes `null` rather than `NaN`, which would serialise to JSON as
- * `null` anyway but only after passing through arithmetic as a number.
- */
-function coordinate(raw: string | null): number | null {
-  if (raw === null) return null;
-  const value = Number(raw);
-  return Number.isFinite(value) ? value : null;
-}
-
-/**
- * One saved address in the shape `booking.submit` takes.
- *
- * `line1` and `line2` are joined rather than one being dropped: a flat or an
- * apartment number lives in the second line, and a provider sent to the
- * building without it is a provider standing outside the right door.
- *
- * The booking keeps this as a snapshot, so the customer correcting their
- * street next March does not move where the provider went last week — which
- * is why the components travel by value and no address id is sent.
- */
-function toSubmitAddress(address: AddressDTO): SubmitBookingAddress {
-  return {
-    label: address.label,
-    line: [address.line1, address.line2].filter(Boolean).join(", "),
-    city: address.city,
-    district: address.district,
-    directions: address.directions,
-    lat: coordinate(address.latitude),
-    lng: coordinate(address.longitude),
-  };
-}
 
 /**
  * Step 3 of checkout: read it back, say where the payment prompt goes, send
@@ -306,7 +264,7 @@ function Confirm({ booking }: { booking: CheckoutBooking }) {
       .send({
         bookingId: booking.id,
         phoneNumber: `+${msisdn}`,
-        address: toSubmitAddress(address),
+        address: toAddressInput(address),
         // Blank is nothing written, not an empty note: the mutation trims and
         // `Booking.submit` stores a null for it either way.
         description: details?.description.trim() || null,

@@ -38,6 +38,7 @@ const WORKSPACE_ROUTES = [
   "/provider/$slug/services", "/provider/$slug/members", "/provider/$slug/wallet",
   "/provider/$slug/activity", "/provider/$slug/settings", "/provider/$slug/notifications",
   "/provider/$slug/bookings",
+  "/provider/$slug/quotes",
 ];
 const PLATFORM_ROUTES = [
   "/admin/dashboard", "/admin/providers", "/admin/reviews", "/admin/users",
@@ -130,8 +131,8 @@ describe("consoleNav: the phone's tabs", () => {
     }
   });
 
-  it("puts Bookings, Messages and Calendar on the provider bar, in that order", () => {
-    expect(primaryItems(consoleNav("workspace")).map((i) => i.key)).toEqual(["bookings", "messages", "availability"]);
+  it("puts Bookings, Quotes and Messages on the provider bar, in that order", () => {
+    expect(primaryItems(consoleNav("workspace")).map((i) => i.key)).toEqual(["bookings", "quotes", "messages"]);
   });
 
   it("puts Providers, Reviews and Users on the admin bar, in that order", () => {

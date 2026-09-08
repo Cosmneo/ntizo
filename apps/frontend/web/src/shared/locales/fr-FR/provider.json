@@ -17,6 +17,7 @@
     "notifications": "Notifications",
     "services": "Services",
     "bookings": "Réservations",
+    "quotes": "Devis",
     "messages": "Messages",
     "availability": "Disponibilité",
     "activity": "Activité",
@@ -731,6 +732,7 @@
     "messages": "Messages",
     "availability": "Agenda",
     "services": "Services",
-    "bookings": "Réservations"
+    "bookings": "Réservations",
+    "quotes": "Devis"
   }
 }

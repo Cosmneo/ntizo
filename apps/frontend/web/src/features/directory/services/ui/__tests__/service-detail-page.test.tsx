@@ -172,6 +172,13 @@ function renderPage(service: ServiceDetailDTO, provider: ProviderPublicDetailDTO
     validateSearch: (search: Record<string, unknown>) => search as { next?: string },
     component: () => <p>sign in page</p>,
   });
+  // The quote panel's own filled button, for a `quote` service: `ServiceQuoteNotice`
+  // now links here instead of ending at this same page.
+  const quoteRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/quote/$serviceId",
+    component: () => <p>quote request page</p>,
+  });
   const router = createRouter({
     routeTree: rootRoute.addChildren([
       indexRoute,
@@ -179,6 +186,7 @@ function renderPage(service: ServiceDetailDTO, provider: ProviderPublicDetailDTO
       providerRoute,
       messagesRoute,
       signInRoute,
+      quoteRoute,
     ]),
     history: createMemoryHistory({ initialEntries: ["/"] }),
   });
@@ -238,15 +246,21 @@ describe("ServiceDetailPage's right column", () => {
       "href",
       expect.stringContaining("/book/svc-1"),
     );
-    expect(screen.queryByText(/priced by quote/i)).not.toBeInTheDocument();
+    expect(screen.queryByText("By quote")).not.toBeInTheDocument();
   });
 
-  it("shows the quote notice for a quote service, with a working way to contact the provider", async () => {
+  it("shows the quote notice for a quote service, with a working request link and a way to contact the provider", async () => {
     renderPage(detailService({ bookingMode: "quote", options: [] }));
-    expect(await screen.findByText(/priced by quote/i)).toBeInTheDocument();
+    expect(await screen.findByText("By quote")).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Packages" })).not.toBeInTheDocument();
-    // A quote service can be neither booked nor scheduled, so this button is
-    // the only action its page offers — see follow-up #69 for why it used to
+    // The panel's one filled action, now a real request rather than a dead
+    // end: it used to be this same page, so a click here landed nowhere.
+    expect(screen.getByRole("link", { name: "Ask for a quote" })).toHaveAttribute(
+      "href",
+      expect.stringContaining("/quote/svc-1"),
+    );
+    // Messaging stays reachable, demoted to text under the button now that
+    // the page has a primary action — see follow-up #69 for why it used to
     // be disabled here.
     expect(screen.getByRole("button", { name: "Send message" })).toBeEnabled();
   });
@@ -261,7 +275,8 @@ describe("ServiceDetailPage's right column", () => {
     expect(
       await screen.findByText("This service doesn't currently have a bookable package. Please check back soon."),
     ).toBeInTheDocument();
-    expect(screen.queryByText(/priced by quote/i)).not.toBeInTheDocument();
+    expect(screen.queryByText("By quote")).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Ask for a quote" })).not.toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Packages" })).not.toBeInTheDocument();
   });
 });

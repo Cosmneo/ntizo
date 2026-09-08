@@ -17,6 +17,7 @@
     "notifications": "Notifications",
     "services": "Services",
     "bookings": "Bookings",
+    "quotes": "Quotes",
     "messages": "Messages",
     "availability": "Availability",
     "activity": "Activity",
@@ -731,6 +732,7 @@
     "messages": "Messages",
     "availability": "Calendar",
     "services": "Services",
-    "bookings": "Bookings"
+    "bookings": "Bookings",
+    "quotes": "Quotes"
   }
 }

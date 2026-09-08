@@ -136,11 +136,14 @@ describe("ServiceRow", () => {
     renderRow(quote);
     expect(await screen.findByText("On request")).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "See availability" })).not.toBeInTheDocument();
-    // Its own page, not checkout: `booking.create` takes a `serviceOptionId`
-    // and a quote service has none to give it.
+    // The request page, not checkout and not the service's own page:
+    // `booking.create` takes a `serviceOptionId` and a quote service has
+    // none to give it, and there is no reason left to send this row's reader
+    // through a page they are already one click away from just to reach the
+    // same button again.
     expect(screen.getByRole("link", { name: "Request a quote" })).toHaveAttribute(
       "href",
-      expect.stringContaining("/services/s1"),
+      expect.stringContaining("/quote/s1"),
     );
   });
 

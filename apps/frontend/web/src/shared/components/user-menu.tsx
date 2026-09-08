@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import {
   Activity,
   CalendarDays,
+  FileText,
   Heart,
   LayoutGrid,
   LogOut,
@@ -118,6 +119,10 @@ export function UserMenu() {
         <DropdownMenuItem onSelect={() => navigate({ to: "/bookings" })}>
           <CalendarDays className="h-4 w-4" />
           {t("myBookings")}
+        </DropdownMenuItem>
+        <DropdownMenuItem onSelect={() => navigate({ to: "/quotes" })}>
+          <FileText className="h-4 w-4" />
+          {t("quotes")}
         </DropdownMenuItem>
         <DropdownMenuItem onSelect={() => navigate({ to: "/messages" })}>
           <MessageSquare className="h-4 w-4" />
