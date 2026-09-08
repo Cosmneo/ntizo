@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, focusManager } from "@tanstack/react-query";
 import { RouterProvider, createMemoryHistory, createRootRoute, createRoute, createRouter } from "@tanstack/react-router";
 import type { MessageDTO, SupportRequestSummaryDTO } from "@ntizo/shared/read-models";
 import { GraphqlError } from "@/shared/lib/graphql/session-graphql";
@@ -33,7 +33,12 @@ vi.mock("@/features/admin/support/data/admin-support.repository", async (importO
       ...actual.adminSupportQueries,
       one: (threadId: string) =>
         fakes.oneQueryFn
-          ? { queryKey: ["admin", "support", "one", threadId] as const, queryFn: fakes.oneQueryFn }
+          ? // Real options (`retry`, `enabled`, …), fake `queryFn` only — a
+            // bare `{ queryKey, queryFn }` here would silently drop
+            // `adminSupportQueries.one`'s own `retry: false`, and the one
+            // test below that exists to prove that option matters would
+            // stop exercising it.
+            { ...actual.adminSupportQueries.one(threadId), queryFn: fakes.oneQueryFn }
           : actual.adminSupportQueries.one(threadId),
       messages: (threadId: string) =>
         fakes.messagesQueryFn
@@ -51,6 +56,7 @@ vi.mock("@/features/admin/support/data/admin-support.repository", async (importO
 afterEach(() => {
   fakes.oneQueryFn = null;
   fakes.messagesQueryFn = null;
+  focusManager.setFocused(undefined);
 });
 
 const request: SupportRequestSummaryDTO = {
@@ -98,10 +104,18 @@ async function renderPage(over: Partial<SupportRequestSummaryDTO> = {}) {
  * The two cases below build their own `QueryClient` with the query state
  * they need, then hand it to this.
  */
-async function renderWithClient(qc: QueryClient) {
+async function renderWithClient(qc: QueryClient, opts: { markReadRejects?: unknown } = {}) {
   fakes.reply.mockResolvedValue("m-2");
   fakes.resolve.mockResolvedValue(undefined);
-  fakes.markRead.mockResolvedValue(1);
+  // Real `markSupportRequestRead` throws the same `SUPPORT_REQUEST_NOT_FOUND`
+  // for a thread that does not exist (`mark-support-request-read.command.ts`),
+  // which the "genuinely gone" tests below need — a `markRead` that quietly
+  // succeeds would invalidate and refetch the very query under test.
+  if (opts.markReadRejects !== undefined) {
+    fakes.markRead.mockRejectedValue(opts.markReadRejects);
+  } else {
+    fakes.markRead.mockResolvedValue(1);
+  }
   const rootRoute = createRootRoute();
   const router = createRouter({
     routeTree: rootRoute.addChildren([
@@ -250,5 +264,89 @@ describe("AdminSupportRequestPage", () => {
     expect(screen.getByText(/no such request/i)).toBeInTheDocument();
     expect(screen.queryByText(/could not be loaded/i)).toBeNull();
     expect(screen.getByRole("link", { name: /back to the queue/i })).toBeInTheDocument();
+  });
+
+  it("says \"no such request\", not a load error, when the backend answers SUPPORT_REQUEST_NOT_FOUND", async () => {
+    // `supportRequest` never actually resolves `null` for a missing thread —
+    // it throws this code (`SupportRequestNotFoundError` in the
+    // communication BC). The test above only proves the branch for a
+    // data-shape (`setQueryData(..., null)`) production never produces;
+    // this one drives the real failure the backend actually sends.
+    let calls = 0;
+    fakes.oneQueryFn = () => {
+      calls++;
+      return Promise.reject(
+        new GraphqlError(404, [
+          {
+            message: "No such support request.",
+            extensions: { code: "NOT_FOUND", originalCode: "SUPPORT_REQUEST_NOT_FOUND" },
+          },
+        ]),
+      );
+    };
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    // The thread is genuinely gone, so `supportMarkRead` answers the same
+    // `SUPPORT_REQUEST_NOT_FOUND` — a `markRead` that succeeded here would
+    // invalidate and refetch the very query this test is watching.
+    await renderWithClient(qc, { markReadRejects: new Error("SUPPORT_REQUEST_NOT_FOUND") });
+
+    expect(await screen.findByText(/no such request/i)).toBeInTheDocument();
+    expect(screen.queryByText(/could not be loaded/i)).toBeNull();
+    expect(screen.getByRole("link", { name: /back to the queue/i })).toBeInTheDocument();
+    // `adminSupportQueries.one` turns retry off for exactly this reason —
+    // see the next test for what a retry on this query can do.
+    expect(calls).toBe(1);
+  });
+
+  /**
+   * Reproduces the deployed bug directly: an admin clicking a notification
+   * link opens `/admin/support/<threadId>` for a thread that no longer
+   * exists, and the page got stuck on the loading skeleton forever — no
+   * second network request, `isPending` never leaving `true`.
+   *
+   * The mechanism, confirmed by reading `retryer.ts`: `retry: 1` (the
+   * production `QueryClient` default, reproduced here) does not run its one
+   * retry unconditionally — `canContinue()` also requires
+   * `focusManager.isFocused()`, which reads `document.visibilityState`. A
+   * request opened in a background tab (a notification opening in a new
+   * tab, or simply not the tab someone is looking at right now) fails once,
+   * schedules the retry, and then *pauses* waiting for the tab to be
+   * foregrounded — which may never happen. While paused, `fetchStatus` is
+   * `"paused"` but `status` stays `"pending"`, so `isPending` stays `true`
+   * and the skeleton this page renders for that state never gets replaced.
+   * `focusManager.setFocused(false)` reproduces that condition directly,
+   * without needing a real background tab.
+   *
+   * This only proves the point if the query is still capable of retrying at
+   * all — so this test uses the *production* `QueryClient` defaults
+   * (`adminSupportQueries.one` overriding `retry` to `false` is exactly the
+   * fix; a client-level default cannot un-set it), not `retry: false` the
+   * way every other test in this file does to stay fast and deterministic.
+   */
+  it("does not strand the reader on the skeleton when the tab is backgrounded during a failed load", async () => {
+    let calls = 0;
+    fakes.oneQueryFn = () => {
+      calls++;
+      return Promise.reject(
+        new GraphqlError(404, [
+          {
+            message: "No such support request.",
+            extensions: { code: "NOT_FOUND", originalCode: "SUPPORT_REQUEST_NOT_FOUND" },
+          },
+        ]),
+      );
+    };
+    focusManager.setFocused(false);
+    // The production `QueryClient`'s own defaults (`src/lib/query-client.ts`),
+    // not this file's usual `retry: false` — the whole point is that a
+    // client-level `retry: 1` must not be able to strand this particular
+    // query, because `adminSupportQueries.one` itself opts out.
+    const qc = new QueryClient({ defaultOptions: { queries: { staleTime: 30_000, retry: 1 } } });
+    await renderWithClient(qc, { markReadRejects: new Error("SUPPORT_REQUEST_NOT_FOUND") });
+
+    expect(await screen.findByText(/no such request/i)).toBeInTheDocument();
+    expect(screen.queryByRole("status", { name: /loading/i })).toBeNull();
+    expect(screen.getByRole("link", { name: /back to the queue/i })).toBeInTheDocument();
+    expect(calls).toBe(1);
   });
 });
