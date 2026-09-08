@@ -243,7 +243,49 @@ describe("ProviderQuotePage", () => {
 
     await userEvent.click(revise);
 
-    expect(await screen.findByLabelText("Preço para o cliente")).toBeInTheDocument();
+    // Pre-filled from the live proposal, not blank — the exact values just
+    // sent through `fillAndSend`, read back out of the fields "Rever
+    // proposta" is supposed to open with rather than a form the provider
+    // has to fill in from memory a second time.
+    expect(await screen.findByLabelText("Preço para o cliente")).toHaveValue("9800,00");
+    expect(screen.getByLabelText("Data")).toHaveValue("2026-09-20");
+    expect(screen.getByLabelText("Hora")).toHaveValue("08:30");
+    expect(screen.getByLabelText("Duração")).toHaveValue("2");
+    expect(screen.getByLabelText("Quem faz o trabalho")).toHaveValue("m1");
+  });
+
+  it("opens blank when there is no proposal yet to revise from", async () => {
+    await renderProviderQuote(toAnswerDetail);
+
+    expect(await screen.findByLabelText("Preço para o cliente")).toHaveValue("");
+    expect(screen.getByLabelText("Data")).toHaveValue("");
+    expect(screen.getByLabelText("Hora")).toHaveValue("");
+    expect(screen.getByLabelText("Duração")).toHaveValue("");
+    expect(screen.getByLabelText(/Nota para o cliente/)).toHaveValue("");
+  });
+
+  it("says how many times a proposal has been revised, not always \"uma vez\"", async () => {
+    const twiceRevised = detailFixture({
+      status: "PROPOSED",
+      proposal: proposalFixture({ validUntil: "2026-09-09T00:00:00.000Z" }),
+      proposals: [
+        proposalFixture({
+          id: "prop-a",
+          supersededAt: "2026-09-06T00:00:00.000Z",
+          supersededCause: "revised",
+        }),
+        proposalFixture({
+          id: "prop-b",
+          supersededAt: "2026-09-07T00:00:00.000Z",
+          supersededCause: "revised",
+        }),
+      ],
+    });
+
+    await renderProviderQuote(twiceRevised);
+
+    expect(await screen.findByText(/revista 2 vezes/)).toBeInTheDocument();
+    expect(screen.queryByText(/revista uma vez/)).not.toBeInTheDocument();
   });
 
   it("says it reloaded rather than claiming the proposal was sent, when the race is lost", async () => {

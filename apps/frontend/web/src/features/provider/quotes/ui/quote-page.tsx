@@ -20,7 +20,7 @@ import {
   useProviderQuote,
   type ProposeQuoteInput,
 } from "../viewmodel/use-provider-quotes";
-import { ProposalForm } from "./proposal-form";
+import { ProposalForm, type ProposalFormInitialValues } from "./proposal-form";
 
 const CAPTION =
   "type-caption font-bold tracking-[0.14em] text-[var(--color-muted-foreground)] uppercase";
@@ -54,6 +54,56 @@ function durationWording(minutes: number, t: TFunction<"quotes">): string {
   return minutes % 60 === 0
     ? t("unit.h", { count: minutes / 60 })
     : t("unit.min", { count: minutes });
+}
+
+/**
+ * The reverse of `proposal-form.tsx`'s own `toInstant`: an instant, read back
+ * as the date and time a clock in the quote's own zone would show it.
+ *
+ * This is what "Rever proposta" needs to put the live proposal's own
+ * appointment back into the form's plain `<input type="date">`/
+ * `<input type="time">` fields rather than opening blank — a provider
+ * adjusting a price by 200 MZN on a job they already specified has to see
+ * the existing date and time to check against, not retype them from memory.
+ * Unlike `toInstant`, no offset arithmetic is needed: `Intl.DateTimeFormat`
+ * already reads an instant in any zone directly, and an `<input>`'s own
+ * `value` wants exactly the digits this returns.
+ */
+function fromInstant(iso: string, timeZone: string): { date: string; time: string } {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(new Date(iso));
+  const read = Object.fromEntries(parts.map((p) => [p.type, p.value]));
+  return { date: `${read.year}-${read.month}-${read.day}`, time: `${read.hour}:${read.minute}` };
+}
+
+/**
+ * The price field's own draft string for an existing minor-unit amount — two
+ * decimal places, comma-separated, the same shape
+ * `service-draft.ts#optionDraftFrom` writes for a provider's price fields
+ * elsewhere in this app, and one `proposal-form.tsx`'s own comma-tolerant
+ * `parseDecimal` reads straight back.
+ */
+function priceDraft(priceMinor: number): string {
+  return (priceMinor / 100).toFixed(2).replace(".", ",");
+}
+
+/**
+ * The duration field's own draft string, in hours: a bare whole number when
+ * the minutes divide evenly ("4"), two decimal places otherwise ("1,67") —
+ * rounded rather than repeating, since a duration this page ever wrote was
+ * itself rounded from a typed number of hours and a longer decimal would
+ * only be re-rounded the moment it was resubmitted unchanged.
+ */
+function durationDraft(durationMinutes: number): string {
+  const hours = Math.round((durationMinutes / 60) * 100) / 100;
+  return String(hours).replace(".", ",");
 }
 
 /**
@@ -206,6 +256,19 @@ export function ProviderQuotePage({ quoteId }: { quoteId: string }) {
   const proposalWhen = q.proposal
     ? slotWording(q.proposal.startsAt, q.proposal.endsAt, locale, q.timezone)
     : null;
+  // What "Rever proposta" opens the form pre-filled with — the live
+  // proposal's own values, read back in the shapes the fields themselves
+  // edit. `undefined` for a first proposal, which has nothing to revise
+  // from; the form opens blank exactly as it always has.
+  const revisionValues: ProposalFormInitialValues | undefined = q.proposal
+    ? {
+        price: priceDraft(q.proposal.priceMinor),
+        ...fromInstant(q.proposal.startsAt, q.timezone),
+        durationHours: durationDraft(q.proposal.durationMinutes),
+        memberId: q.proposal.providerMemberId,
+        note: q.proposal.note ?? "",
+      }
+    : undefined;
 
   return (
     <div className="mx-auto max-w-6xl">
@@ -312,6 +375,7 @@ export function ProviderQuotePage({ quoteId }: { quoteId: string }) {
               busy={busy}
               notice={notice}
               isRevision={hasLiveProposal}
+              initialValues={revisionValues}
               attachments={proposeAttachments}
             />
           ) : q.proposal ? (
@@ -365,8 +429,14 @@ export function ProviderQuotePage({ quoteId }: { quoteId: string }) {
                 </div>
               )}
               <p className="type-caption mt-3 text-[var(--color-muted-foreground)]">
-                {t(revised > 0 ? "clock.provider.revisedOnce" : "clock.provider.validUntil", {
+                {/* `revised` carries its own `{{count}}` and an `_one` variant
+                    — the customer side's `detail.stepProposedRevised` already
+                    does the same for the identical fact, and a fixed "revista
+                    uma vez" regardless of count would misstate a second or
+                    third revision. */}
+                {t(revised > 0 ? "clock.provider.revised" : "clock.provider.validUntil", {
                   when: longWhen(q.proposal.validUntil, locale, q.timezone),
+                  count: revised,
                 })}
               </p>
               {canPropose(q) && (

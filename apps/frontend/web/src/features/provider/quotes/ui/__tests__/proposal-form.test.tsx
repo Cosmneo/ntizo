@@ -131,4 +131,42 @@ describe("ProposalForm", () => {
 
     expect(await screen.findByLabelText("Quem faz o trabalho")).toHaveValue("m1");
   });
+
+  it("opens pre-filled from initialValues, for a revision", async () => {
+    render(
+      <ProposalForm
+        {...DEFAULT_PROPS}
+        onSubmit={vi.fn()}
+        initialValues={{
+          price: "9800,00",
+          date: "2026-09-20",
+          time: "08:30",
+          durationHours: "4",
+          memberId: "m1",
+          note: "Traga escada.",
+        }}
+      />,
+    );
+
+    expect(await screen.findByLabelText("Preço para o cliente")).toHaveValue("9800,00");
+    expect(screen.getByLabelText("Data")).toHaveValue("2026-09-20");
+    expect(screen.getByLabelText("Hora")).toHaveValue("08:30");
+    expect(screen.getByLabelText("Duração")).toHaveValue("4");
+    expect(screen.getByLabelText("Quem faz o trabalho")).toHaveValue("m1");
+    expect(screen.getByLabelText(/Nota para o cliente/)).toHaveValue("Traga escada.");
+    // The split already knows what a filled-in price means, from the very
+    // first render — the provider does not have to retype the price to see
+    // what revising it would change.
+    expect(screen.getByText("9800,00 MTn")).toBeInTheDocument();
+  });
+
+  it("opens blank when there are no initialValues, exactly as before this prop existed", async () => {
+    render(<ProposalForm {...DEFAULT_PROPS} onSubmit={vi.fn()} />);
+
+    expect(await screen.findByLabelText("Preço para o cliente")).toHaveValue("");
+    expect(screen.getByLabelText("Data")).toHaveValue("");
+    expect(screen.getByLabelText("Hora")).toHaveValue("");
+    expect(screen.getByLabelText("Duração")).toHaveValue("");
+    expect(screen.getByLabelText(/Nota para o cliente/)).toHaveValue("");
+  });
 });

@@ -19,6 +19,24 @@ export interface ProposalFormPerformer {
 }
 
 /**
+ * What "Rever proposta" opens the form pre-filled with — the live proposal's
+ * own values, in the same shapes the fields themselves edit (a typed price
+ * string, not minor units; a date and a time, not an instant).
+ *
+ * Left unset for a first proposal, which has nothing yet to revise from —
+ * the fields default to their ordinary blank state, exactly as before this
+ * prop existed.
+ */
+export interface ProposalFormInitialValues {
+  price: string;
+  date: string;
+  time: string;
+  durationHours: string;
+  memberId: string;
+  note: string;
+}
+
+/**
  * The files controller a caller can share, the same shape and the same
  * reason `CloseQuoteDialog` accepts one: the page's own `send` (see
  * `quote-page.tsx`) calls `uploadAll()` on the exact instance this form's
@@ -123,6 +141,13 @@ function toInstant(date: string, time: string, timeZone: string): string {
  * a `ProposeQuoteInput` minus the quote id up to the page, which is what
  * carries `quoteId`, runs the write, and reacts to what comes back.
  *
+ * **`initialValues` is what makes a revision safe to send.** "Pode revê-la
+ * enquanto o cliente não decidir" (the mockup's own promise) is not "type it
+ * all again from memory" — a provider adjusting a price by 200 MZN on a job
+ * they already specified needs the existing date, time, duration, member and
+ * note in front of them to check against, not a blank form. Left unset for a
+ * first proposal, which has nothing to revise from.
+ *
  * `attachments` is optional and, left unset, this form runs its own
  * `useAttachments()` — the same fallback `CloseQuoteDialog` makes, always
  * called so the rules of hooks are never broken by a caller that happens to
@@ -137,6 +162,7 @@ export function ProposalForm({
   busy,
   notice,
   isRevision = false,
+  initialValues,
   attachments: attachmentsProp,
 }: {
   commissionBps: number;
@@ -149,19 +175,29 @@ export function ProposalForm({
   notice?: string;
   /** Swaps "Enviar proposta"/"A sua proposta" for their revision wording, when a live proposal already exists. */
   isRevision?: boolean;
+  /**
+   * The live proposal's own values, when this mount of the form is a
+   * revision rather than a first price. Read once, at mount — this
+   * component remounts fresh every time the page swaps the read-only
+   * proposal back for the form (they are different element types in the
+   * same conditional), so there is no stale-prop case to guard against.
+   */
+  initialValues?: ProposalFormInitialValues;
   attachments?: AttachmentsController;
 }) {
   const { t, i18n } = useTranslation("quotes");
   const locale = i18n.resolvedLanguage ?? i18n.language;
 
-  const [price, setPrice] = useState("");
-  const [date, setDate] = useState("");
-  const [time, setTime] = useState("");
-  const [durationHours, setDurationHours] = useState("");
+  const [price, setPrice] = useState(initialValues?.price ?? "");
+  const [date, setDate] = useState(initialValues?.date ?? "");
+  const [time, setTime] = useState(initialValues?.time ?? "");
+  const [durationHours, setDurationHours] = useState(initialValues?.durationHours ?? "");
   // The only member preselects itself — asking a provider with one employee
   // to choose them from a list of one is a click that decides nothing.
-  const [memberId, setMemberId] = useState(performers.length === 1 ? performers[0]!.id : "");
-  const [note, setNote] = useState("");
+  const [memberId, setMemberId] = useState(
+    initialValues?.memberId ?? (performers.length === 1 ? performers[0]!.id : ""),
+  );
+  const [note, setNote] = useState(initialValues?.note ?? "");
   const [error, setError] = useState<string | null>(null);
 
   const own = useAttachments();
