@@ -13,6 +13,7 @@ import {
   useReplyToSupportRequest,
   useResolveSupportRequest,
 } from "@/features/admin/support/viewmodel/use-admin-support";
+import { messagingErrorCode } from "@/features/messaging/viewmodel/messaging-error";
 
 /**
  * One support request, read and answered by the platform.
@@ -51,12 +52,28 @@ import {
  * exactly as `provider-detail-page.tsx` shows `detail` regardless of
  * `query.error`; `supportLoadError` is reserved for when `request` was
  * never loaded at all.
+ *
+ * `supportRequest` never actually resolves `null` for a missing id — it
+ * throws `SUPPORT_REQUEST_NOT_FOUND` (see the communication BC's own
+ * `SupportRequestNotFoundError`) — so `error` alone cannot mean "failed to
+ * load" here: `messagingErrorCode(error)` is checked for that specific code
+ * first, and only an error that is NOT that code falls through to
+ * `supportLoadError`. `adminSupportQueries.one` also turns retry off for
+ * this query specifically — a retry only ever runs once the tab is
+ * foregrounded again, so a request opened in a background tab (exactly what
+ * a clicked notification does) could pause its one retry forever, and
+ * `isPending` stays true — the same skeleton, permanently — for as long as
+ * nobody is looking at the tab to refocus it.
  */
 export function AdminSupportRequestPage() {
   const { t } = useTranslation("admin");
   const { t: tCommon } = useTranslation("common");
   const { threadId } = useParams({ from: "/admin/support/$threadId" });
   const { data: request, isPending, error } = useAdminSupportRequest(threadId);
+  // See the doc comment above: the backend answers a missing thread id with
+  // this code, never with `data: null`, so it is what tells "no such
+  // request" apart from "this failed to load".
+  const requestNotFound = messagingErrorCode(error) === "SUPPORT_REQUEST_NOT_FOUND";
   const {
     messages,
     loading,
@@ -159,7 +176,7 @@ export function AdminSupportRequestPage() {
             <Skeleton className="h-4 w-32" />
             <Skeleton className="mt-4 h-16 w-full" />
           </div>
-        ) : error ? (
+        ) : error && !requestNotFound ? (
           <p className="type-body text-[var(--color-destructive)]">{t("supportLoadError")}</p>
         ) : (
           <p className="type-body text-[var(--color-destructive)]">{t("supportNotFound")}</p>

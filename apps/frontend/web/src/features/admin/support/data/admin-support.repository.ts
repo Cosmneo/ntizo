@@ -118,6 +118,22 @@ export const adminSupportQueries = {
           input: { threadId },
         }).then((d) => d.supportRequest),
       enabled: threadId.length > 0,
+      // No retry, unlike the rest of this file's queries. A failure here is
+      // either `SUPPORT_REQUEST_NOT_FOUND` — permanent, retrying answers
+      // nothing new — or a genuine failure the page already reports and the
+      // back link already recovers from. The client default (`retry: 1`)
+      // pairs a *retry* specifically with React Query's `focusManager`: a
+      // retry only runs once the tab is foregrounded (`focusManager.isFocused()`
+      // gates `canContinue` in `retryer.ts`), so a request opened in a
+      // background tab — exactly what a clicked notification does — pauses
+      // its one retry forever. `status` stays `"pending"` the whole time
+      // `fetchStatus` sits at `"paused"`, which is indistinguishable from
+      // still loading to `isPending`: the skeleton this page renders while
+      // pending never gets replaced by anything, on a page nobody is even
+      // looking at to refocus. Verified against the client default by
+      // reproducing it: `focusManager.setFocused(false)` before mount and
+      // the query never leaves `pending`.
+      retry: false,
     }),
 
   /** Polls like the participant conversation does — an admin sits on this screen while somebody replies. */
