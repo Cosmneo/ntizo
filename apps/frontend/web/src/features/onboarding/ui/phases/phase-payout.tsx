@@ -2,7 +2,6 @@ import { useTranslation } from "react-i18next";
 import { Banknote, Smartphone } from "lucide-react";
 import { Button, Input, PhoneInput, cn } from "@ntizo/frontend-ui";
 import {
-  PAYOUT_CAPABLE_TYPES,
   PaymentIdentifierKind,
   PaymentMethodType,
   identifierKindFor,
@@ -21,6 +20,22 @@ const ICONS: Partial<Record<string, typeof Banknote>> = {
 };
 
 /**
+ * The payout methods this screen offers — deliberately narrower than
+ * `PAYOUT_CAPABLE_TYPES`.
+ *
+ * e-Mola and bank transfer are hidden here while only M-Pesa is wired end to
+ * end. This is a presentation choice and nothing else: `PAYOUT_CAPABLE_TYPES`
+ * still names all three, so `supportsDirection` keeps accepting the providers
+ * already saved on the other two and their existing payout details keep
+ * working. Narrowing the shared constant instead would have made those rows
+ * invalid retroactively.
+ *
+ * To bring one back, add it here — the copy, icons and identifier handling for
+ * all three are already in place and were left untouched.
+ */
+const OFFERED_PAYOUT_TYPES = [PaymentMethodType.MPesa] as const;
+
+/**
  * How the provider gets paid.
  *
  * Skippable, and the skip is a real button rather than a hidden option. This
@@ -28,9 +43,10 @@ const ICONS: Partial<Record<string, typeof Banknote>> = {
  * can be added the day before the first booking, and losing an applicant here
  * costs more than the missing field.
  *
- * The types come from the shared enum filtered to those that can receive money
- * — a card can be charged and cannot be paid out, and offering it here would
- * be offering a dead end.
+ * The types come from `OFFERED_PAYOUT_TYPES` above, which is narrower than the
+ * shared enum's payout-capable set on purpose: a card can be charged and
+ * cannot be paid out, and of the three that can, only M-Pesa is offered for
+ * now. See that constant for why the shared list was left alone.
  */
 export function PhasePayout({
   draft,
@@ -58,7 +74,7 @@ export function PhasePayout({
         aria-label={t("payout.title")}
         className="grid gap-3"
       >
-        {PAYOUT_CAPABLE_TYPES.map((type) => {
+        {OFFERED_PAYOUT_TYPES.map((type) => {
           const Icon = ICONS[type] ?? Banknote;
           const selected = draft.payoutType === type;
           return (
